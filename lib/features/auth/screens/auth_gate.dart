@@ -1,6 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
+import '../../establecimientos/screens/panel_establecimiento_screen.dart';
 import '../services/auth_service.dart';
 import 'login_screen.dart';
 
@@ -31,44 +32,11 @@ class AuthGate extends StatelessWidget {
 
         if (snapshot.hasData) {
           return authenticatedBuilder?.call(context) ??
-              const AuthenticatedScreen();
+              const PanelEstablecimientoScreen();
         }
 
         return unauthenticatedBuilder?.call(context) ?? const LoginScreen();
       },
-    );
-  }
-}
-
-class AuthenticatedScreen extends StatelessWidget {
-  const AuthenticatedScreen({super.key});
-
-  Future<void> _signOut() async {
-    await AuthService().signOut();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final email = AuthService().currentUser?.email ?? 'Sin correo';
-
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Panel del establecimiento'),
-        actions: [
-          IconButton(
-            onPressed: _signOut,
-            tooltip: 'Cerrar sesión',
-            icon: const Icon(Icons.logout),
-          ),
-        ],
-      ),
-      body: Center(
-        child: Text(
-          'Sesión iniciada como:\n$email',
-          textAlign: TextAlign.center,
-          style: const TextStyle(fontSize: 20),
-        ),
-      ),
     );
   }
 }
