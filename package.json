@@ -9,7 +9,7 @@
     "test": "test"
   },
 "scripts": {
-  "test:rules": "node --test --test-concurrency=1 test-rules/firestore.rules.test.cjs test-rules/establecimientos.rules.test.cjs test-rules/categorias.rules.test.cjs test-rules/promociones.rules.test.cjs"
+  "test:rules": "node --test --test-concurrency=1 test-rules/firestore.rules.test.cjs test-rules/establecimientos.rules.test.cjs test-rules/categorias.rules.test.cjs test-rules/promociones.rules.test.cjs test-rules/solicitudes.rules.test.cjs"
 },
   "repository": {
     "type": "git",

@@ -259,6 +259,83 @@ service cloud.firestore {
                     ) ||
                     esAdministrador();
     }
+        match /solicitudes_establecimientos/{solicitudId} {
+      function solicitudValida() {
+        return request.resource.data.keys().hasOnly([
+                 'solicitanteId',
+                 'establecimientoId',
+                 'mensaje',
+                 'estado',
+                 'motivoRespuesta',
+                 'creadoEn',
+                 'actualizadoEn'
+               ]) &&
+               request.resource.data.solicitanteId is string &&
+               request.resource.data.establecimientoId is string &&
+               request.resource.data.establecimientoId.size() > 0 &&
+               request.resource.data.mensaje is string &&
+               request.resource.data.mensaje.size() <= 1000 &&
+               request.resource.data.motivoRespuesta is string &&
+               request.resource.data.motivoRespuesta.size() <= 500 &&
+               request.resource.data.estado in [
+                 'pendiente',
+                 'aprobada',
+                 'rechazada'
+               ];
+      }
+
+      function solicitanteEsPropietario() {
+        return estaAutenticado() &&
+               exists(
+                 /databases/$(database)/documents/establecimientos/$(request.resource.data.establecimientoId)
+               ) &&
+               get(
+                 /databases/$(database)/documents/establecimientos/$(request.resource.data.establecimientoId)
+               ).data.propietarioId == request.auth.uid;
+      }
+
+      allow create: if solicitudValida() &&
+                    esPropietario(
+                      request.resource.data.solicitanteId
+                    ) &&
+                    solicitanteEsPropietario() &&
+                    request.resource.data.estado == 'pendiente' &&
+                    request.resource.data.motivoRespuesta == '' &&
+                    request.resource.data.creadoEn == request.time &&
+                    request.resource.data.actualizadoEn == request.time;
+
+      allow read: if esPropietario(
+                    resource.data.solicitanteId
+                  ) ||
+                  esAdministrador();
+
+      allow update: if esAdministrador() &&
+                    solicitudValida() &&
+                    request.resource.data.solicitanteId ==
+                      resource.data.solicitanteId &&
+                    request.resource.data.establecimientoId ==
+                      resource.data.establecimientoId &&
+                    request.resource.data.mensaje ==
+                      resource.data.mensaje &&
+                    request.resource.data.creadoEn ==
+                      resource.data.creadoEn &&
+                    request.resource.data.actualizadoEn ==
+                      request.time &&
+                    request.resource.data
+                      .diff(resource.data)
+                      .affectedKeys()
+                      .hasOnly([
+                        'estado',
+                        'motivoRespuesta',
+                        'actualizadoEn'
+                      ]);
+
+      allow delete: if (
+                      esPropietario(resource.data.solicitanteId) &&
+                      resource.data.estado == 'pendiente'
+                    ) ||
+                    esAdministrador();
+    }
     match /{document=**} {
       allow read, write: if false;
     }
