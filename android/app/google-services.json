@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "482737572174",
+    "project_id": "cercly-upec-2026",
+    "storage_bucket": "cercly-upec-2026.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:482737572174:android:7ccfcf178f0f99ded4761f",
+        "android_client_info": {
+          "package_name": "com.cercly.cercly"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAq7IId8QN6wnGy_hLpJxgLR5j28yyqG4k"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
