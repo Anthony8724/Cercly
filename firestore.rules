@@ -183,6 +183,82 @@ service cloud.firestore {
 
   allow delete: if esAdministrador();
 }
+    match /promociones/{promocionId} {
+      function promocionValida() {
+        return request.resource.data.keys().hasOnly([
+                 'establecimientoId',
+                 'titulo',
+                 'descripcion',
+                 'fechaInicio',
+                 'fechaFin',
+                 'radioAlertaMetros',
+                 'activa',
+                 'creadoEn',
+                 'actualizadoEn'
+               ]) &&
+               request.resource.data.establecimientoId is string &&
+               request.resource.data.establecimientoId.size() > 0 &&
+               request.resource.data.titulo is string &&
+               request.resource.data.titulo.size() >= 2 &&
+               request.resource.data.titulo.size() <= 120 &&
+               request.resource.data.descripcion is string &&
+               request.resource.data.descripcion.size() <= 1000 &&
+               request.resource.data.fechaInicio is timestamp &&
+               request.resource.data.fechaFin is timestamp &&
+               request.resource.data.fechaFin >
+                 request.resource.data.fechaInicio &&
+               request.resource.data.radioAlertaMetros is int &&
+               request.resource.data.radioAlertaMetros >= 10 &&
+               request.resource.data.radioAlertaMetros <= 2000 &&
+               request.resource.data.activa is bool;
+      }
+
+      function perteneceAlUsuario(establecimientoId) {
+        return estaAutenticado() &&
+               exists(
+                 /databases/$(database)/documents/establecimientos/$(establecimientoId)
+               ) &&
+               get(
+                 /databases/$(database)/documents/establecimientos/$(establecimientoId)
+               ).data.propietarioId == request.auth.uid;
+      }
+
+      allow create: if promocionValida() &&
+                    perteneceAlUsuario(
+                      request.resource.data.establecimientoId
+                    ) &&
+                    request.resource.data.creadoEn == request.time &&
+                    request.resource.data.actualizadoEn == request.time;
+
+      allow read: if (
+                    resource.data.activa == true &&
+                    resource.data.fechaInicio <= request.time &&
+                    resource.data.fechaFin >= request.time
+                  ) ||
+                  perteneceAlUsuario(
+                    resource.data.establecimientoId
+                  ) ||
+                  esAdministrador();
+
+      allow update: if promocionValida() &&
+                    request.resource.data.establecimientoId ==
+                      resource.data.establecimientoId &&
+                    request.resource.data.creadoEn ==
+                      resource.data.creadoEn &&
+                    request.resource.data.actualizadoEn ==
+                      request.time &&
+                    (
+                      perteneceAlUsuario(
+                        resource.data.establecimientoId
+                      ) ||
+                      esAdministrador()
+                    );
+
+      allow delete: if perteneceAlUsuario(
+                      resource.data.establecimientoId
+                    ) ||
+                    esAdministrador();
+    }
     match /{document=**} {
       allow read, write: if false;
     }
