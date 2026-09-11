@@ -126,3 +126,11 @@ app.*.symbols
 build/
 .flutter-plugins
 .flutter-plugins-dependencies
+
+node_modules/
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
+# Configuración local de Codex
+.agents/
+skills-lock.json

@@ -1,0 +1,47 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function estaAutenticado() {
+      return request.auth != null;
+    }
+
+    function esPropietarioDelPerfil(usuarioId) {
+      return estaAutenticado() &&
+             request.auth.uid == usuarioId;
+    }
+
+    function perfilValido() {
+      return request.resource.data.keys().hasOnly([
+               'nombre',
+               'creadoEn'
+             ]) &&
+             request.resource.data.nombre is string &&
+             request.resource.data.nombre.size() >= 2 &&
+             request.resource.data.nombre.size() <= 80;
+    }
+
+    match /usuarios/{usuarioId} {
+      allow create: if esPropietarioDelPerfil(usuarioId) &&
+                    perfilValido() &&
+                    request.resource.data.creadoEn == request.time;
+
+      allow read: if esPropietarioDelPerfil(usuarioId);
+
+      allow update: if esPropietarioDelPerfil(usuarioId) &&
+                    perfilValido() &&
+                    request.resource.data.creadoEn ==
+                      resource.data.creadoEn &&
+                    request.resource.data
+                      .diff(resource.data)
+                      .affectedKeys()
+                      .hasOnly(['nombre']);
+
+      allow delete: if false;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
