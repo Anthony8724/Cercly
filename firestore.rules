@@ -145,7 +145,44 @@ service cloud.firestore {
                     ) ||
                     esAdministrador();
     }
+    match /categorias/{categoriaId} {
+  function categoriaValida() {
+    return request.resource.data.keys().hasOnly([
+             'nombre',
+             'icono',
+             'activa',
+             'orden',
+             'creadoEn',
+             'actualizadoEn'
+           ]) &&
+           request.resource.data.nombre is string &&
+           request.resource.data.nombre.size() >= 2 &&
+           request.resource.data.nombre.size() <= 80 &&
+           request.resource.data.icono is string &&
+           request.resource.data.icono.size() > 0 &&
+           request.resource.data.icono.size() <= 50 &&
+           request.resource.data.activa is bool &&
+           request.resource.data.orden is int &&
+           request.resource.data.orden >= 0;
+  }
 
+  allow create: if esAdministrador() &&
+                categoriaValida() &&
+                request.resource.data.creadoEn == request.time &&
+                request.resource.data.actualizadoEn == request.time;
+
+  allow read: if resource.data.activa == true ||
+              esAdministrador();
+
+  allow update: if esAdministrador() &&
+                categoriaValida() &&
+                request.resource.data.creadoEn ==
+                  resource.data.creadoEn &&
+                request.resource.data.actualizadoEn ==
+                  request.time;
+
+  allow delete: if esAdministrador();
+}
     match /{document=**} {
       allow read, write: if false;
     }
