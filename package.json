@@ -8,8 +8,8 @@
     "lib": "lib",
     "test": "test"
   },
-  "scripts": {
-  "test:rules": "node --test test-rules/firestore.rules.test.cjs"
+"scripts": {
+  "test:rules": "node --test --test-concurrency=1 test-rules/firestore.rules.test.cjs test-rules/establecimientos.rules.test.cjs"
 },
   "repository": {
     "type": "git",

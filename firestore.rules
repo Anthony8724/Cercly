@@ -6,10 +6,15 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    function esPropietarioDelPerfil(usuarioId) {
+    function esPropietario(usuarioId) {
       return estaAutenticado() &&
              request.auth.uid == usuarioId;
     }
+
+ function esAdministrador() {
+  return estaAutenticado() &&
+         request.auth.token.get('admin', false) == true;
+}
 
     function perfilValido() {
       return request.resource.data.keys().hasOnly([
@@ -21,14 +26,53 @@ service cloud.firestore {
              request.resource.data.nombre.size() <= 80;
     }
 
+    function establecimientoValido() {
+      return request.resource.data.keys().hasOnly([
+               'propietarioId',
+               'nombre',
+               'descripcion',
+               'categoriaId',
+               'direccion',
+               'ubicacion',
+               'telefonoPublico',
+               'horario',
+               'zonaHoraria',
+               'estado',
+               'creadoEn',
+               'actualizadoEn'
+             ]) &&
+             request.resource.data.propietarioId is string &&
+             request.resource.data.nombre is string &&
+             request.resource.data.nombre.size() >= 2 &&
+             request.resource.data.nombre.size() <= 120 &&
+             request.resource.data.descripcion is string &&
+             request.resource.data.descripcion.size() <= 1000 &&
+             request.resource.data.categoriaId is string &&
+             request.resource.data.categoriaId.size() > 0 &&
+             request.resource.data.direccion is string &&
+             request.resource.data.direccion.size() > 0 &&
+             request.resource.data.direccion.size() <= 250 &&
+             request.resource.data.ubicacion is latlng &&
+             request.resource.data.telefonoPublico is string &&
+             request.resource.data.telefonoPublico.size() <= 20 &&
+             request.resource.data.horario is map &&
+             request.resource.data.zonaHoraria ==
+               'America/Guayaquil' &&
+             request.resource.data.estado in [
+               'pendiente',
+               'aprobado',
+               'rechazado'
+             ];
+    }
+
     match /usuarios/{usuarioId} {
-      allow create: if esPropietarioDelPerfil(usuarioId) &&
+      allow create: if esPropietario(usuarioId) &&
                     perfilValido() &&
                     request.resource.data.creadoEn == request.time;
 
-      allow read: if esPropietarioDelPerfil(usuarioId);
+      allow read: if esPropietario(usuarioId);
 
-      allow update: if esPropietarioDelPerfil(usuarioId) &&
+      allow update: if esPropietario(usuarioId) &&
                     perfilValido() &&
                     request.resource.data.creadoEn ==
                       resource.data.creadoEn &&
@@ -38,6 +82,68 @@ service cloud.firestore {
                       .hasOnly(['nombre']);
 
       allow delete: if false;
+    }
+
+    match /establecimientos/{establecimientoId} {
+      allow create: if establecimientoValido() &&
+                    esPropietario(
+                      request.resource.data.propietarioId
+                    ) &&
+                    request.resource.data.estado == 'pendiente' &&
+                    request.resource.data.creadoEn == request.time &&
+                    request.resource.data.actualizadoEn == request.time;
+
+      allow read: if resource.data.estado == 'aprobado' ||
+                  esPropietario(resource.data.propietarioId) ||
+                  esAdministrador();
+
+      allow update: if establecimientoValido() &&
+                    (
+                      (
+                        esPropietario(resource.data.propietarioId) &&
+                        request.resource.data.propietarioId ==
+                          resource.data.propietarioId &&
+                        request.resource.data.estado ==
+                          resource.data.estado &&
+                        request.resource.data.creadoEn ==
+                          resource.data.creadoEn &&
+                        request.resource.data
+                          .diff(resource.data)
+                          .affectedKeys()
+                          .hasOnly([
+                            'nombre',
+                            'descripcion',
+                            'categoriaId',
+                            'direccion',
+                            'ubicacion',
+                            'telefonoPublico',
+                            'horario',
+                            'zonaHoraria',
+                            'actualizadoEn'
+                          ])
+                      ) ||
+                      (
+                        esAdministrador() &&
+                        request.resource.data.propietarioId ==
+                          resource.data.propietarioId &&
+                        request.resource.data.creadoEn ==
+                          resource.data.creadoEn &&
+                        request.resource.data
+                          .diff(resource.data)
+                          .affectedKeys()
+                          .hasOnly([
+                            'estado',
+                            'actualizadoEn'
+                          ])
+                      )
+                    ) &&
+                    request.resource.data.actualizadoEn ==
+                      request.time;
+
+      allow delete: if esPropietario(
+                      resource.data.propietarioId
+                    ) ||
+                    esAdministrador();
     }
 
     match /{document=**} {
