@@ -1,6 +1,7 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 
+import 'features/auth/screens/auth_gate.dart';
 import 'firebase_options.dart';
 
 Future<void> main() async {
@@ -23,7 +24,7 @@ class CerclyApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
         useMaterial3: true,
       ),
-      home: const FirebaseTestScreen(),
+      home: const AuthGate(),
     );
   }
 }

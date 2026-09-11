@@ -1,10 +1,22 @@
-import 'package:cercly/main.dart';
+import 'package:cercly/features/auth/screens/auth_gate.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  testWidgets('Cercly muestra la pantalla inicial', (tester) async {
-    await tester.pumpWidget(const CerclyApp());
+  testWidgets('muestra el acceso cuando no existe una sesión', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: AuthGate(
+          authStateChanges: Stream<User?>.value(null),
+          unauthenticatedBuilder: (_) =>
+              const Text('Acceso para establecimientos'),
+        ),
+      ),
+    );
 
-    expect(find.text('Cercly conectado con Firebase'), findsOneWidget);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Acceso para establecimientos'), findsOneWidget);
   });
 }
