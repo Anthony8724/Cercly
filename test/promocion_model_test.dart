@@ -1,57 +1,84 @@
 import 'package:cercly/features/promociones/models/promocion_model.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+PromocionModel crearPromocion({
+  String titulo = 'Descuento de prueba',
+  DateTime? fechaInicio,
+  DateTime? fechaFin,
+  int radioAlertaMetros = 100,
+  bool activa = true,
+}) {
+  final inicio = fechaInicio ?? DateTime.utc(2026, 9, 12, 12);
+  final fin = fechaFin ?? DateTime.utc(2026, 9, 13, 12);
+
+  return PromocionModel(
+    id: '',
+    establecimientoId: '00000000-0000-0000-0000-000000000001',
+    titulo: titulo,
+    descripcion: 'Promoción utilizada para pruebas',
+    fechaInicio: inicio,
+    fechaFin: fin,
+    radioAlertaMetros: radioAlertaMetros,
+    activa: activa,
+  );
+}
+
 void main() {
-  group('PromocionModel', () {
-    test('está vigente dentro del periodo indicado', () {
-      final ahora = DateTime.now();
+  test('convierte la promoción al formato de Supabase', () {
+    final promocion = crearPromocion();
 
-      final promocion = PromocionModel(
-        id: 'promo-1',
-        establecimientoId: 'establecimiento-1',
-        titulo: 'Descuento del 20 %',
-        descripcion: 'Promoción válida durante esta semana.',
-        fechaInicio: ahora.subtract(const Duration(days: 1)),
-        fechaFin: ahora.add(const Duration(days: 1)),
-        radioAlertaMetros: 200,
-        activa: true,
-      );
+    final datos = promocion.toSupabaseParaCrear();
 
-      expect(promocion.estaVigente, isTrue);
-    });
+    expect(datos['establecimiento_id'], '00000000-0000-0000-0000-000000000001');
+    expect(datos['titulo'], 'Descuento de prueba');
+    expect(datos['radio_alerta_metros'], 100);
+    expect(datos['activa'], true);
+    expect(datos['imagen_ruta_storage'], isNull);
+    expect(datos['fecha_inicio'], '2026-09-12T12:00:00.000Z');
+  });
 
-    test('no está vigente cuando se encuentra desactivada', () {
-      final ahora = DateTime.now();
+  test('rechaza un título vacío', () {
+    expect(() => crearPromocion(titulo: ' '), throwsArgumentError);
+  });
 
-      final promocion = PromocionModel(
-        id: 'promo-2',
-        establecimientoId: 'establecimiento-1',
-        titulo: 'Promoción desactivada',
-        descripcion: 'Esta promoción no debe mostrarse.',
-        fechaInicio: ahora.subtract(const Duration(days: 1)),
-        fechaFin: ahora.add(const Duration(days: 1)),
-        radioAlertaMetros: 100,
-        activa: false,
-      );
+  test('rechaza una fecha final anterior al inicio', () {
+    expect(
+      () => crearPromocion(
+        fechaInicio: DateTime.utc(2026, 9, 13),
+        fechaFin: DateTime.utc(2026, 9, 12),
+      ),
+      throwsArgumentError,
+    );
+  });
 
-      expect(promocion.estaVigente, isFalse);
-    });
+  test('rechaza un radio menor a 10 metros', () {
+    expect(() => crearPromocion(radioAlertaMetros: 9), throwsArgumentError);
+  });
 
-    test('no está vigente cuando ya terminó', () {
-      final ahora = DateTime.now();
+  test('rechaza un radio mayor a 5000 metros', () {
+    expect(() => crearPromocion(radioAlertaMetros: 5001), throwsArgumentError);
+  });
 
-      final promocion = PromocionModel(
-        id: 'promo-3',
-        establecimientoId: 'establecimiento-1',
-        titulo: 'Promoción terminada',
-        descripcion: 'Esta promoción ya finalizó.',
-        fechaInicio: ahora.subtract(const Duration(days: 2)),
-        fechaFin: ahora.subtract(const Duration(days: 1)),
-        radioAlertaMetros: 300,
-        activa: true,
-      );
+  test('determina si una promoción está vigente', () {
+    final ahora = DateTime.now();
 
-      expect(promocion.estaVigente, isFalse);
-    });
+    final promocion = crearPromocion(
+      fechaInicio: ahora.subtract(const Duration(hours: 1)),
+      fechaFin: ahora.add(const Duration(hours: 1)),
+    );
+
+    expect(promocion.estaVigente, true);
+  });
+
+  test('una promoción inactiva no está vigente', () {
+    final ahora = DateTime.now();
+
+    final promocion = crearPromocion(
+      fechaInicio: ahora.subtract(const Duration(hours: 1)),
+      fechaFin: ahora.add(const Duration(hours: 1)),
+      activa: false,
+    );
+
+    expect(promocion.estaVigente, false);
   });
 }

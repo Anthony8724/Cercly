@@ -1,40 +1,53 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-
 class UsuarioModel {
-  const UsuarioModel({required this.uid, required this.nombre, this.creadoEn});
-
-  final String uid;
-  final String nombre;
-  final DateTime? creadoEn;
-
-  factory UsuarioModel.fromFirestore(
-    DocumentSnapshot<Map<String, dynamic>> documento,
-  ) {
-    final datos = documento.data();
-
-    if (datos == null) {
-      throw StateError('El perfil del usuario no existe.');
+  UsuarioModel({
+    required this.id,
+    required this.nombre,
+    required this.rol,
+    this.creadoEn,
+  }) {
+    if (id.trim().isEmpty) {
+      throw ArgumentError('El identificador es obligatorio.');
     }
 
-    final nombre = datos['nombre'];
-    final fecha = datos['creadoEn'];
-
-    if (nombre is! String) {
-      throw const FormatException('El nombre del usuario no es válido.');
+    if (nombre.trim().length < 2 || nombre.trim().length > 80) {
+      throw ArgumentError('El nombre debe tener entre 2 y 80 caracteres.');
     }
 
-    if (fecha != null && fecha is! Timestamp) {
-      throw const FormatException('La fecha de creación no es válida.');
+    if (!rolesPermitidos.contains(rol)) {
+      throw ArgumentError('El rol del usuario no es válido.');
     }
-
-    return UsuarioModel(
-      uid: documento.id,
-      nombre: nombre,
-      creadoEn: fecha is Timestamp ? fecha.toDate() : null,
-    );
   }
 
-  Map<String, dynamic> toFirestoreParaCrear() {
-    return {'nombre': nombre.trim(), 'creadoEn': FieldValue.serverTimestamp()};
+  static const String rolUsuario = 'usuario';
+  static const String rolPropietario = 'propietario';
+  static const String rolAdministrador = 'administrador';
+
+  static const Set<String> rolesPermitidos = {
+    rolUsuario,
+    rolPropietario,
+    rolAdministrador,
+  };
+
+  final String id;
+  final String nombre;
+  final String rol;
+  final DateTime? creadoEn;
+
+  bool get esPropietario => rol == rolPropietario;
+  bool get esAdministrador => rol == rolAdministrador;
+
+  Map<String, dynamic> toSupabaseParaActualizar() {
+    return {'nombre': nombre.trim()};
+  }
+
+  factory UsuarioModel.fromSupabase(Map<String, dynamic> datos) {
+    return UsuarioModel(
+      id: datos['id'] as String,
+      nombre: datos['nombre'] as String,
+      rol: datos['rol'] as String? ?? rolUsuario,
+      creadoEn: datos['creado_en'] == null
+          ? null
+          : DateTime.parse(datos['creado_en'] as String).toLocal(),
+    );
   }
 }

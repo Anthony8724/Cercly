@@ -134,3 +134,4 @@ ui-debug.log
 # Configuración local de Codex
 .agents/
 skills-lock.json
+/config/supabase.local.json

@@ -1,5 +1,3 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-
 import 'turno_horario.dart';
 
 class EstablecimientoModel {
@@ -10,20 +8,30 @@ class EstablecimientoModel {
     required this.descripcion,
     required this.categoriaId,
     required this.direccion,
-    required this.ubicacion,
+    required this.latitud,
+    required this.longitud,
     required this.telefonoPublico,
     required Map<String, List<TurnoHorario>> horario,
     required this.zonaHoraria,
+    this.estado = 'pendiente',
   }) : horario = Map.unmodifiable({
          for (final entry in horario.entries)
            entry.key: List<TurnoHorario>.unmodifiable(entry.value),
        }) {
     if (propietarioId.trim().isEmpty ||
-        nombre.trim().isEmpty ||
+        nombre.trim().length < 2 ||
         categoriaId.trim().isEmpty ||
         direccion.trim().isEmpty ||
         zonaHoraria.trim().isEmpty) {
       throw ArgumentError('Faltan datos obligatorios del establecimiento.');
+    }
+
+    if (latitud < -90 || latitud > 90) {
+      throw ArgumentError('La latitud debe estar entre -90 y 90.');
+    }
+
+    if (longitud < -180 || longitud > 180) {
+      throw ArgumentError('La longitud debe estar entre -180 y 180.');
     }
 
     if (horario.length != diasSemana.length ||
@@ -32,7 +40,7 @@ class EstablecimientoModel {
     }
   }
 
-  static const diasSemana = [
+  static const List<String> diasSemana = [
     'lunes',
     'martes',
     'miercoles',
@@ -48,29 +56,66 @@ class EstablecimientoModel {
   final String descripcion;
   final String categoriaId;
   final String direccion;
-  final GeoPoint ubicacion;
+  final double latitud;
+  final double longitud;
   final String telefonoPublico;
   final Map<String, List<TurnoHorario>> horario;
   final String zonaHoraria;
+  final String estado;
 
-  /// Solo para crear un documento nuevo, no para editar uno existente.
-  Map<String, dynamic> toFirestoreParaCrear() {
+  Map<String, dynamic> toSupabaseParaCrear() {
     return {
-      'propietarioId': propietarioId,
+      'propietario_id': propietarioId,
+      'categoria_id': categoriaId,
       'nombre': nombre.trim(),
       'descripcion': descripcion.trim(),
-      'categoriaId': categoriaId,
       'direccion': direccion.trim(),
-      'ubicacion': ubicacion,
-      'telefonoPublico': telefonoPublico.trim(),
-      'horario': {
-        for (final dia in diasSemana)
-          dia: horario[dia]!.map((turno) => turno.toMap()).toList(),
-      },
-      'zonaHoraria': zonaHoraria,
+      'latitud': latitud,
+      'longitud': longitud,
+      'telefono_publico': telefonoPublico.trim(),
+      'zona_horaria': zonaHoraria.trim(),
       'estado': 'pendiente',
-      'creadoEn': FieldValue.serverTimestamp(),
-      'actualizadoEn': FieldValue.serverTimestamp(),
     };
+  }
+
+  List<Map<String, dynamic>> horariosParaSupabase(String establecimientoId) {
+    final filas = <Map<String, dynamic>>[];
+
+    for (var indice = 0; indice < diasSemana.length; indice++) {
+      final dia = diasSemana[indice];
+      final turnos = horario[dia] ?? const <TurnoHorario>[];
+
+      for (final turno in turnos) {
+        filas.add({
+          'establecimiento_id': establecimientoId,
+          'dia_semana': indice + 1,
+          'apertura_minutos': turno.aperturaMinutos,
+          'cierre_minutos': turno.cierreMinutos,
+          'cierra_al_dia_siguiente': turno.cierraAlDiaSiguiente,
+        });
+      }
+    }
+
+    return filas;
+  }
+
+  factory EstablecimientoModel.fromSupabase(
+    Map<String, dynamic> datos, {
+    Map<String, List<TurnoHorario>>? horario,
+  }) {
+    return EstablecimientoModel(
+      id: datos['id'] as String,
+      propietarioId: datos['propietario_id'] as String,
+      nombre: datos['nombre'] as String,
+      descripcion: datos['descripcion'] as String? ?? '',
+      categoriaId: datos['categoria_id'] as String,
+      direccion: datos['direccion'] as String,
+      latitud: (datos['latitud'] as num).toDouble(),
+      longitud: (datos['longitud'] as num).toDouble(),
+      telefonoPublico: datos['telefono_publico'] as String? ?? '',
+      horario: horario ?? {for (final dia in diasSemana) dia: <TurnoHorario>[]},
+      zonaHoraria: datos['zona_horaria'] as String? ?? 'America/Guayaquil',
+      estado: datos['estado'] as String? ?? 'pendiente',
+    );
   }
 }

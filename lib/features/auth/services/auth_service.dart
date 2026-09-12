@@ -1,36 +1,42 @@
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class AuthService {
-  AuthService({FirebaseAuth? firebaseAuth})
-    : _firebaseAuth = firebaseAuth ?? FirebaseAuth.instance;
+  AuthService({SupabaseClient? supabase})
+    : _supabase = supabase ?? Supabase.instance.client;
 
-  final FirebaseAuth _firebaseAuth;
+  final SupabaseClient _supabase;
 
-  User? get currentUser => _firebaseAuth.currentUser;
+  User? get currentUser => _supabase.auth.currentUser;
 
-  Stream<User?> get authStateChanges => _firebaseAuth.authStateChanges();
-
-  Future<UserCredential> register({
-    required String email,
-    required String password,
-  }) {
-    return _firebaseAuth.createUserWithEmailAndPassword(
-      email: email.trim(),
-      password: password,
+  Stream<User?> get authStateChanges {
+    return _supabase.auth.onAuthStateChange.map(
+      (authState) => authState.session?.user,
     );
   }
 
-  Future<UserCredential> signIn({
+  Future<AuthResponse> register({
+    required String email,
+    required String password,
+    String? nombre,
+  }) {
+    return _supabase.auth.signUp(
+      email: email.trim(),
+      password: password,
+      data: {if (nombre != null) 'nombre': nombre.trim()},
+    );
+  }
+
+  Future<AuthResponse> signIn({
     required String email,
     required String password,
   }) {
-    return _firebaseAuth.signInWithEmailAndPassword(
+    return _supabase.auth.signInWithPassword(
       email: email.trim(),
       password: password,
     );
   }
 
   Future<void> signOut() {
-    return _firebaseAuth.signOut();
+    return _supabase.auth.signOut();
   }
 }
