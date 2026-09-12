@@ -16,6 +16,8 @@ class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
   final EstablecimientoService _service = EstablecimientoService();
 
   late Future<List<EstablecimientoModel>> _establecimientosFuture;
+
+  String _estadoSeleccionado = 'pendiente';
   String? _establecimientoProcesando;
 
   @override
@@ -25,11 +27,12 @@ class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
   }
 
   void _cargarEstablecimientos() {
-    _establecimientosFuture = _service.listarEstablecimientosPendientes();
+    _establecimientosFuture = _service.listarTodosLosEstablecimientos();
   }
 
-  void _recargar() {
+  Future<void> _recargar() async {
     setState(_cargarEstablecimientos);
+    await _establecimientosFuture;
   }
 
   Future<void> _cerrarSesion() async {
@@ -40,14 +43,15 @@ class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
     EstablecimientoModel establecimiento,
     String nuevoEstado,
   ) async {
-    final accion = nuevoEstado == 'aprobado' ? 'aprobar' : 'rechazar';
+    final esAprobacion = nuevoEstado == 'aprobado';
+    final accion = esAprobacion ? 'aprobar' : 'rechazar';
 
     final confirmar = await showDialog<bool>(
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
           title: Text(
-            nuevoEstado == 'aprobado'
+            esAprobacion
                 ? 'Aprobar establecimiento'
                 : 'Rechazar establecimiento',
           ),
@@ -66,10 +70,10 @@ class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
               onPressed: () {
                 Navigator.of(dialogContext).pop(true);
               },
-              style: nuevoEstado == 'rechazado'
-                  ? FilledButton.styleFrom(backgroundColor: Colors.red)
-                  : null,
-              child: Text(nuevoEstado == 'aprobado' ? 'Aprobar' : 'Rechazar'),
+              style: esAprobacion
+                  ? null
+                  : FilledButton.styleFrom(backgroundColor: Colors.red),
+              child: Text(esAprobacion ? 'Aprobar' : 'Rechazar'),
             ),
           ],
         );
@@ -94,21 +98,28 @@ class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
         return;
       }
 
+      setState(() {
+        _establecimientoProcesando = null;
+        _cargarEstablecimientos();
+      });
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            nuevoEstado == 'aprobado'
+            esAprobacion
                 ? 'Establecimiento aprobado correctamente.'
-                : 'Establecimiento rechazado.',
+                : 'Establecimiento rechazado correctamente.',
           ),
         ),
       );
-
-      _recargar();
     } catch (error) {
       if (!mounted) {
         return;
       }
+
+      setState(() {
+        _establecimientoProcesando = null;
+      });
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -116,12 +127,6 @@ class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
           backgroundColor: Colors.red,
         ),
       );
-    } finally {
-      if (mounted) {
-        setState(() {
-          _establecimientoProcesando = null;
-        });
-      }
     }
   }
 
@@ -183,41 +188,109 @@ class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
                   etiqueta: 'Zona horaria',
                   valor: establecimiento.zonaHoraria,
                 ),
-                _Detalle(etiqueta: 'Estado', valor: establecimiento.estado),
-                const SizedBox(height: 16),
-                Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        onPressed: () {
-                          Navigator.of(bottomSheetContext).pop();
-                          _cambiarEstado(establecimiento, 'rechazado');
-                        },
-                        icon: const Icon(Icons.close),
-                        label: const Text('Rechazar'),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: Colors.red,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: FilledButton.icon(
-                        onPressed: () {
-                          Navigator.of(bottomSheetContext).pop();
-                          _cambiarEstado(establecimiento, 'aprobado');
-                        },
-                        icon: const Icon(Icons.check),
-                        label: const Text('Aprobar'),
-                      ),
-                    ),
-                  ],
+                _Detalle(
+                  etiqueta: 'Estado',
+                  valor: _nombreEstado(establecimiento.estado),
+                ),
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton(
+                    onPressed: () {
+                      Navigator.of(bottomSheetContext).pop();
+                    },
+                    child: const Text('Cerrar'),
+                  ),
                 ),
               ],
             ),
           ),
         );
       },
+    );
+  }
+
+  String _nombreEstado(String estado) {
+    switch (estado) {
+      case 'aprobado':
+        return 'Aprobado';
+      case 'rechazado':
+        return 'Rechazado';
+      default:
+        return 'Pendiente';
+    }
+  }
+
+  Color _colorEstado(String estado) {
+    switch (estado) {
+      case 'aprobado':
+        return Colors.green;
+      case 'rechazado':
+        return Colors.red;
+      default:
+        return Colors.orange;
+    }
+  }
+
+  IconData _iconoEstado(String estado) {
+    switch (estado) {
+      case 'aprobado':
+        return Icons.check_circle;
+      case 'rechazado':
+        return Icons.cancel;
+      default:
+        return Icons.pending_actions;
+    }
+  }
+
+  Widget _construirAcciones(EstablecimientoModel establecimiento) {
+    if (_establecimientoProcesando == establecimiento.id) {
+      return const Padding(
+        padding: EdgeInsets.all(8),
+        child: CircularProgressIndicator(),
+      );
+    }
+
+    if (establecimiento.estado == 'pendiente') {
+      return Row(
+        children: [
+          OutlinedButton.icon(
+            onPressed: () {
+              _cambiarEstado(establecimiento, 'rechazado');
+            },
+            icon: const Icon(Icons.close),
+            label: const Text('Rechazar'),
+            style: OutlinedButton.styleFrom(foregroundColor: Colors.red),
+          ),
+          const SizedBox(width: 8),
+          FilledButton.icon(
+            onPressed: () {
+              _cambiarEstado(establecimiento, 'aprobado');
+            },
+            icon: const Icon(Icons.check),
+            label: const Text('Aprobar'),
+          ),
+        ],
+      );
+    }
+
+    if (establecimiento.estado == 'aprobado') {
+      return OutlinedButton.icon(
+        onPressed: () {
+          _cambiarEstado(establecimiento, 'rechazado');
+        },
+        icon: const Icon(Icons.block),
+        label: const Text('Cambiar a rechazado'),
+        style: OutlinedButton.styleFrom(foregroundColor: Colors.red),
+      );
+    }
+
+    return FilledButton.icon(
+      onPressed: () {
+        _cambiarEstado(establecimiento, 'aprobado');
+      },
+      icon: const Icon(Icons.check),
+      label: const Text('Cambiar a aprobado'),
     );
   }
 
@@ -243,11 +316,9 @@ class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
       ),
       body: SafeArea(
         child: RefreshIndicator(
-          onRefresh: () async {
-            _recargar();
-            await _establecimientosFuture;
-          },
+          onRefresh: _recargar,
           child: ListView(
+            physics: const AlwaysScrollableScrollPhysics(),
             padding: const EdgeInsets.all(20),
             children: [
               Text(
@@ -258,12 +329,35 @@ class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
               const SizedBox(height: 4),
               Text(correo),
               const SizedBox(height: 24),
-              Text(
-                'Establecimientos pendientes',
-                style: Theme.of(context).textTheme.titleLarge
-                    ?.copyWith(fontWeight: FontWeight.bold),
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: SegmentedButton<String>(
+                  segments: const [
+                    ButtonSegment<String>(
+                      value: 'pendiente',
+                      icon: Icon(Icons.pending_actions),
+                      label: Text('Pendientes'),
+                    ),
+                    ButtonSegment<String>(
+                      value: 'aprobado',
+                      icon: Icon(Icons.check_circle),
+                      label: Text('Aprobados'),
+                    ),
+                    ButtonSegment<String>(
+                      value: 'rechazado',
+                      icon: Icon(Icons.cancel),
+                      label: Text('Rechazados'),
+                    ),
+                  ],
+                  selected: {_estadoSeleccionado},
+                  onSelectionChanged: (seleccion) {
+                    setState(() {
+                      _estadoSeleccionado = seleccion.first;
+                    });
+                  },
+                ),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 24),
               FutureBuilder<List<EstablecimientoModel>>(
                 future: _establecimientosFuture,
                 builder: (context, snapshot) {
@@ -285,20 +379,27 @@ class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
                     );
                   }
 
-                  final establecimientos =
-                      snapshot.data ?? <EstablecimientoModel>[];
+                  final todos = snapshot.data ?? <EstablecimientoModel>[];
+
+                  final establecimientos = todos
+                      .where(
+                        (establecimiento) =>
+                            establecimiento.estado == _estadoSeleccionado,
+                      )
+                      .toList();
 
                   if (establecimientos.isEmpty) {
-                    return const _MensajePanel(
-                      icono: Icons.task_alt,
-                      mensaje: 'No hay establecimientos pendientes.',
+                    return _MensajePanel(
+                      icono: _iconoEstado(_estadoSeleccionado),
+                      mensaje:
+                          'No hay establecimientos '
+                          '${_nombreEstado(_estadoSeleccionado).toLowerCase()}s.',
                     );
                   }
 
                   return Column(
                     children: establecimientos.map((establecimiento) {
-                      final procesando =
-                          _establecimientoProcesando == establecimiento.id;
+                      final color = _colorEstado(establecimiento.estado);
 
                       return Card(
                         margin: const EdgeInsets.only(bottom: 12),
@@ -309,8 +410,10 @@ class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
                             children: [
                               Row(
                                 children: [
-                                  const CircleAvatar(
-                                    child: Icon(Icons.storefront),
+                                  CircleAvatar(
+                                    child: Icon(
+                                      _iconoEstado(establecimiento.estado),
+                                    ),
                                   ),
                                   const SizedBox(width: 12),
                                   Expanded(
@@ -325,11 +428,21 @@ class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
                                             fontWeight: FontWeight.bold,
                                           ),
                                         ),
+                                        const SizedBox(height: 2),
                                         Text(establecimiento.direccion),
                                       ],
                                     ),
                                   ),
-                                  const Chip(label: Text('Pendiente')),
+                                  Chip(
+                                    avatar: Icon(
+                                      _iconoEstado(establecimiento.estado),
+                                      color: color,
+                                      size: 18,
+                                    ),
+                                    label: Text(
+                                      _nombreEstado(establecimiento.estado),
+                                    ),
+                                  ),
                                 ],
                               ),
                               const SizedBox(height: 12),
@@ -341,42 +454,21 @@ class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
                                 overflow: TextOverflow.ellipsis,
                               ),
                               const SizedBox(height: 16),
-                              if (procesando)
-                                const Center(child: CircularProgressIndicator())
-                              else
-                                Row(
-                                  children: [
-                                    TextButton(
-                                      onPressed: () {
-                                        _mostrarDetalles(establecimiento);
-                                      },
-                                      child: const Text('Ver detalles'),
-                                    ),
-                                    const Spacer(),
-                                    IconButton(
-                                      onPressed: () {
-                                        _cambiarEstado(
-                                          establecimiento,
-                                          'rechazado',
-                                        );
-                                      },
-                                      tooltip: 'Rechazar',
-                                      color: Colors.red,
-                                      icon: const Icon(Icons.close),
-                                    ),
-                                    const SizedBox(width: 8),
-                                    FilledButton.icon(
-                                      onPressed: () {
-                                        _cambiarEstado(
-                                          establecimiento,
-                                          'aprobado',
-                                        );
-                                      },
-                                      icon: const Icon(Icons.check),
-                                      label: const Text('Aprobar'),
-                                    ),
-                                  ],
-                                ),
+                              Wrap(
+                                spacing: 8,
+                                runSpacing: 8,
+                                alignment: WrapAlignment.end,
+                                crossAxisAlignment: WrapCrossAlignment.center,
+                                children: [
+                                  TextButton(
+                                    onPressed: () {
+                                      _mostrarDetalles(establecimiento);
+                                    },
+                                    child: const Text('Ver detalles'),
+                                  ),
+                                  _construirAcciones(establecimiento),
+                                ],
+                              ),
                             ],
                           ),
                         ),
