@@ -1,12 +1,20 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'config/supabase_options.dart';
 import 'features/auth/screens/auth_gate.dart';
 import 'firebase_options.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  if (SupabaseOptions.isConfigured) {
+    await Supabase.initialize(
+      url: SupabaseOptions.url,
+      publishableKey: SupabaseOptions.publishableKey,
+    );
+  }
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
   runApp(const CerclyApp());
