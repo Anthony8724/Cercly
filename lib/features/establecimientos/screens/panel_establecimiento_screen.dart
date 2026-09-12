@@ -5,6 +5,7 @@ import '../../promociones/screens/promociones_establecimiento_screen.dart';
 import '../models/establecimiento_model.dart';
 import '../services/establecimiento_service.dart';
 import 'fotos_establecimiento_screen.dart';
+import 'horarios_establecimiento_screen.dart';
 import 'registro_establecimiento_screen.dart';
 
 class PanelEstablecimientoScreen extends StatefulWidget {
@@ -57,6 +58,15 @@ class _PanelEstablecimientoScreenState
       MaterialPageRoute<void>(
         builder: (_) =>
             FotosEstablecimientoScreen(establecimiento: establecimiento),
+      ),
+    );
+  }
+
+  void _abrirHorarios(EstablecimientoModel establecimiento) {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) =>
+            HorariosEstablecimientoScreen(establecimiento: establecimiento),
       ),
     );
   }
@@ -225,6 +235,9 @@ class _PanelEstablecimientoScreenState
                           onFotografias: () {
                             _abrirFotografias(establecimiento);
                           },
+                          onHorarios: () {
+                            _abrirHorarios(establecimiento);
+                          },
                           onPromociones: () {
                             _abrirPromociones(establecimiento);
                           },
@@ -241,7 +254,7 @@ class _PanelEstablecimientoScreenState
               ),
               const SizedBox(height: 24),
               Text(
-                'Administración',
+                'Administración general',
                 style: Theme.of(context).textTheme.titleLarge
                     ?.copyWith(fontWeight: FontWeight.bold),
               ),
@@ -253,12 +266,6 @@ class _PanelEstablecimientoScreenState
                     'Edita el nombre, descripción, dirección y teléfono.',
                 onTap: () =>
                     _mostrarProximamente('Edición del establecimiento'),
-              ),
-              _OpcionPanel(
-                icono: Icons.schedule,
-                titulo: 'Horarios de atención',
-                descripcion: 'Configura los horarios de cada día.',
-                onTap: () => _mostrarProximamente('Horarios de atención'),
               ),
               _OpcionPanel(
                 icono: Icons.assignment,
@@ -281,6 +288,7 @@ class _TarjetaEstablecimiento extends StatelessWidget {
     required this.colorEstado,
     required this.textoEstado,
     required this.onFotografias,
+    required this.onHorarios,
     required this.onPromociones,
   });
 
@@ -288,6 +296,7 @@ class _TarjetaEstablecimiento extends StatelessWidget {
   final Color colorEstado;
   final String textoEstado;
   final VoidCallback onFotografias;
+  final VoidCallback onHorarios;
   final VoidCallback onPromociones;
 
   @override
@@ -352,6 +361,11 @@ class _TarjetaEstablecimiento extends StatelessWidget {
                   onPressed: onFotografias,
                   icon: const Icon(Icons.photo_library),
                   label: const Text('Fotografías'),
+                ),
+                OutlinedButton.icon(
+                  onPressed: onHorarios,
+                  icon: const Icon(Icons.schedule),
+                  label: const Text('Horarios'),
                 ),
                 OutlinedButton.icon(
                   onPressed: onPromociones,
