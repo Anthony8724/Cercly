@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../auth/services/auth_service.dart';
 import '../../establecimientos/models/establecimiento_model.dart';
 import '../../establecimientos/services/establecimiento_service.dart';
+import '../../solicitudes_establecimientos/screens/solicitudes_administrador_screen.dart';
 
 class PanelAdministradorScreen extends StatefulWidget {
   const PanelAdministradorScreen({super.key});
@@ -302,6 +303,17 @@ class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
       appBar: AppBar(
         title: const Text('Panel administrativo'),
         actions: [
+          IconButton(
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => const SolicitudesAdministradorScreen(),
+                ),
+              );
+            },
+            tooltip: 'Solicitudes',
+            icon: const Icon(Icons.assignment),
+          ),
           IconButton(
             onPressed: _recargar,
             tooltip: 'Actualizar',
