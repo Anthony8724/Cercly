@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../auth/services/auth_service.dart';
+import '../../promociones/screens/promociones_establecimiento_screen.dart';
 import '../models/establecimiento_model.dart';
 import '../services/establecimiento_service.dart';
 import 'fotos_establecimiento_screen.dart';
@@ -56,6 +57,15 @@ class _PanelEstablecimientoScreenState
       MaterialPageRoute<void>(
         builder: (_) =>
             FotosEstablecimientoScreen(establecimiento: establecimiento),
+      ),
+    );
+  }
+
+  void _abrirPromociones(EstablecimientoModel establecimiento) {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) =>
+            PromocionesEstablecimientoScreen(establecimiento: establecimiento),
       ),
     );
   }
@@ -215,6 +225,9 @@ class _PanelEstablecimientoScreenState
                           onFotografias: () {
                             _abrirFotografias(establecimiento);
                           },
+                          onPromociones: () {
+                            _abrirPromociones(establecimiento);
+                          },
                         ),
                       const SizedBox(height: 4),
                       OutlinedButton.icon(
@@ -248,13 +261,6 @@ class _PanelEstablecimientoScreenState
                 onTap: () => _mostrarProximamente('Horarios de atención'),
               ),
               _OpcionPanel(
-                icono: Icons.local_offer,
-                titulo: 'Promociones',
-                descripcion: 'Crea promociones y agrega imágenes.',
-                onTap: () =>
-                    _mostrarProximamente('Administración de promociones'),
-              ),
-              _OpcionPanel(
                 icono: Icons.assignment,
                 titulo: 'Estado de revisión',
                 descripcion: 'Consulta si tu establecimiento fue aprobado.',
@@ -275,12 +281,14 @@ class _TarjetaEstablecimiento extends StatelessWidget {
     required this.colorEstado,
     required this.textoEstado,
     required this.onFotografias,
+    required this.onPromociones,
   });
 
   final EstablecimientoModel establecimiento;
   final Color colorEstado;
   final String textoEstado;
   final VoidCallback onFotografias;
+  final VoidCallback onPromociones;
 
   @override
   Widget build(BuildContext context) {
@@ -326,21 +334,29 @@ class _TarjetaEstablecimiento extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 12),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Chip(
+                avatar: Icon(Icons.circle, size: 12, color: colorEstado),
+                label: Text(textoEstado),
+                backgroundColor: colorEstado.withValues(alpha: 0.12),
+                side: BorderSide(color: colorEstado.withValues(alpha: 0.35)),
+              ),
+            ),
+            const SizedBox(height: 8),
             Wrap(
               spacing: 8,
               runSpacing: 8,
-              alignment: WrapAlignment.spaceBetween,
               children: [
-                Chip(
-                  avatar: Icon(Icons.circle, size: 12, color: colorEstado),
-                  label: Text(textoEstado),
-                  backgroundColor: colorEstado.withValues(alpha: 0.12),
-                  side: BorderSide(color: colorEstado.withValues(alpha: 0.35)),
-                ),
                 OutlinedButton.icon(
                   onPressed: onFotografias,
                   icon: const Icon(Icons.photo_library),
                   label: const Text('Fotografías'),
+                ),
+                OutlinedButton.icon(
+                  onPressed: onPromociones,
+                  icon: const Icon(Icons.local_offer),
+                  label: const Text('Promociones'),
                 ),
               ],
             ),
