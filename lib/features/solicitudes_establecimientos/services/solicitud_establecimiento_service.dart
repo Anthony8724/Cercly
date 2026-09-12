@@ -2,6 +2,28 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../models/solicitud_establecimiento_model.dart';
 
+class EstablecimientoSolicitudOpcion {
+  const EstablecimientoSolicitudOpcion({
+    required this.id,
+    required this.nombre,
+    required this.direccion,
+  });
+
+  final String id;
+  final String nombre;
+  final String direccion;
+
+  factory EstablecimientoSolicitudOpcion.fromSupabase(
+    Map<String, dynamic> datos,
+  ) {
+    return EstablecimientoSolicitudOpcion(
+      id: datos['id'] as String,
+      nombre: datos['nombre'] as String? ?? 'Establecimiento desconocido',
+      direccion: datos['direccion'] as String? ?? 'Sin dirección',
+    );
+  }
+}
+
 class SolicitudEstablecimientoDetalle {
   const SolicitudEstablecimientoDetalle({
     required this.solicitud,
@@ -41,19 +63,56 @@ class SolicitudEstablecimientoService {
 
   final SupabaseClient _supabase;
 
+  static const String _consultaConDetalles = '''
+    *,
+    solicitante:usuarios!solicitudes_establecimientos_solicitante_id_fkey(
+      nombre
+    ),
+    establecimiento:establecimientos!solicitudes_establecimientos_establecimiento_id_fkey(
+      nombre,
+      direccion
+    )
+  ''';
+
+  Future<List<EstablecimientoSolicitudOpcion>>
+  listarEstablecimientosAprobados() async {
+    final respuesta = await _supabase
+        .from('establecimientos')
+        .select('id, nombre, direccion')
+        .eq('estado', 'aprobado')
+        .order('nombre');
+
+    return respuesta
+        .map<EstablecimientoSolicitudOpcion>(
+          EstablecimientoSolicitudOpcion.fromSupabase,
+        )
+        .toList();
+  }
+
   Future<List<SolicitudEstablecimientoDetalle>> listarTodas() async {
     final respuesta = await _supabase
         .from('solicitudes_establecimientos')
-        .select('''
-          *,
-          solicitante:usuarios!solicitudes_establecimientos_solicitante_id_fkey(
-            nombre
-          ),
-          establecimiento:establecimientos!solicitudes_establecimientos_establecimiento_id_fkey(
-            nombre,
-            direccion
-          )
-          ''')
+        .select(_consultaConDetalles)
+        .order('creado_en', ascending: false);
+
+    return respuesta
+        .map<SolicitudEstablecimientoDetalle>(
+          SolicitudEstablecimientoDetalle.fromSupabase,
+        )
+        .toList();
+  }
+
+  Future<List<SolicitudEstablecimientoDetalle>> listarDelUsuarioActual() async {
+    final usuario = _supabase.auth.currentUser;
+
+    if (usuario == null) {
+      throw StateError('Debes iniciar sesión.');
+    }
+
+    final respuesta = await _supabase
+        .from('solicitudes_establecimientos')
+        .select(_consultaConDetalles)
+        .eq('solicitante_id', usuario.id)
         .order('creado_en', ascending: false);
 
     return respuesta
@@ -72,16 +131,7 @@ class SolicitudEstablecimientoService {
 
     final respuesta = await _supabase
         .from('solicitudes_establecimientos')
-        .select('''
-          *,
-          solicitante:usuarios!solicitudes_establecimientos_solicitante_id_fkey(
-            nombre
-          ),
-          establecimiento:establecimientos!solicitudes_establecimientos_establecimiento_id_fkey(
-            nombre,
-            direccion
-          )
-          ''')
+        .select(_consultaConDetalles)
         .eq('estado', estado)
         .order('creado_en', ascending: false);
 
@@ -127,16 +177,38 @@ class SolicitudEstablecimientoService {
     );
   }
 
-  Future<String> crear(SolicitudEstablecimientoModel solicitud) async {
+  Future<String> crear({
+    required String establecimientoId,
+    required String tipo,
+    required String mensaje,
+  }) async {
     final usuario = _supabase.auth.currentUser;
 
     if (usuario == null) {
       throw StateError('Debes iniciar sesión para crear una solicitud.');
     }
 
-    if (usuario.id != solicitud.solicitanteId) {
-      throw StateError('No puedes crear una solicitud para otro usuario.');
+    if (!SolicitudEstablecimientoModel.tiposPermitidos.contains(tipo)) {
+      throw ArgumentError('El tipo de solicitud no es válido.');
     }
+
+    final texto = mensaje.trim();
+
+    if (texto.isEmpty) {
+      throw ArgumentError('Debes explicar el motivo de la solicitud.');
+    }
+
+    if (texto.length > 1000) {
+      throw ArgumentError('El mensaje no puede superar los 1000 caracteres.');
+    }
+
+    final solicitud = SolicitudEstablecimientoModel(
+      id: '',
+      solicitanteId: usuario.id,
+      establecimientoId: establecimientoId,
+      mensaje: texto,
+      tipo: tipo,
+    );
 
     final respuesta = await _supabase
         .from('solicitudes_establecimientos')

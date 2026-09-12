@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../auth/services/auth_service.dart';
 import '../../promociones/screens/promociones_establecimiento_screen.dart';
+import '../../solicitudes_establecimientos/screens/mis_solicitudes_screen.dart';
 import '../models/establecimiento_model.dart';
 import '../services/establecimiento_service.dart';
 import 'fotos_establecimiento_screen.dart';
@@ -269,10 +270,15 @@ class _PanelEstablecimientoScreenState
               ),
               _OpcionPanel(
                 icono: Icons.assignment,
-                titulo: 'Estado de revisión',
-                descripcion: 'Consulta si tu establecimiento fue aprobado.',
-                onTap: () =>
-                    _mostrarProximamente('Detalle del estado de revisión'),
+                titulo: 'Mis solicitudes',
+                descripcion: 'Envía solicitudes y consulta la respuesta del administrador.',
+                onTap: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => const MisSolicitudesScreen(),
+                    ),
+                  );
+                },
               ),
             ],
           ),
