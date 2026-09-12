@@ -77,7 +77,11 @@ class _PromocionesEstablecimientoScreenState
     });
 
     try {
-      await _service.cambiarEstado(promocionId: promocion.id, activa: activa);
+      await _service.cambiarEstado(
+        promocionId: promocion.id,
+        establecimientoId: promocion.establecimientoId,
+        activa: activa,
+      );
 
       if (mounted) {
         _mostrarMensaje(

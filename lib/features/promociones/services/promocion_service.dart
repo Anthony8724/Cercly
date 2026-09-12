@@ -12,6 +12,32 @@ class PromocionService {
 
   final SupabaseClient _supabase;
 
+  Future<bool> _puedeGestionar(String establecimientoId) async {
+    final respuesta = await _supabase.rpc(
+      'puede_gestionar_establecimiento',
+      params: {'p_establecimiento_id': establecimientoId},
+    );
+
+    return respuesta == true;
+  }
+
+  Future<void> _verificarPermiso(String establecimientoId) async {
+    final usuario = _supabase.auth.currentUser;
+
+    if (usuario == null) {
+      throw StateError('Debes iniciar sesión.');
+    }
+
+    final tienePermiso = await _puedeGestionar(establecimientoId);
+
+    if (!tienePermiso) {
+      throw StateError(
+        'No tienes permiso para administrar promociones '
+        'de este establecimiento.',
+      );
+    }
+  }
+
   Future<List<PromocionModel>> listarPorEstablecimiento(
     String establecimientoId,
   ) async {
@@ -21,7 +47,7 @@ class PromocionService {
         .eq('establecimiento_id', establecimientoId)
         .order('fecha_inicio', ascending: false);
 
-    return respuesta.map(PromocionModel.fromSupabase).toList();
+    return respuesta.map<PromocionModel>(PromocionModel.fromSupabase).toList();
   }
 
   Future<String?> obtenerUrlImagen(PromocionModel promocion) async {
@@ -44,16 +70,7 @@ class PromocionService {
       throw StateError('Debes iniciar sesión.');
     }
 
-    final establecimiento = await _supabase
-        .from('establecimientos')
-        .select('id')
-        .eq('id', promocion.establecimientoId)
-        .eq('propietario_id', usuario.id)
-        .maybeSingle();
-
-    if (establecimiento == null) {
-      throw StateError('No tienes permiso para crear promociones aquí.');
-    }
+    await _verificarPermiso(promocion.establecimientoId);
 
     final datos = promocion.toSupabaseParaCrear()
       ..remove('imagen_ruta_storage');
@@ -99,16 +116,26 @@ class PromocionService {
 
   Future<void> cambiarEstado({
     required String promocionId,
+    required String establecimientoId,
     required bool activa,
   }) async {
+    await _verificarPermiso(establecimientoId);
+
     await _supabase
         .from('promociones')
         .update({'activa': activa})
-        .eq('id', promocionId);
+        .eq('id', promocionId)
+        .eq('establecimiento_id', establecimientoId);
   }
 
   Future<void> eliminar(PromocionModel promocion) async {
-    await _supabase.from('promociones').delete().eq('id', promocion.id);
+    await _verificarPermiso(promocion.establecimientoId);
+
+    await _supabase
+        .from('promociones')
+        .delete()
+        .eq('id', promocion.id)
+        .eq('establecimiento_id', promocion.establecimientoId);
 
     final ruta = promocion.imagenRutaStorage;
 
