@@ -29,6 +29,31 @@ class FotoEstablecimientoService {
 
   final SupabaseClient _supabase;
 
+  Future<bool> _puedeGestionar(String establecimientoId) async {
+    final respuesta = await _supabase.rpc(
+      'puede_gestionar_establecimiento',
+      params: {'p_establecimiento_id': establecimientoId},
+    );
+
+    return respuesta == true;
+  }
+
+  Future<void> _verificarPermiso(String establecimientoId) async {
+    final usuario = _supabase.auth.currentUser;
+
+    if (usuario == null) {
+      throw StateError('Debes iniciar sesión.');
+    }
+
+    final tienePermiso = await _puedeGestionar(establecimientoId);
+
+    if (!tienePermiso) {
+      throw StateError(
+        'No tienes permiso para modificar este establecimiento.',
+      );
+    }
+  }
+
   Future<List<FotoEstablecimiento>> listar(String establecimientoId) async {
     final respuesta = await _supabase
         .from('fotos_establecimiento')
@@ -70,18 +95,7 @@ class FotoEstablecimientoService {
       throw StateError('Debes iniciar sesión.');
     }
 
-    final establecimiento = await _supabase
-        .from('establecimientos')
-        .select('id')
-        .eq('id', establecimientoId)
-        .eq('propietario_id', usuario.id)
-        .maybeSingle();
-
-    if (establecimiento == null) {
-      throw StateError(
-        'No tienes permiso para modificar este establecimiento.',
-      );
-    }
+    await _verificarPermiso(establecimientoId);
 
     final existentes = await _supabase
         .from('fotos_establecimiento')
@@ -104,7 +118,6 @@ class FotoEstablecimientoService {
 
       final extension = _obtenerExtension(archivo.name);
       final contentType = _obtenerContentType(extension);
-
       final nombre =
           '${DateTime.now().microsecondsSinceEpoch}_$indice.$extension';
 
@@ -136,6 +149,8 @@ class FotoEstablecimientoService {
     required String establecimientoId,
     required String fotoId,
   }) async {
+    await _verificarPermiso(establecimientoId);
+
     await _supabase
         .from('fotos_establecimiento')
         .update({'es_portada': false})
@@ -149,6 +164,8 @@ class FotoEstablecimientoService {
   }
 
   Future<void> eliminar(FotoEstablecimiento foto) async {
+    await _verificarPermiso(foto.establecimientoId);
+
     await _supabase.from('fotos_establecimiento').delete().eq('id', foto.id);
 
     await _supabase.storage.from(bucket).remove([foto.rutaStorage]);

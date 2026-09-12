@@ -25,13 +25,142 @@ class EstablecimientoService {
       throw StateError('Debes iniciar sesión.');
     }
 
-    final respuesta = await _supabase
+    final respuestaPropios = await _supabase
         .from('establecimientos')
         .select()
         .eq('propietario_id', usuario.id)
         .order('creado_en', ascending: false);
 
-    return respuesta.map(EstablecimientoModel.fromSupabase).toList();
+    final respuestaAccesos = await _supabase
+        .from('miembros_establecimiento')
+        .select('establecimiento_id')
+        .eq('usuario_id', usuario.id)
+        .eq('activo', true);
+
+    final idsCompartidos = respuestaAccesos
+        .map<String>((fila) => fila['establecimiento_id'] as String)
+        .toSet()
+        .toList();
+
+    final establecimientosPorId = <String, EstablecimientoModel>{};
+
+    for (final datos in respuestaPropios) {
+      final establecimiento = EstablecimientoModel.fromSupabase(datos);
+
+      establecimientosPorId[establecimiento.id] = establecimiento;
+    }
+
+    if (idsCompartidos.isNotEmpty) {
+      final respuestaCompartidos = await _supabase
+          .from('establecimientos')
+          .select()
+          .inFilter('id', idsCompartidos)
+          .order('creado_en', ascending: false);
+
+      for (final datos in respuestaCompartidos) {
+        final establecimiento = EstablecimientoModel.fromSupabase(datos);
+
+        establecimientosPorId[establecimiento.id] = establecimiento;
+      }
+    }
+
+    final establecimientos = establecimientosPorId.values.toList();
+
+    establecimientos.sort(
+      (primero, segundo) =>
+          primero.nombre.toLowerCase().compareTo(segundo.nombre.toLowerCase()),
+    );
+
+    return establecimientos;
+  }
+
+  Future<List<String>> listarIdsDeEstablecimientosCompartidos() async {
+    final usuario = _supabase.auth.currentUser;
+
+    if (usuario == null) {
+      throw StateError('Debes iniciar sesión.');
+    }
+
+    final respuesta = await _supabase
+        .from('miembros_establecimiento')
+        .select('establecimiento_id')
+        .eq('usuario_id', usuario.id)
+        .eq('activo', true);
+
+    return respuesta
+        .map<String>((fila) => fila['establecimiento_id'] as String)
+        .toList();
+  }
+
+  Future<bool> esColaborador(String establecimientoId) async {
+    final usuario = _supabase.auth.currentUser;
+
+    if (usuario == null) {
+      return false;
+    }
+
+    final respuesta = await _supabase
+        .from('miembros_establecimiento')
+        .select('establecimiento_id')
+        .eq('establecimiento_id', establecimientoId)
+        .eq('usuario_id', usuario.id)
+        .eq('activo', true)
+        .maybeSingle();
+
+    return respuesta != null;
+  }
+
+  Future<List<EstablecimientoModel>> listarEstablecimientosPendientes() async {
+    final respuesta = await _supabase
+        .from('establecimientos')
+        .select()
+        .eq('estado', 'pendiente')
+        .order('creado_en');
+
+    return respuesta
+        .map<EstablecimientoModel>(EstablecimientoModel.fromSupabase)
+        .toList();
+  }
+
+  Future<List<EstablecimientoModel>> listarTodosLosEstablecimientos() async {
+    final respuesta = await _supabase
+        .from('establecimientos')
+        .select()
+        .order('creado_en', ascending: false);
+
+    return respuesta
+        .map<EstablecimientoModel>(EstablecimientoModel.fromSupabase)
+        .toList();
+  }
+
+  Future<void> cambiarEstado({
+    required String establecimientoId,
+    required String nuevoEstado,
+  }) async {
+    const estadosPermitidos = {'pendiente', 'aprobado', 'rechazado'};
+
+    if (!estadosPermitidos.contains(nuevoEstado)) {
+      throw ArgumentError('El estado indicado no es válido.');
+    }
+
+    await _supabase
+        .from('establecimientos')
+        .update({'estado': nuevoEstado})
+        .eq('id', establecimientoId);
+  }
+
+  Future<void> aprobar(String establecimientoId) async {
+    await cambiarEstado(
+      establecimientoId: establecimientoId,
+      nuevoEstado: 'aprobado',
+    );
+  }
+
+  Future<void> rechazar(String establecimientoId) async {
+    await cambiarEstado(
+      establecimientoId: establecimientoId,
+      nuevoEstado: 'rechazado',
+    );
   }
 
   Future<String> crear(EstablecimientoModel establecimiento) async {

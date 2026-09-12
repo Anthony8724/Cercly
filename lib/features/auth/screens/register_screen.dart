@@ -62,7 +62,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
       if (!mounted) return;
 
       String message = 'No se pudo completar el registro';
-
+      if (error.statusCode == '429' ||
+          error.code == 'over_email_send_rate_limit') {
+        message =
+            'Se alcanzó temporalmente el límite de registros. '
+            'Espera unos minutos e inténtalo nuevamente.';
+      } else if (error.code == 'user_already_exists') {
+        message = 'Este correo ya está registrado';
+      }
       if (error.code == 'user_already_exists') {
         message = 'Este correo ya está registrado';
       } else if (error.code == 'weak_password') {
