@@ -31,7 +31,62 @@ class EstablecimientoService {
         .eq('propietario_id', usuario.id)
         .order('creado_en', ascending: false);
 
-    return respuesta.map(EstablecimientoModel.fromSupabase).toList();
+    return respuesta
+        .map<EstablecimientoModel>(EstablecimientoModel.fromSupabase)
+        .toList();
+  }
+
+  Future<List<EstablecimientoModel>> listarEstablecimientosPendientes() async {
+    final respuesta = await _supabase
+        .from('establecimientos')
+        .select()
+        .eq('estado', 'pendiente')
+        .order('creado_en');
+
+    return respuesta
+        .map<EstablecimientoModel>(EstablecimientoModel.fromSupabase)
+        .toList();
+  }
+
+  Future<List<EstablecimientoModel>> listarTodosLosEstablecimientos() async {
+    final respuesta = await _supabase
+        .from('establecimientos')
+        .select()
+        .order('creado_en', ascending: false);
+
+    return respuesta
+        .map<EstablecimientoModel>(EstablecimientoModel.fromSupabase)
+        .toList();
+  }
+
+  Future<void> cambiarEstado({
+    required String establecimientoId,
+    required String nuevoEstado,
+  }) async {
+    const estadosPermitidos = {'pendiente', 'aprobado', 'rechazado'};
+
+    if (!estadosPermitidos.contains(nuevoEstado)) {
+      throw ArgumentError('El estado indicado no es válido.');
+    }
+
+    await _supabase
+        .from('establecimientos')
+        .update({'estado': nuevoEstado})
+        .eq('id', establecimientoId);
+  }
+
+  Future<void> aprobar(String establecimientoId) async {
+    await cambiarEstado(
+      establecimientoId: establecimientoId,
+      nuevoEstado: 'aprobado',
+    );
+  }
+
+  Future<void> rechazar(String establecimientoId) async {
+    await cambiarEstado(
+      establecimientoId: establecimientoId,
+      nuevoEstado: 'rechazado',
+    );
   }
 
   Future<String> crear(EstablecimientoModel establecimiento) async {
