@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../auth/services/auth_service.dart';
 import '../models/establecimiento_model.dart';
 import '../services/establecimiento_service.dart';
+import 'fotos_establecimiento_screen.dart';
 import 'registro_establecimiento_screen.dart';
 
 class PanelEstablecimientoScreen extends StatefulWidget {
@@ -48,6 +49,15 @@ class _PanelEstablecimientoScreenState
     if (fueRegistrado == true && mounted) {
       setState(_cargarEstablecimientos);
     }
+  }
+
+  void _abrirFotografias(EstablecimientoModel establecimiento) {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) =>
+            FotosEstablecimientoScreen(establecimiento: establecimiento),
+      ),
+    );
   }
 
   void _mostrarProximamente(String opcion) {
@@ -202,6 +212,9 @@ class _PanelEstablecimientoScreenState
                           establecimiento: establecimiento,
                           colorEstado: _colorEstado(establecimiento.estado),
                           textoEstado: _textoEstado(establecimiento.estado),
+                          onFotografias: () {
+                            _abrirFotografias(establecimiento);
+                          },
                         ),
                       const SizedBox(height: 4),
                       OutlinedButton.icon(
@@ -235,13 +248,6 @@ class _PanelEstablecimientoScreenState
                 onTap: () => _mostrarProximamente('Horarios de atención'),
               ),
               _OpcionPanel(
-                icono: Icons.photo_library,
-                titulo: 'Fotografías',
-                descripcion: 'Agrega imágenes y selecciona una portada.',
-                onTap: () =>
-                    _mostrarProximamente('Administración de fotografías'),
-              ),
-              _OpcionPanel(
                 icono: Icons.local_offer,
                 titulo: 'Promociones',
                 descripcion: 'Crea promociones y agrega imágenes.',
@@ -268,11 +274,13 @@ class _TarjetaEstablecimiento extends StatelessWidget {
     required this.establecimiento,
     required this.colorEstado,
     required this.textoEstado,
+    required this.onFotografias,
   });
 
   final EstablecimientoModel establecimiento;
   final Color colorEstado;
   final String textoEstado;
+  final VoidCallback onFotografias;
 
   @override
   Widget build(BuildContext context) {
@@ -280,46 +288,61 @@ class _TarjetaEstablecimiento extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 12),
       child: Padding(
         padding: const EdgeInsets.all(20),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const CircleAvatar(
-              radius: 26,
-              child: Icon(Icons.storefront, size: 30),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const CircleAvatar(
+                  radius: 26,
+                  child: Icon(Icons.storefront, size: 30),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        establecimiento.nombre,
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(establecimiento.direccion),
+                      if (establecimiento.descripcion.isNotEmpty) ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          establecimiento.descripcion,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    establecimiento.nombre,
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(establecimiento.direccion),
-                  if (establecimiento.descripcion.isNotEmpty) ...[
-                    const SizedBox(height: 4),
-                    Text(
-                      establecimiento.descripcion,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                  const SizedBox(height: 10),
-                  Chip(
-                    avatar: Icon(Icons.circle, size: 12, color: colorEstado),
-                    label: Text(textoEstado),
-                    backgroundColor: colorEstado.withValues(alpha: 0.12),
-                    side: BorderSide(
-                      color: colorEstado.withValues(alpha: 0.35),
-                    ),
-                  ),
-                ],
-              ),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              alignment: WrapAlignment.spaceBetween,
+              children: [
+                Chip(
+                  avatar: Icon(Icons.circle, size: 12, color: colorEstado),
+                  label: Text(textoEstado),
+                  backgroundColor: colorEstado.withValues(alpha: 0.12),
+                  side: BorderSide(color: colorEstado.withValues(alpha: 0.35)),
+                ),
+                OutlinedButton.icon(
+                  onPressed: onFotografias,
+                  icon: const Icon(Icons.photo_library),
+                  label: const Text('Fotografías'),
+                ),
+              ],
             ),
           ],
         ),
