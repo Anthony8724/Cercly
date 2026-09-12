@@ -1,19 +1,81 @@
 import 'package:flutter/material.dart';
 
-import 'registro_establecimiento_screen.dart';
 import '../../auth/services/auth_service.dart';
+import '../models/establecimiento_model.dart';
+import '../services/establecimiento_service.dart';
+import 'registro_establecimiento_screen.dart';
 
-class PanelEstablecimientoScreen extends StatelessWidget {
+class PanelEstablecimientoScreen extends StatefulWidget {
   const PanelEstablecimientoScreen({super.key});
+
+  @override
+  State<PanelEstablecimientoScreen> createState() =>
+      _PanelEstablecimientoScreenState();
+}
+
+class _PanelEstablecimientoScreenState
+    extends State<PanelEstablecimientoScreen> {
+  final _service = EstablecimientoService();
+
+  late Future<List<EstablecimientoModel>> _establecimientosFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _cargarEstablecimientos();
+  }
+
+  void _cargarEstablecimientos() {
+    _establecimientosFuture = _service.listarEstablecimientosDelUsuario();
+  }
+
+  Future<void> _recargar() async {
+    setState(_cargarEstablecimientos);
+    await _establecimientosFuture;
+  }
 
   Future<void> _cerrarSesion() async {
     await AuthService().signOut();
   }
 
-  void _mostrarProximamente(BuildContext context, String opcion) {
+  Future<void> _abrirRegistro() async {
+    final fueRegistrado = await Navigator.of(context).push<bool>(
+      MaterialPageRoute<bool>(
+        builder: (_) => const RegistroEstablecimientoScreen(),
+      ),
+    );
+
+    if (fueRegistrado == true && mounted) {
+      setState(_cargarEstablecimientos);
+    }
+  }
+
+  void _mostrarProximamente(String opcion) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('$opcion estará disponible próximamente.')),
     );
+  }
+
+  Color _colorEstado(String estado) {
+    switch (estado) {
+      case 'aprobado':
+        return Colors.green;
+      case 'rechazado':
+        return Colors.red;
+      default:
+        return Colors.orange;
+    }
+  }
+
+  String _textoEstado(String estado) {
+    switch (estado) {
+      case 'aprobado':
+        return 'Aprobado';
+      case 'rechazado':
+        return 'Rechazado';
+      default:
+        return 'Pendiente';
+    }
   }
 
   @override
@@ -32,92 +94,232 @@ class PanelEstablecimientoScreen extends StatelessWidget {
         ],
       ),
       body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.all(20),
-          children: [
-            Text(
-              'Bienvenido',
-              style: Theme.of(context).textTheme.headlineMedium
-                  ?.copyWith(fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 4),
-            Text(email, style: Theme.of(context).textTheme.bodyLarge),
-            const SizedBox(height: 24),
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(20),
-                child: Row(
-                  children: [
-                    const CircleAvatar(
-                      radius: 26,
-                      child: Icon(Icons.storefront, size: 30),
-                    ),
-                    const SizedBox(width: 16),
-                    const Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Mi establecimiento',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          SizedBox(height: 4),
-                          Text('Completa la información de tu negocio.'),
-                        ],
+        child: RefreshIndicator(
+          onRefresh: _recargar,
+          child: ListView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.all(20),
+            children: [
+              Text(
+                'Bienvenido',
+                style: Theme.of(context).textTheme.headlineMedium
+                    ?.copyWith(fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 4),
+              Text(email, style: Theme.of(context).textTheme.bodyLarge),
+              const SizedBox(height: 24),
+              Text(
+                'Mis establecimientos',
+                style: Theme.of(context).textTheme.titleLarge
+                    ?.copyWith(fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 12),
+              FutureBuilder<List<EstablecimientoModel>>(
+                future: _establecimientosFuture,
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Card(
+                      child: Padding(
+                        padding: EdgeInsets.all(32),
+                        child: Center(child: CircularProgressIndicator()),
                       ),
+                    );
+                  }
+
+                  if (snapshot.hasError) {
+                    return Card(
+                      child: Padding(
+                        padding: const EdgeInsets.all(20),
+                        child: Column(
+                          children: [
+                            const Icon(
+                              Icons.error_outline,
+                              color: Colors.red,
+                              size: 40,
+                            ),
+                            const SizedBox(height: 12),
+                            const Text(
+                              'No se pudieron cargar tus establecimientos.',
+                              textAlign: TextAlign.center,
+                            ),
+                            const SizedBox(height: 12),
+                            OutlinedButton.icon(
+                              onPressed: () {
+                                setState(_cargarEstablecimientos);
+                              },
+                              icon: const Icon(Icons.refresh),
+                              label: const Text('Reintentar'),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  }
+
+                  final establecimientos =
+                      snapshot.data ?? <EstablecimientoModel>[];
+
+                  if (establecimientos.isEmpty) {
+                    return Card(
+                      child: Padding(
+                        padding: const EdgeInsets.all(20),
+                        child: Column(
+                          children: [
+                            const CircleAvatar(
+                              radius: 30,
+                              child: Icon(Icons.storefront, size: 34),
+                            ),
+                            const SizedBox(height: 12),
+                            const Text(
+                              'Todavía no tienes establecimientos',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                            const SizedBox(height: 8),
+                            const Text(
+                              'Registra tu negocio para enviarlo a revisión.',
+                              textAlign: TextAlign.center,
+                            ),
+                            const SizedBox(height: 16),
+                            FilledButton.icon(
+                              onPressed: _abrirRegistro,
+                              icon: const Icon(Icons.add_business),
+                              label: const Text('Registrar establecimiento'),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  }
+
+                  return Column(
+                    children: [
+                      for (final establecimiento in establecimientos)
+                        _TarjetaEstablecimiento(
+                          establecimiento: establecimiento,
+                          colorEstado: _colorEstado(establecimiento.estado),
+                          textoEstado: _textoEstado(establecimiento.estado),
+                        ),
+                      const SizedBox(height: 4),
+                      OutlinedButton.icon(
+                        onPressed: _abrirRegistro,
+                        icon: const Icon(Icons.add_business),
+                        label: const Text('Registrar otro establecimiento'),
+                      ),
+                    ],
+                  );
+                },
+              ),
+              const SizedBox(height: 24),
+              Text(
+                'Administración',
+                style: Theme.of(context).textTheme.titleLarge
+                    ?.copyWith(fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 12),
+              _OpcionPanel(
+                icono: Icons.edit,
+                titulo: 'Información del establecimiento',
+                descripcion:
+                    'Edita el nombre, descripción, dirección y teléfono.',
+                onTap: () =>
+                    _mostrarProximamente('Edición del establecimiento'),
+              ),
+              _OpcionPanel(
+                icono: Icons.schedule,
+                titulo: 'Horarios de atención',
+                descripcion: 'Configura los horarios de cada día.',
+                onTap: () => _mostrarProximamente('Horarios de atención'),
+              ),
+              _OpcionPanel(
+                icono: Icons.photo_library,
+                titulo: 'Fotografías',
+                descripcion: 'Agrega imágenes y selecciona una portada.',
+                onTap: () =>
+                    _mostrarProximamente('Administración de fotografías'),
+              ),
+              _OpcionPanel(
+                icono: Icons.local_offer,
+                titulo: 'Promociones',
+                descripcion: 'Crea promociones y agrega imágenes.',
+                onTap: () =>
+                    _mostrarProximamente('Administración de promociones'),
+              ),
+              _OpcionPanel(
+                icono: Icons.assignment,
+                titulo: 'Estado de revisión',
+                descripcion: 'Consulta si tu establecimiento fue aprobado.',
+                onTap: () =>
+                    _mostrarProximamente('Detalle del estado de revisión'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _TarjetaEstablecimiento extends StatelessWidget {
+  const _TarjetaEstablecimiento({
+    required this.establecimiento,
+    required this.colorEstado,
+    required this.textoEstado,
+  });
+
+  final EstablecimientoModel establecimiento;
+  final Color colorEstado;
+  final String textoEstado;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const CircleAvatar(
+              radius: 26,
+              child: Icon(Icons.storefront, size: 30),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    establecimiento.nombre,
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
                     ),
-                    Chip(
-                      label: const Text('Pendiente'),
-                      backgroundColor: Colors.orange.shade100,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(establecimiento.direccion),
+                  if (establecimiento.descripcion.isNotEmpty) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      establecimiento.descripcion,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 24),
-            Text(
-              'Administración',
-              style: Theme.of(context).textTheme.titleLarge
-                  ?.copyWith(fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 12),
-            _OpcionPanel(
-              icono: Icons.edit,
-              titulo: 'Información del establecimiento',
-              descripcion: 'Nombre, descripción, dirección y teléfono.',
-              onTap: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute<void>(
-                    builder: (_) => const RegistroEstablecimientoScreen(),
+                  const SizedBox(height: 10),
+                  Chip(
+                    avatar: Icon(Icons.circle, size: 12, color: colorEstado),
+                    label: Text(textoEstado),
+                    backgroundColor: colorEstado.withValues(alpha: 0.12),
+                    side: BorderSide(
+                      color: colorEstado.withValues(alpha: 0.35),
+                    ),
                   ),
-                );
-              },
-            ),
-            _OpcionPanel(
-              icono: Icons.schedule,
-              titulo: 'Horarios de atención',
-              descripcion: 'Configura los horarios de cada día.',
-              onTap: () =>
-                  _mostrarProximamente(context, 'Horarios de atención'),
-            ),
-            _OpcionPanel(
-              icono: Icons.local_offer,
-              titulo: 'Promociones',
-              descripcion: 'Crea y administra promociones activas.',
-              onTap: () => _mostrarProximamente(
-                context,
-                'Administración de promociones',
+                ],
               ),
-            ),
-            _OpcionPanel(
-              icono: Icons.assignment,
-              titulo: 'Estado de la solicitud',
-              descripcion: 'Consulta la revisión de tu establecimiento.',
-              onTap: () =>
-                  _mostrarProximamente(context, 'Estado de la solicitud'),
             ),
           ],
         ),

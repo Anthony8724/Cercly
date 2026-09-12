@@ -18,6 +18,22 @@ class EstablecimientoService {
     return List<Map<String, dynamic>>.from(respuesta);
   }
 
+  Future<List<EstablecimientoModel>> listarEstablecimientosDelUsuario() async {
+    final usuario = _supabase.auth.currentUser;
+
+    if (usuario == null) {
+      throw StateError('Debes iniciar sesión.');
+    }
+
+    final respuesta = await _supabase
+        .from('establecimientos')
+        .select()
+        .eq('propietario_id', usuario.id)
+        .order('creado_en', ascending: false);
+
+    return respuesta.map(EstablecimientoModel.fromSupabase).toList();
+  }
+
   Future<String> crear(EstablecimientoModel establecimiento) async {
     final usuario = _supabase.auth.currentUser;
 

@@ -13,6 +13,7 @@ class EstablecimientoModel {
     required this.telefonoPublico,
     required Map<String, List<TurnoHorario>> horario,
     required this.zonaHoraria,
+    this.estado = 'pendiente',
   }) : horario = Map.unmodifiable({
          for (final entry in horario.entries)
            entry.key: List<TurnoHorario>.unmodifiable(entry.value),
@@ -60,6 +61,7 @@ class EstablecimientoModel {
   final String telefonoPublico;
   final Map<String, List<TurnoHorario>> horario;
   final String zonaHoraria;
+  final String estado;
 
   Map<String, dynamic> toSupabaseParaCrear() {
     return {
@@ -113,6 +115,7 @@ class EstablecimientoModel {
       telefonoPublico: datos['telefono_publico'] as String? ?? '',
       horario: horario ?? {for (final dia in diasSemana) dia: <TurnoHorario>[]},
       zonaHoraria: datos['zona_horaria'] as String? ?? 'America/Guayaquil',
+      estado: datos['estado'] as String? ?? 'pendiente',
     );
   }
 }
