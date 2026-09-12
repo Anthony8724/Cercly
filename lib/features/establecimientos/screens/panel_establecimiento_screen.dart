@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'registro_establecimiento_screen.dart';
 import '../../auth/services/auth_service.dart';
 
 class PanelEstablecimientoScreen extends StatelessWidget {
@@ -87,8 +88,13 @@ class PanelEstablecimientoScreen extends StatelessWidget {
               icono: Icons.edit,
               titulo: 'Información del establecimiento',
               descripcion: 'Nombre, descripción, dirección y teléfono.',
-              onTap: () =>
-                  _mostrarProximamente(context, 'Edición del establecimiento'),
+              onTap: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => const RegistroEstablecimientoScreen(),
+                  ),
+                );
+              },
             ),
             _OpcionPanel(
               icono: Icons.schedule,
