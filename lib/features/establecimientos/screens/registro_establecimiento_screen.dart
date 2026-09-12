@@ -1,9 +1,8 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
-import '../models/turno_horario.dart';
 import '../models/establecimiento_model.dart';
+import '../models/turno_horario.dart';
 import '../services/establecimiento_service.dart';
 
 class RegistroEstablecimientoScreen extends StatefulWidget {
@@ -17,6 +16,7 @@ class RegistroEstablecimientoScreen extends StatefulWidget {
 class _RegistroEstablecimientoScreenState
     extends State<RegistroEstablecimientoScreen> {
   final _formKey = GlobalKey<FormState>();
+  final _service = EstablecimientoService();
 
   final _nombreController = TextEditingController();
   final _descripcionController = TextEditingController();
@@ -25,18 +25,16 @@ class _RegistroEstablecimientoScreenState
   final _latitudController = TextEditingController();
   final _longitudController = TextEditingController();
 
-  final _service = EstablecimientoService();
+  late Future<List<Map<String, dynamic>>> _categoriasFuture;
 
   String? _categoriaId;
   bool _guardando = false;
 
-  static const _categorias = {
-    'restaurantes': 'Restaurante',
-    'cafeterias': 'Cafetería',
-    'tiendas': 'Tienda',
-    'minimarkets': 'Minimarket',
-    'otros': 'Otro',
-  };
+  @override
+  void initState() {
+    super.initState();
+    _categoriasFuture = _service.listarCategoriasActivas();
+  }
 
   @override
   void dispose() {
@@ -49,105 +47,166 @@ class _RegistroEstablecimientoScreenState
     super.dispose();
   }
 
-  Map<String, List<TurnoHorario>> _horarioVacio() {
+  Map<String, List<TurnoHorario>> _crearHorarioInicial() {
     return {
       for (final dia in EstablecimientoModel.diasSemana) dia: <TurnoHorario>[],
     };
   }
 
-  double? _convertirCoordenada(String texto) {
-    return double.tryParse(texto.trim().replaceAll(',', '.'));
-  }
-
-  Future<void> _guardar() async {
-    if (!_formKey.currentState!.validate()) {
-      return;
-    }
-
-    final usuario = FirebaseAuth.instance.currentUser;
-    final latitud = _convertirCoordenada(_latitudController.text);
-    final longitud = _convertirCoordenada(_longitudController.text);
-
-    if (usuario == null || latitud == null || longitud == null) {
-      return;
-    }
-
-    setState(() => _guardando = true);
-
-    try {
-      final establecimiento = EstablecimientoModel(
-        id: usuario.uid,
-        propietarioId: usuario.uid,
-        nombre: _nombreController.text,
-        descripcion: _descripcionController.text,
-        categoriaId: _categoriaId!,
-        direccion: _direccionController.text,
-        ubicacion: GeoPoint(latitud, longitud),
-        telefonoPublico: _telefonoController.text,
-        horario: _horarioVacio(),
-        zonaHoraria: 'America/Guayaquil',
-      );
-
-      await _service.crear(establecimiento);
-
-      if (!mounted) return;
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Establecimiento guardado correctamente.'),
-        ),
-      );
-
-      Navigator.of(context).pop(true);
-    } on FirebaseException catch (error) {
-      if (!mounted) return;
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('No se pudo guardar: ${error.message ?? error.code}'),
-        ),
-      );
-    } catch (_) {
-      if (!mounted) return;
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Ocurrió un error al guardar el establecimiento.'),
-        ),
-      );
-    } finally {
-      if (mounted) {
-        setState(() => _guardando = false);
-      }
-    }
-  }
-
   String? _validarObligatorio(String? valor) {
     if (valor == null || valor.trim().isEmpty) {
-      return 'Este campo es obligatorio.';
+      return 'Este campo es obligatorio';
+    }
+
+    return null;
+  }
+
+  String? _validarNombre(String? valor) {
+    if (valor == null || valor.trim().isEmpty) {
+      return 'Ingresa el nombre del establecimiento';
+    }
+
+    if (valor.trim().length < 2) {
+      return 'El nombre debe tener al menos 2 caracteres';
+    }
+
+    if (valor.trim().length > 120) {
+      return 'El nombre no puede superar 120 caracteres';
     }
 
     return null;
   }
 
   String? _validarLatitud(String? valor) {
-    final numero = _convertirCoordenada(valor ?? '');
+    final numero = double.tryParse(valor?.trim() ?? '');
 
-    if (numero == null || numero < -90 || numero > 90) {
-      return 'Ingresa una latitud válida entre -90 y 90.';
+    if (numero == null) {
+      return 'Ingresa una latitud válida';
+    }
+
+    if (numero < -90 || numero > 90) {
+      return 'La latitud debe estar entre -90 y 90';
     }
 
     return null;
   }
 
   String? _validarLongitud(String? valor) {
-    final numero = _convertirCoordenada(valor ?? '');
+    final numero = double.tryParse(valor?.trim() ?? '');
 
-    if (numero == null || numero < -180 || numero > 180) {
-      return 'Ingresa una longitud válida entre -180 y 180.';
+    if (numero == null) {
+      return 'Ingresa una longitud válida';
+    }
+
+    if (numero < -180 || numero > 180) {
+      return 'La longitud debe estar entre -180 y 180';
     }
 
     return null;
+  }
+
+  Future<void> _guardar() async {
+    if (_guardando || !_formKey.currentState!.validate()) {
+      return;
+    }
+
+    if (_categoriaId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Selecciona una categoría.')),
+      );
+      return;
+    }
+
+    final usuario = Supabase.instance.client.auth.currentUser;
+
+    if (usuario == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Debes iniciar sesión nuevamente.')),
+      );
+      return;
+    }
+
+    setState(() {
+      _guardando = true;
+    });
+
+    try {
+      final establecimiento = EstablecimientoModel(
+        id: '',
+        propietarioId: usuario.id,
+        nombre: _nombreController.text,
+        descripcion: _descripcionController.text,
+        categoriaId: _categoriaId!,
+        direccion: _direccionController.text,
+        latitud: double.parse(_latitudController.text.trim()),
+        longitud: double.parse(_longitudController.text.trim()),
+        telefonoPublico: _telefonoController.text,
+        horario: _crearHorarioInicial(),
+        zonaHoraria: 'America/Guayaquil',
+      );
+
+      await _service.crear(establecimiento);
+
+      if (!mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Establecimiento enviado para revisión correctamente.'),
+        ),
+      );
+
+      Navigator.of(context).pop(true);
+    } on PostgrestException catch (error) {
+      if (!mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'No se pudo guardar el establecimiento: ${error.message}',
+          ),
+        ),
+      );
+    } on ArgumentError catch (error) {
+      if (!mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(error.message.toString())));
+    } on StateError catch (error) {
+      if (!mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(error.message)));
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Ocurrió un error inesperado al guardar.'),
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _guardando = false;
+        });
+      }
+    }
+  }
+
+  void _reintentarCategorias() {
+    setState(() {
+      _categoriasFuture = _service.listarCategoriasActivas();
+    });
   }
 
   @override
@@ -155,141 +214,196 @@ class _RegistroEstablecimientoScreenState
     return Scaffold(
       appBar: AppBar(title: const Text('Registrar establecimiento')),
       body: SafeArea(
-        child: Form(
-          key: _formKey,
-          child: ListView(
-            padding: const EdgeInsets.all(20),
-            children: [
-              Text(
-                'Información del negocio',
-                style: Theme.of(context).textTheme.headlineSmall
-                    ?.copyWith(fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 8),
-              const Text('El establecimiento quedará pendiente de revisión.'),
-              const SizedBox(height: 24),
-              TextFormField(
-                controller: _nombreController,
-                decoration: const InputDecoration(
-                  labelText: 'Nombre del establecimiento',
-                  prefixIcon: Icon(Icons.storefront),
-                  border: OutlineInputBorder(),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(20),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const Text(
+                  'Información del establecimiento',
+                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
                 ),
-                maxLength: 120,
-                validator: _validarObligatorio,
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _descripcionController,
-                decoration: const InputDecoration(
-                  labelText: 'Descripción',
-                  prefixIcon: Icon(Icons.description),
-                  border: OutlineInputBorder(),
+                const SizedBox(height: 8),
+                const Text(
+                  'El establecimiento será revisado antes de aparecer '
+                  'públicamente en Cercly.',
                 ),
-                maxLength: 1000,
-                maxLines: 3,
-              ),
-              const SizedBox(height: 16),
-              DropdownButtonFormField<String>(
-                initialValue: _categoriaId,
-                decoration: const InputDecoration(
-                  labelText: 'Categoría',
-                  prefixIcon: Icon(Icons.category),
-                  border: OutlineInputBorder(),
+                const SizedBox(height: 24),
+                TextFormField(
+                  controller: _nombreController,
+                  decoration: const InputDecoration(
+                    labelText: 'Nombre',
+                    border: OutlineInputBorder(),
+                    prefixIcon: Icon(Icons.store),
+                  ),
+                  textInputAction: TextInputAction.next,
+                  validator: _validarNombre,
                 ),
-                items: _categorias.entries
-                    .map(
-                      (categoria) => DropdownMenuItem(
-                        value: categoria.key,
-                        child: Text(categoria.value),
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: _descripcionController,
+                  decoration: const InputDecoration(
+                    labelText: 'Descripción',
+                    border: OutlineInputBorder(),
+                    prefixIcon: Icon(Icons.description),
+                  ),
+                  maxLength: 1000,
+                  maxLines: 4,
+                ),
+                const SizedBox(height: 16),
+                FutureBuilder<List<Map<String, dynamic>>>(
+                  future: _categoriasFuture,
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Cargando categorías...'),
+                          SizedBox(height: 8),
+                          LinearProgressIndicator(),
+                        ],
+                      );
+                    }
+
+                    if (snapshot.hasError) {
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          const Text(
+                            'No se pudieron cargar las categorías.',
+                            style: TextStyle(color: Colors.red),
+                          ),
+                          TextButton(
+                            onPressed: _reintentarCategorias,
+                            child: const Text('Reintentar'),
+                          ),
+                        ],
+                      );
+                    }
+
+                    final categorias =
+                        snapshot.data ?? <Map<String, dynamic>>[];
+
+                    if (categorias.isEmpty) {
+                      return const Text(
+                        'No existen categorías disponibles.',
+                        style: TextStyle(color: Colors.red),
+                      );
+                    }
+
+                    return DropdownButtonFormField<String>(
+                      initialValue: _categoriaId,
+                      decoration: const InputDecoration(
+                        labelText: 'Categoría',
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.category),
                       ),
-                    )
-                    .toList(),
-                onChanged: (valor) {
-                  setState(() => _categoriaId = valor);
-                },
-                validator: (valor) {
-                  if (valor == null) {
-                    return 'Selecciona una categoría.';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _direccionController,
-                decoration: const InputDecoration(
-                  labelText: 'Dirección',
-                  prefixIcon: Icon(Icons.location_on),
-                  border: OutlineInputBorder(),
+                      items: categorias.map((categoria) {
+                        return DropdownMenuItem<String>(
+                          value: categoria['id'] as String,
+                          child: Text(categoria['nombre'] as String),
+                        );
+                      }).toList(),
+                      onChanged: _guardando
+                          ? null
+                          : (valor) {
+                              setState(() {
+                                _categoriaId = valor;
+                              });
+                            },
+                      validator: (valor) {
+                        if (valor == null || valor.isEmpty) {
+                          return 'Selecciona una categoría';
+                        }
+
+                        return null;
+                      },
+                    );
+                  },
                 ),
-                maxLength: 250,
-                validator: _validarObligatorio,
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _telefonoController,
-                decoration: const InputDecoration(
-                  labelText: 'Teléfono público (opcional)',
-                  prefixIcon: Icon(Icons.phone),
-                  border: OutlineInputBorder(),
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: _direccionController,
+                  decoration: const InputDecoration(
+                    labelText: 'Dirección',
+                    border: OutlineInputBorder(),
+                    prefixIcon: Icon(Icons.location_on),
+                  ),
+                  maxLength: 250,
+                  textInputAction: TextInputAction.next,
+                  validator: _validarObligatorio,
                 ),
-                keyboardType: TextInputType.phone,
-                maxLength: 20,
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Ubicación',
-                style: Theme.of(context).textTheme.titleLarge
-                    ?.copyWith(fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 8),
-              const Text(
-                'Por ahora ingresa las coordenadas. Más adelante se '
-                'seleccionarán directamente desde el mapa.',
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _latitudController,
-                decoration: const InputDecoration(
-                  labelText: 'Latitud',
-                  hintText: 'Ejemplo: 0.8119',
-                  border: OutlineInputBorder(),
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: _telefonoController,
+                  decoration: const InputDecoration(
+                    labelText: 'Teléfono público (opcional)',
+                    border: OutlineInputBorder(),
+                    prefixIcon: Icon(Icons.phone),
+                  ),
+                  maxLength: 20,
+                  keyboardType: TextInputType.phone,
+                  textInputAction: TextInputAction.next,
                 ),
-                keyboardType: const TextInputType.numberWithOptions(
-                  decimal: true,
-                  signed: true,
+                const SizedBox(height: 16),
+                const Text(
+                  'Ubicación',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
-                validator: _validarLatitud,
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _longitudController,
-                decoration: const InputDecoration(
-                  labelText: 'Longitud',
-                  hintText: 'Ejemplo: -77.7173',
-                  border: OutlineInputBorder(),
+                const SizedBox(height: 8),
+                const Text(
+                  'Por ahora ingresa las coordenadas. Posteriormente '
+                  'permitiremos seleccionarlas directamente en el mapa.',
                 ),
-                keyboardType: const TextInputType.numberWithOptions(
-                  decimal: true,
-                  signed: true,
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: _latitudController,
+                  decoration: const InputDecoration(
+                    labelText: 'Latitud',
+                    hintText: 'Ejemplo: 0.8119',
+                    border: OutlineInputBorder(),
+                    prefixIcon: Icon(Icons.my_location),
+                  ),
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                    signed: true,
+                  ),
+                  textInputAction: TextInputAction.next,
+                  validator: _validarLatitud,
                 ),
-                validator: _validarLongitud,
-              ),
-              const SizedBox(height: 24),
-              FilledButton.icon(
-                onPressed: _guardando ? null : _guardar,
-                icon: _guardando
-                    ? const SizedBox.square(
-                        dimension: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(Icons.save),
-                label: Text(
-                  _guardando ? 'Guardando...' : 'Guardar establecimiento',
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: _longitudController,
+                  decoration: const InputDecoration(
+                    labelText: 'Longitud',
+                    hintText: 'Ejemplo: -77.7173',
+                    border: OutlineInputBorder(),
+                    prefixIcon: Icon(Icons.public),
+                  ),
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                    signed: true,
+                  ),
+                  validator: _validarLongitud,
                 ),
-              ),
-            ],
+                const SizedBox(height: 24),
+                FilledButton.icon(
+                  onPressed: _guardando ? null : _guardar,
+                  icon: _guardando
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.send),
+                  label: Text(
+                    _guardando ? 'Guardando...' : 'Enviar para revisión',
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
