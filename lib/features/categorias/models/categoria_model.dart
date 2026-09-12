@@ -1,15 +1,20 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-
 class CategoriaModel {
   CategoriaModel({
     required this.id,
     required this.nombre,
+    required this.slug,
     required this.icono,
     required this.activa,
     required this.orden,
+    this.creadoEn,
+    this.actualizadoEn,
   }) {
     if (nombre.trim().isEmpty) {
       throw ArgumentError('El nombre de la categoría es obligatorio.');
+    }
+
+    if (slug.trim().isEmpty) {
+      throw ArgumentError('El slug de la categoría es obligatorio.');
     }
 
     if (icono.trim().isEmpty) {
@@ -23,36 +28,37 @@ class CategoriaModel {
 
   final String id;
   final String nombre;
+  final String slug;
   final String icono;
   final bool activa;
   final int orden;
+  final DateTime? creadoEn;
+  final DateTime? actualizadoEn;
 
-  Map<String, dynamic> toFirestoreParaCrear() {
+  Map<String, dynamic> toSupabase() {
     return {
       'nombre': nombre.trim(),
+      'slug': slug.trim(),
       'icono': icono.trim(),
       'activa': activa,
       'orden': orden,
-      'creadoEn': FieldValue.serverTimestamp(),
-      'actualizadoEn': FieldValue.serverTimestamp(),
     };
   }
 
-  factory CategoriaModel.fromFirestore(
-    DocumentSnapshot<Map<String, dynamic>> documento,
-  ) {
-    final datos = documento.data();
-
-    if (datos == null) {
-      throw StateError('La categoría no existe.');
-    }
-
+  factory CategoriaModel.fromSupabase(Map<String, dynamic> datos) {
     return CategoriaModel(
-      id: documento.id,
+      id: datos['id'] as String,
       nombre: datos['nombre'] as String,
+      slug: datos['slug'] as String,
       icono: datos['icono'] as String,
-      activa: datos['activa'] as bool,
-      orden: datos['orden'] as int,
+      activa: datos['activa'] as bool? ?? true,
+      orden: datos['orden'] as int? ?? 0,
+      creadoEn: datos['creado_en'] == null
+          ? null
+          : DateTime.parse(datos['creado_en'] as String).toLocal(),
+      actualizadoEn: datos['actualizado_en'] == null
+          ? null
+          : DateTime.parse(datos['actualizado_en'] as String).toLocal(),
     );
   }
 }
