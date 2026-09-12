@@ -1,5 +1,5 @@
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../services/auth_service.dart';
 
@@ -12,6 +12,7 @@ class RegisterScreen extends StatefulWidget {
 
 class _RegisterScreenState extends State<RegisterScreen> {
   final _formKey = GlobalKey<FormState>();
+  final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
@@ -22,6 +23,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   @override
   void dispose() {
+    _nameController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
@@ -34,33 +36,49 @@ class _RegisterScreenState extends State<RegisterScreen> {
     setState(() => _isLoading = true);
 
     try {
-      await _authService.register(
+      final response = await _authService.register(
+        nombre: _nameController.text,
         email: _emailController.text,
         password: _passwordController.text,
       );
 
       if (!mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Establecimiento registrado correctamente'),
-        ),
-      );
-    } on FirebaseAuthException catch (error) {
+      final requiresConfirmation = response.session == null;
+
+      final message = requiresConfirmation
+          ? 'Cuenta creada. Revisa tu correo para confirmarla'
+          : 'Cuenta creada correctamente';
+
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(message)));
+
+      if (requiresConfirmation) {
+        Navigator.pop(context);
+      } else {
+        Navigator.popUntil(context, (route) => route.isFirst);
+      }
+    } on AuthException catch (error) {
       if (!mounted) return;
 
       String message = 'No se pudo completar el registro';
 
-      if (error.code == 'email-already-in-use') {
+      if (error.code == 'user_already_exists') {
         message = 'Este correo ya está registrado';
-      } else if (error.code == 'invalid-email') {
-        message = 'El correo electrónico no es válido';
-      } else if (error.code == 'weak-password') {
+      } else if (error.code == 'weak_password') {
         message = 'La contraseña es demasiado débil';
+      } else if (error.code == 'validation_failed') {
+        message = 'El correo electrónico no es válido';
       }
 
       ScaffoldMessenger.of(context)
           .showSnackBar(SnackBar(content: Text(message)));
+    } catch (_) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Ocurrió un error inesperado')),
+      );
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
@@ -71,7 +89,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Registrar establecimiento')),
+      appBar: AppBar(title: const Text('Crear cuenta')),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24),
@@ -79,19 +97,50 @@ class _RegisterScreenState extends State<RegisterScreen> {
             key: _formKey,
             child: Column(
               children: [
-                const Icon(Icons.storefront, size: 80),
+                const Icon(Icons.person_add, size: 80),
                 const SizedBox(height: 24),
+                TextFormField(
+                  controller: _nameController,
+                  textCapitalization: TextCapitalization.words,
+                  autofillHints: const [AutofillHints.name],
+                  decoration: const InputDecoration(
+                    labelText: 'Nombre completo',
+                    border: OutlineInputBorder(),
+                  ),
+                  validator: (value) {
+                    final nombre = value?.trim() ?? '';
+
+                    if (nombre.length < 2) {
+                      return 'Ingresa un nombre válido';
+                    }
+
+                    if (nombre.length > 80) {
+                      return 'El nombre no puede superar 80 caracteres';
+                    }
+
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 16),
                 TextFormField(
                   controller: _emailController,
                   keyboardType: TextInputType.emailAddress,
+                  autofillHints: const [AutofillHints.email],
                   decoration: const InputDecoration(
                     labelText: 'Correo electrónico',
                     border: OutlineInputBorder(),
                   ),
                   validator: (value) {
-                    if (value == null || value.trim().isEmpty) {
+                    final email = value?.trim() ?? '';
+
+                    if (email.isEmpty) {
                       return 'Ingresa tu correo electrónico';
                     }
+
+                    if (!email.contains('@')) {
+                      return 'Ingresa un correo válido';
+                    }
+
                     return null;
                   },
                 ),
@@ -99,12 +148,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 TextFormField(
                   controller: _passwordController,
                   obscureText: _hidePassword,
+                  autofillHints: const [AutofillHints.newPassword],
                   decoration: InputDecoration(
                     labelText: 'Contraseña',
                     border: const OutlineInputBorder(),
                     suffixIcon: IconButton(
                       onPressed: () {
-                        setState(() => _hidePassword = !_hidePassword);
+                        setState(() {
+                          _hidePassword = !_hidePassword;
+                        });
                       },
                       icon: Icon(
                         _hidePassword ? Icons.visibility : Icons.visibility_off,
@@ -115,6 +167,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     if (value == null || value.length < 6) {
                       return 'La contraseña debe tener al menos 6 caracteres';
                     }
+
                     return null;
                   },
                 ),
@@ -122,6 +175,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 TextFormField(
                   controller: _confirmPasswordController,
                   obscureText: _hidePassword,
+                  autofillHints: const [AutofillHints.newPassword],
                   decoration: const InputDecoration(
                     labelText: 'Confirmar contraseña',
                     border: OutlineInputBorder(),
@@ -130,6 +184,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     if (value != _passwordController.text) {
                       return 'Las contraseñas no coinciden';
                     }
+
                     return null;
                   },
                 ),
@@ -139,7 +194,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   child: FilledButton(
                     onPressed: _isLoading ? null : _register,
                     child: _isLoading
-                        ? const CircularProgressIndicator()
+                        ? const SizedBox(
+                            width: 24,
+                            height: 24,
+                            child: CircularProgressIndicator(),
+                          )
                         : const Text('Crear cuenta'),
                   ),
                 ),

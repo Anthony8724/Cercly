@@ -1,5 +1,5 @@
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../services/auth_service.dart';
 import 'register_screen.dart';
@@ -43,21 +43,27 @@ class _LoginScreenState extends State<LoginScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Inicio de sesión correcto')),
       );
-    } on FirebaseAuthException catch (error) {
+    } on AuthException catch (error) {
       if (!mounted) return;
 
       String message = 'No se pudo iniciar sesión';
 
-      if (error.code == 'invalid-email') {
-        message = 'El correo electrónico no es válido';
-      } else if (error.code == 'invalid-credential' ||
-          error.code == 'user-not-found' ||
-          error.code == 'wrong-password') {
+      if (error.code == 'invalid_credentials') {
         message = 'Correo o contraseña incorrectos';
+      } else if (error.code == 'email_not_confirmed') {
+        message = 'Primero debes confirmar tu correo electrónico';
+      } else if (error.code == 'validation_failed') {
+        message = 'El correo electrónico no es válido';
       }
 
       ScaffoldMessenger.of(context)
           .showSnackBar(SnackBar(content: Text(message)));
+    } catch (_) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Ocurrió un error inesperado')),
+      );
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
@@ -88,14 +94,22 @@ class _LoginScreenState extends State<LoginScreen> {
                 TextFormField(
                   controller: _emailController,
                   keyboardType: TextInputType.emailAddress,
+                  autofillHints: const [AutofillHints.email],
                   decoration: const InputDecoration(
                     labelText: 'Correo electrónico',
                     border: OutlineInputBorder(),
                   ),
                   validator: (value) {
-                    if (value == null || value.trim().isEmpty) {
+                    final email = value?.trim() ?? '';
+
+                    if (email.isEmpty) {
                       return 'Ingresa tu correo electrónico';
                     }
+
+                    if (!email.contains('@')) {
+                      return 'Ingresa un correo válido';
+                    }
+
                     return null;
                   },
                 ),
@@ -103,12 +117,15 @@ class _LoginScreenState extends State<LoginScreen> {
                 TextFormField(
                   controller: _passwordController,
                   obscureText: _hidePassword,
+                  autofillHints: const [AutofillHints.password],
                   decoration: InputDecoration(
                     labelText: 'Contraseña',
                     border: const OutlineInputBorder(),
                     suffixIcon: IconButton(
                       onPressed: () {
-                        setState(() => _hidePassword = !_hidePassword);
+                        setState(() {
+                          _hidePassword = !_hidePassword;
+                        });
                       },
                       icon: Icon(
                         _hidePassword ? Icons.visibility : Icons.visibility_off,
@@ -119,6 +136,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     if (value == null || value.isEmpty) {
                       return 'Ingresa tu contraseña';
                     }
+
                     return null;
                   },
                 ),
@@ -128,13 +146,17 @@ class _LoginScreenState extends State<LoginScreen> {
                   child: FilledButton(
                     onPressed: _isLoading ? null : _signIn,
                     child: _isLoading
-                        ? const CircularProgressIndicator()
+                        ? const SizedBox(
+                            width: 24,
+                            height: 24,
+                            child: CircularProgressIndicator(),
+                          )
                         : const Text('Iniciar sesión'),
                   ),
                 ),
                 TextButton(
-                  onPressed: _openRegister,
-                  child: const Text('Crear una cuenta de establecimiento'),
+                  onPressed: _isLoading ? null : _openRegister,
+                  child: const Text('Crear una cuenta'),
                 ),
               ],
             ),
