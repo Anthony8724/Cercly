@@ -267,6 +267,7 @@ void main() {
         categoriaId: ' categoria-1 ',
         subcategoriaIds: const ['subcategoria-1', 'subcategoria-2'],
         soloPromociones: true,
+        busqueda: ' Café ',
         limite: 15,
         desplazamiento: 30,
       );
@@ -278,6 +279,7 @@ void main() {
         'p_categoria_id': 'categoria-1',
         'p_subcategoria_ids': ['subcategoria-1', 'subcategoria-2'],
         'p_solo_promociones': true,
+        'p_busqueda': 'Café',
         'p_limite': 15,
         'p_desplazamiento': 30,
       });
@@ -311,11 +313,13 @@ void main() {
         longitud: -77.7172,
         categoriaId: ' ',
         subcategoriaIds: const [' ', ''],
+        busqueda: '   ',
       );
 
       expect(parametrosRecibidos!['p_categoria_id'], isNull);
       expect(parametrosRecibidos!['p_subcategoria_ids'], isNull);
       expect(parametrosRecibidos!['p_solo_promociones'], isFalse);
+      expect(parametrosRecibidos!['p_busqueda'], isNull);
       expect(parametrosRecibidos!['p_limite'], 20);
       expect(parametrosRecibidos!['p_desplazamiento'], 0);
     });
