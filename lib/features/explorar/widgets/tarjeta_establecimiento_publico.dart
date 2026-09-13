@@ -62,6 +62,10 @@ class TarjetaEstablecimientoPublico extends StatelessWidget {
                       spacing: 8,
                       runSpacing: 6,
                       children: [
+                        if (establecimiento.estadoHorario != null)
+                          _EstadoHorarioEtiqueta(
+                            estado: establecimiento.estadoHorario!,
+                          ),
                         if (establecimiento.distanciaFormateada.isNotEmpty)
                           _Etiqueta(
                             icono: Icons.near_me,
@@ -110,6 +114,59 @@ class _Portada extends StatelessWidget {
       errorBuilder: (_, _, _) => const ColoredBox(
         color: Color(0xFFDBEAFE),
         child: Center(child: Icon(Icons.storefront, size: 42)),
+      ),
+    );
+  }
+}
+
+class _EstadoHorarioEtiqueta extends StatelessWidget {
+  const _EstadoHorarioEtiqueta({required this.estado});
+
+  final String estado;
+
+  @override
+  Widget build(BuildContext context) {
+    final abierto = estado == 'abierto';
+    final cerrado = estado == 'cerrado';
+
+    final texto = abierto
+        ? 'Abierto'
+        : cerrado
+        ? 'Cerrado'
+        : 'Horario no disponible';
+
+    final icono = abierto
+        ? Icons.check_circle
+        : cerrado
+        ? Icons.cancel
+        : Icons.schedule;
+
+    final color = abierto
+        ? const Color(0xFF15803D)
+        : cerrado
+        ? const Color(0xFFB91C1C)
+        : const Color(0xFF64748B);
+
+    final fondo = abierto
+        ? const Color(0xFFF0FDF4)
+        : cerrado
+        ? const Color(0xFFFEF2F2)
+        : const Color(0xFFF8FAFC);
+
+    return Container(
+      key: Key('estado-horario-$estado'),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+      decoration: BoxDecoration(
+        color: fondo,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icono, size: 15, color: color),
+          const SizedBox(width: 4),
+          Text(texto, style: TextStyle(color: color, fontSize: 12)),
+        ],
       ),
     );
   }
