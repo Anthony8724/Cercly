@@ -233,6 +233,7 @@ void main() {
     test('envía todos los filtros y la paginación al RPC PostGIS', () async {
       Map<String, dynamic>? parametrosRecibidos;
       List<String>? idsSolicitados;
+      List<String>? idsHorariosSolicitados;
 
       final servicioRpc = EstablecimientoPublicoService(
         supabase: SupabaseClient(
@@ -252,6 +253,10 @@ void main() {
         cargarDetallesPublicos: (ids) async {
           idsSolicitados = ids;
           return <Map<String, dynamic>>[crearDetallePublico()];
+        },
+        cargarHorariosPublicos: (ids) async {
+          idsHorariosSolicitados = ids;
+          return const <Map<String, dynamic>>[];
         },
       );
 
@@ -277,9 +282,11 @@ void main() {
         'p_desplazamiento': 30,
       });
       expect(idsSolicitados, ['establecimiento-1']);
+      expect(idsHorariosSolicitados, ['establecimiento-1']);
       expect(resultado, hasLength(1));
       expect(resultado.single.distanciaMetros, 245.75);
       expect(resultado.single.tienePromociones, isTrue);
+      expect(resultado.single.estadoHorario, 'sinHorario');
       expect(resultado.single.ciudad, 'Tulcán');
       expect(resultado.single.provincia, 'Carchi');
       expect(resultado.single.paisCodigo, 'EC');
