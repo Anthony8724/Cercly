@@ -64,6 +64,7 @@ class EstablecimientoServiceFalso implements EstablecimientoCercanoRepository {
   String? categoriaRecibida;
   List<String>? subcategoriasRecibidas;
   bool? soloPromocionesRecibido;
+  String? busquedaRecibida;
 
   @override
   Future<List<EstablecimientoPublicoModel>> buscarCercanos({
@@ -73,6 +74,7 @@ class EstablecimientoServiceFalso implements EstablecimientoCercanoRepository {
     String? categoriaId,
     List<String>? subcategoriaIds,
     bool soloPromociones = false,
+    String? busqueda,
     int limite = 20,
     int desplazamiento = 0,
   }) async {
@@ -81,6 +83,7 @@ class EstablecimientoServiceFalso implements EstablecimientoCercanoRepository {
     categoriaRecibida = categoriaId;
     subcategoriasRecibidas = subcategoriaIds;
     soloPromocionesRecibido = soloPromociones;
+    busquedaRecibida = busqueda;
     return respuesta;
   }
 }
@@ -133,7 +136,7 @@ ExplorarController crearController({
 void main() {
   group('ExplorarController', () {
     test(
-      'envía radio, categoría, subcategoría y promociones al servicio',
+      'envía radio, categoría, subcategoría, promociones y búsqueda al servicio',
       () async {
         final servicio = EstablecimientoServiceFalso(
           respuesta: [establecimiento()],
@@ -144,15 +147,34 @@ void main() {
         await controller.cambiarRadio(2000);
         await controller.cambiarCategoria('categoria-1');
         await controller.cambiarSubcategoria('subcategoria-1');
+        controller.busqueda = 'cafeteria';
         await controller.cambiarSoloPromociones(true);
 
         expect(servicio.radioRecibido, 2000);
         expect(servicio.categoriaRecibida, 'categoria-1');
         expect(servicio.subcategoriasRecibidas, ['subcategoria-1']);
         expect(servicio.soloPromocionesRecibido, isTrue);
+        expect(servicio.busquedaRecibida, 'cafeteria');
         expect(controller.establecimientos, hasLength(1));
       },
     );
+
+    test('aplica búsqueda después del debounce', () async {
+      final servicio = EstablecimientoServiceFalso(
+        respuesta: [establecimiento()],
+      );
+      final controller = crearController(establecimientos: servicio);
+      controller.estadoUbicacion = EstadoUbicacion.disponible;
+      controller.ubicacion = const UbicacionUsuario(
+        latitud: 0.8116,
+        longitud: -77.7172,
+      );
+
+      controller.cambiarBusqueda('Café');
+      await Future<void>.delayed(const Duration(milliseconds: 500));
+
+      expect(servicio.busquedaRecibida, 'Café');
+    });
 
     test(
       'controla errores de consulta sin dejar la pantalla cargando',
@@ -219,6 +241,35 @@ void main() {
       controller.notifyListeners();
       await tester.pump();
       expect(find.byKey(const Key('estado-sin-resultados')), findsOneWidget);
+    });
+
+    testWidgets('muestra la barra de búsqueda y permite limpiarla', (
+      tester,
+    ) async {
+      final controller = crearController();
+      controller.estadoUbicacion = EstadoUbicacion.disponible;
+      controller.ubicacion = const UbicacionUsuario(
+        latitud: 0.8116,
+        longitud: -77.7172,
+      );
+      controller.establecimientos = [establecimiento()];
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(body: ExplorarScreen(controller: controller)),
+        ),
+      );
+
+      final buscador = find.byKey(const Key('buscador-establecimientos'));
+      expect(buscador, findsOneWidget);
+
+      await tester.enterText(buscador, 'cafe');
+      await tester.pump();
+      expect(find.byKey(const Key('limpiar-busqueda')), findsOneWidget);
+
+      await tester.tap(find.byKey(const Key('limpiar-busqueda')));
+      await tester.pump();
+      expect(controller.busqueda, isEmpty);
     });
 
     testWidgets('muestra error y permite reintentar', (tester) async {

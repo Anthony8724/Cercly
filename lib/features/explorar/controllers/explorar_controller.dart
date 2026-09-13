@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 
 import '../../categorias/models/categoria_model.dart';
@@ -32,6 +34,7 @@ class ExplorarController extends ChangeNotifier {
   List<EstablecimientoPublicoModel> establecimientos = const [];
   String? categoriaId;
   String? subcategoriaId;
+  String busqueda = '';
   int radioMetros = 5000;
   bool soloPromociones = false;
   bool cargandoTaxonomia = false;
@@ -40,7 +43,9 @@ class ExplorarController extends ChangeNotifier {
   String? errorResultados;
 
   static const int _tamanoPagina = 20;
+  static const Duration _esperaBusqueda = Duration(milliseconds: 450);
   int _versionConsulta = 0;
+  Timer? _temporizadorBusqueda;
 
   Future<void> inicializar() async {
     await Future.wait([cargarCategorias(), solicitarUbicacion()]);
@@ -121,6 +126,25 @@ class ExplorarController extends ChangeNotifier {
     await buscar();
   }
 
+  void cambiarBusqueda(String valor) {
+    if (busqueda == valor) return;
+    busqueda = valor;
+    _temporizadorBusqueda?.cancel();
+    notifyListeners();
+
+    _temporizadorBusqueda = Timer(_esperaBusqueda, () {
+      buscar();
+    });
+  }
+
+  Future<void> limpiarBusqueda() async {
+    if (busqueda.isEmpty) return;
+    _temporizadorBusqueda?.cancel();
+    busqueda = '';
+    notifyListeners();
+    await buscar();
+  }
+
   Future<void> buscar({bool reiniciar = true}) async {
     final posicion = ubicacion;
     if (posicion == null || (!reiniciar && cargandoResultados)) return;
@@ -140,6 +164,7 @@ class ExplorarController extends ChangeNotifier {
         categoriaId: categoriaId,
         subcategoriaIds: subcategoriaId == null ? null : [subcategoriaId!],
         soloPromociones: soloPromociones,
+        busqueda: busqueda,
         limite: _tamanoPagina,
         desplazamiento: desplazamiento,
       );
@@ -165,4 +190,10 @@ class ExplorarController extends ChangeNotifier {
 
   Future<bool> abrirAjustesAplicacion() =>
       _ubicacionService.abrirAjustesAplicacion();
+
+  @override
+  void dispose() {
+    _temporizadorBusqueda?.cancel();
+    super.dispose();
+  }
 }
