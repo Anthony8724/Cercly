@@ -9,8 +9,18 @@ Este proceso carga el lote preparado de 306 objetos OSM únicamente en
 - Hoja del Excel: `Staging_preparado`
 - Lote: `5979a1d9-2be4-42d5-a98f-4ce30c1d1b03`
 - CSV derivado: `supabase/seed/importacion_osm_tulcan.csv`
-- Resultado esperado: 222 válidos, 84 observados y 0 descartados
+- Resultado refinado: 254 válidos, 52 observados y 0 descartados
 - Registros sin nombre: 50, todos observados
+
+Las decisiones de refinamiento pueden reaplicarse de forma idempotente antes
+de la carga:
+
+```powershell
+python .\scripts\refinar_taxonomia_osm.py
+```
+
+Los únicos registros con nombre que permanecen observados son `EMELNORTE` y
+`Centro de Faenamiento de Tulcán`.
 
 ## Ejecución local
 
