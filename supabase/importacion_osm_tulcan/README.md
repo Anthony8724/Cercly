@@ -121,3 +121,53 @@ group by fuente, estado, publicable;
 
 El resultado esperado es `osm | pendiente | false | 254`. La aprobación y
 publicación se realizarán en una fase posterior y controlada.
+
+## Consulta PostGIS desde Flutter
+
+El servicio público usa `buscar_establecimientos_cercanos` para aplicar en
+PostgreSQL el radio, categoría, subcategorías, promociones, límite,
+desplazamiento y orden por distancia. Flutter carga después los detalles de
+los IDs devueltos, sin descargar todos los establecimientos para calcular el
+filtro principal en el dispositivo.
+
+Flujo local completo:
+
+```powershell
+npx.cmd supabase start
+npx.cmd supabase db reset
+.\scripts\cargar_osm_staging_local.ps1
+.\scripts\promover_osm_establecimientos_local.ps1
+.\scripts\habilitar_osm_pruebas_local.ps1
+npx.cmd supabase test db
+```
+
+Crear `config/supabase.local.json` localmente, sin subirlo al repositorio:
+
+```json
+{
+  "SUPABASE_URL": "http://10.0.2.2:54321",
+  "SUPABASE_PUBLISHABLE_KEY": "ANON_KEY_MOSTRADA_POR_SUPABASE_STATUS"
+}
+```
+
+En Android Emulator, `10.0.2.2` apunta al equipo anfitrión. La aplicación usa
+exclusivamente la clave pública/anon; nunca necesita `service_role`.
+
+Ejecutar Flutter:
+
+```powershell
+flutter run --dart-define-from-file=config\supabase.local.json
+```
+
+Punto sugerido para probar Tulcán: latitud `0.8116`, longitud `-77.7172`.
+La cantidad devuelta dependerá del radio, filtros, límite y paginación.
+
+Para regresar sin reiniciar la base al estado seguro:
+
+```powershell
+.\scripts\habilitar_osm_pruebas_local.ps1 -Restaurar
+```
+
+También se puede ejecutar `npx.cmd supabase db reset`, que elimina la
+habilitación temporal. Después del reset se deben repetir carga y promoción
+si se desea reconstruir el escenario local.

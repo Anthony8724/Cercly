@@ -86,9 +86,13 @@ class EstablecimientoPublicoModel {
     required this.zonaHoraria,
     required this.categoria,
     required this.promociones,
+    this.ciudad,
+    this.provincia,
+    this.paisCodigo,
     this.rutaFotoPortada,
     this.urlFotoPortada,
     this.distanciaMetros,
+    this.tienePromocionesRpc,
   });
 
   final String id;
@@ -100,12 +104,19 @@ class EstablecimientoPublicoModel {
   final String telefonoPublico;
   final String zonaHoraria;
   final CategoriaPublicaModel categoria;
+  final String? ciudad;
+  final String? provincia;
+  final String? paisCodigo;
   final String? rutaFotoPortada;
   final String? urlFotoPortada;
   final List<PromocionPublicaModel> promociones;
   final double? distanciaMetros;
+  final bool? tienePromocionesRpc;
 
-  bool get tienePromociones => promociones.isNotEmpty;
+  String get categoriaId => categoria.id;
+
+  bool get tienePromociones =>
+      tienePromocionesRpc ?? promociones.isNotEmpty;
 
   String get distanciaFormateada {
     final distancia = distanciaMetros;
@@ -126,6 +137,7 @@ class EstablecimientoPublicoModel {
     String? urlFotoPortada,
     List<PromocionPublicaModel>? promociones,
     double? distanciaMetros,
+    bool? tienePromocionesRpc,
   }) {
     return EstablecimientoPublicoModel(
       id: id,
@@ -137,10 +149,15 @@ class EstablecimientoPublicoModel {
       telefonoPublico: telefonoPublico,
       zonaHoraria: zonaHoraria,
       categoria: categoria,
+      ciudad: ciudad,
+      provincia: provincia,
+      paisCodigo: paisCodigo,
       rutaFotoPortada: rutaFotoPortada ?? this.rutaFotoPortada,
       urlFotoPortada: urlFotoPortada ?? this.urlFotoPortada,
       promociones: promociones ?? this.promociones,
       distanciaMetros: distanciaMetros ?? this.distanciaMetros,
+      tienePromocionesRpc:
+          tienePromocionesRpc ?? this.tienePromocionesRpc,
     );
   }
 
@@ -185,6 +202,9 @@ class EstablecimientoPublicoModel {
       telefonoPublico: datos['telefono_publico'] as String? ?? '',
       zonaHoraria: datos['zona_horaria'] as String? ?? 'America/Guayaquil',
       categoria: CategoriaPublicaModel.fromSupabase(categoriaDatos),
+      ciudad: datos['ciudad'] as String?,
+      provincia: datos['provincia'] as String?,
+      paisCodigo: datos['pais_codigo'] as String?,
       rutaFotoPortada: rutaPortada,
       promociones: promocionesDatos
           .map(PromocionPublicaModel.fromSupabase)

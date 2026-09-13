@@ -89,4 +89,24 @@ void main() {
       expect(establecimiento.categoria.id, categoriaId);
     }
   }, skip: puedeEjecutarse ? false : 'Supabase no está configurado.');
+
+  test('pagina la búsqueda PostGIS sin repetir la primera fila', () async {
+    final primeraPagina = await service.buscarCercanos(
+      latitud: 0.8116,
+      longitud: -77.7172,
+      radioMetros: 50000,
+      limite: 1,
+    );
+    final segundaPagina = await service.buscarCercanos(
+      latitud: 0.8116,
+      longitud: -77.7172,
+      radioMetros: 50000,
+      limite: 1,
+      desplazamiento: 1,
+    );
+
+    expect(primeraPagina, hasLength(1));
+    expect(segundaPagina, hasLength(1));
+    expect(segundaPagina.single.id, isNot(primeraPagina.single.id));
+  }, skip: puedeEjecutarse ? false : 'Supabase no está configurado.');
 }
