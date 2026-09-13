@@ -13,7 +13,6 @@ typedef CargarDetallesPublicos = Future<List<Map<String, dynamic>>> Function(
 );
 
 abstract interface class EstablecimientoCercanoRepository {
-  @override
   Future<List<EstablecimientoPublicoModel>> buscarCercanos({
     required double latitud,
     required double longitud,
@@ -163,6 +162,7 @@ class EstablecimientoPublicoService
     return resultado;
   }
 
+  @override
   Future<List<EstablecimientoPublicoModel>> buscarCercanos({
     required double latitud,
     required double longitud,
