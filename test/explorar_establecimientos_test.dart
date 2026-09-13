@@ -56,14 +56,17 @@ class UbicacionFalsa implements UbicacionService {
   Future<ResultadoUbicacion> obtenerUbicacion() async => resultado;
 }
 
+SupabaseClient crearSupabaseClientePrueba() {
+  return SupabaseClient(
+    'https://example.supabase.co',
+    'publishable-key-de-prueba',
+    authOptions: const AuthClientOptions(autoRefreshToken: false),
+  );
+}
+
 class EstablecimientoServiceFalso extends EstablecimientoPublicoService {
   EstablecimientoServiceFalso({this.respuesta = const [], this.error})
-    : super(
-        supabase: SupabaseClient(
-          'https://example.supabase.co',
-          'publishable-key-de-prueba',
-        ),
-      );
+    : super(supabase: crearSupabaseClientePrueba());
 
   List<EstablecimientoPublicoModel> respuesta;
   Object? error;
@@ -93,13 +96,7 @@ class EstablecimientoServiceFalso extends EstablecimientoPublicoService {
 }
 
 class CategoriaServiceFalso extends CategoriaPublicaService {
-  CategoriaServiceFalso()
-    : super(
-        supabase: SupabaseClient(
-          'https://example.supabase.co',
-          'publishable-key-de-prueba',
-        ),
-      );
+  CategoriaServiceFalso() : super(supabase: crearSupabaseClientePrueba());
 
   @override
   Future<List<CategoriaModel>> listarCategorias() async => [
