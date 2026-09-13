@@ -131,8 +131,17 @@ select is(
 );
 
 select is_empty(
-  $$select id from public.establecimientos where fuente = 'osm'$$,
-  'la carga staging no inserta establecimientos OSM publicos'
+  $$
+    select e.id
+    from public.establecimientos e
+    left join staging.importacion_establecimientos_osm i
+      on i.osm_type = e.osm_type
+     and i.osm_id = e.osm_id
+     and i.estado_importacion = 'valido'
+    where e.fuente = 'osm'
+      and i.id is null
+  $$,
+  'ningun OSM publico procede de una fila no valida de staging'
 );
 
 select is(

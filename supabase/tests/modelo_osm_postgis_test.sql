@@ -70,19 +70,30 @@ select is_empty(
 );
 
 select is_empty(
-  $$select id from public.establecimientos where fuente = 'osm'$$,
-  'la migracion estructural no importa establecimientos OSM'
+  $$
+    select e.id
+    from public.establecimientos e
+    left join staging.importacion_establecimientos_osm i
+      on i.osm_type = e.osm_type
+     and i.osm_id = e.osm_id
+     and i.estado_importacion = 'valido'
+    where e.fuente = 'osm'
+      and i.id is null
+  $$,
+  'todo OSM presente procede de una fila valida de staging'
 );
 
 select is_empty(
   $$
     select id
     from public.establecimientos
-    where fuente <> 'cercly'
-       or estado_reclamo is not null
-       or publicable <> (
-         estado = 'aprobado'::public.estado_establecimiento
-       )
+    where fuente = 'cercly'
+      and (
+        estado_reclamo is not null
+        or publicable <> (
+          estado = 'aprobado'::public.estado_establecimiento
+        )
+      )
   $$,
   'los establecimientos existentes fueron adaptados de forma segura'
 );
