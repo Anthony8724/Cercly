@@ -26,6 +26,7 @@ abstract interface class EstablecimientoCercanoRepository {
     String? categoriaId,
     List<String>? subcategoriaIds,
     bool soloPromociones = false,
+    String? busqueda,
     int limite = 20,
     int desplazamiento = 0,
   });
@@ -97,6 +98,7 @@ class EstablecimientoPublicoService
     double? radioMaximoMetros,
     List<String>? subcategoriaIds,
     bool soloPromociones = false,
+    String? busqueda,
     int limite = 20,
     int desplazamiento = 0,
   }) async {
@@ -114,6 +116,7 @@ class EstablecimientoPublicoService
         categoriaId: categoriaId,
         subcategoriaIds: subcategoriaIds,
         soloPromociones: soloPromociones,
+        busqueda: busqueda,
         limite: limite,
         desplazamiento: desplazamiento,
       );
@@ -134,6 +137,7 @@ class EstablecimientoPublicoService
     final respuesta = await consulta.order('nombre');
     final filas = List<Map<String, dynamic>>.from(respuesta);
 
+    final termino = _normalizarBusqueda(busqueda);
     final establecimientos = await Future.wait(
       filas.map(
         (fila) => _convertirEstablecimiento(
@@ -145,9 +149,19 @@ class EstablecimientoPublicoService
     );
 
     final resultado = establecimientos.where((establecimiento) {
-      if (radioMaximoMetros == null) return true;
-      final distancia = establecimiento.distanciaMetros;
-      return distancia != null && distancia <= radioMaximoMetros;
+      if (radioMaximoMetros != null) {
+        final distancia = establecimiento.distanciaMetros;
+        if (distancia == null || distancia > radioMaximoMetros) {
+          return false;
+        }
+      }
+
+      if (termino == null) {
+        return true;
+      }
+
+      return _normalizarTexto(establecimiento.nombre).contains(termino) ||
+          _normalizarTexto(establecimiento.categoria.nombre).contains(termino);
     }).toList();
 
     if (latitudUsuario != null && longitudUsuario != null) {
@@ -175,6 +189,7 @@ class EstablecimientoPublicoService
     String? categoriaId,
     List<String>? subcategoriaIds,
     bool soloPromociones = false,
+    String? busqueda,
     int limite = 20,
     int desplazamiento = 0,
   }) async {
@@ -195,6 +210,7 @@ class EstablecimientoPublicoService
         ?.map((id) => id.trim())
         .where((id) => id.isNotEmpty)
         .toList(growable: false);
+    final terminoBusqueda = busqueda?.trim();
 
     final parametros = <String, dynamic>{
       'p_latitud': latitud,
@@ -207,6 +223,9 @@ class EstablecimientoPublicoService
           ? null
           : subcategorias,
       'p_solo_promociones': soloPromociones,
+      'p_busqueda': terminoBusqueda == null || terminoBusqueda.isEmpty
+          ? null
+          : terminoBusqueda,
       'p_limite': limite,
       'p_desplazamiento': desplazamiento,
     };
@@ -484,6 +503,21 @@ class EstablecimientoPublicoService
     if (longitud < -180 || longitud > 180) {
       throw ArgumentError('La longitud debe estar entre -180 y 180.');
     }
+  }
+
+  String? _normalizarBusqueda(String? valor) {
+    final normalizado = _normalizarTexto(valor ?? '').trim();
+    return normalizado.isEmpty ? null : normalizado;
+  }
+
+  String _normalizarTexto(String valor) {
+    const origen = 'áéíóúüñ';
+    const destino = 'aeiouun';
+    var resultado = valor.toLowerCase();
+    for (var i = 0; i < origen.length; i++) {
+      resultado = resultado.replaceAll(origen[i], destino[i]);
+    }
+    return resultado;
   }
 
   double _gradosARadianes(double grados) {
