@@ -4,13 +4,30 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../models/establecimiento_publico_model.dart';
 
-typedef EjecutarRpcCercanos =
-    Future<List<Map<String, dynamic>>> Function(Map<String, dynamic> parametros);
+typedef EjecutarRpcCercanos = Future<List<Map<String, dynamic>>> Function(
+  Map<String, dynamic> parametros,
+);
 
-typedef CargarDetallesPublicos =
-    Future<List<Map<String, dynamic>>> Function(List<String> ids);
+typedef CargarDetallesPublicos = Future<List<Map<String, dynamic>>> Function(
+  List<String> ids,
+);
 
-class EstablecimientoPublicoService {
+abstract interface class EstablecimientoCercanoRepository {
+  @override
+  Future<List<EstablecimientoPublicoModel>> buscarCercanos({
+    required double latitud,
+    required double longitud,
+    int radioMetros = 5000,
+    String? categoriaId,
+    List<String>? subcategoriaIds,
+    bool soloPromociones = false,
+    int limite = 20,
+    int desplazamiento = 0,
+  });
+}
+
+class EstablecimientoPublicoService
+    implements EstablecimientoCercanoRepository {
   EstablecimientoPublicoService({
     SupabaseClient? supabase,
     EjecutarRpcCercanos? ejecutarRpcCercanos,
@@ -223,19 +240,22 @@ class EstablecimientoPublicoService {
       detallesPorId[detalle.id] = detalle;
     }
 
-    return filasRpc.map((filaRpc) {
-      final id = filaRpc['id'] as String;
-      final detalle = detallesPorId[id];
+    return filasRpc
+        .map((filaRpc) {
+          final id = filaRpc['id'] as String;
+          final detalle = detallesPorId[id];
 
-      if (detalle == null) {
-        return null;
-      }
+          if (detalle == null) {
+            return null;
+          }
 
-      return detalle.copiarCon(
-        distanciaMetros: (filaRpc['distancia_metros'] as num).toDouble(),
-        tienePromocionesRpc: filaRpc['tiene_promociones'] as bool? ?? false,
-      );
-    }).whereType<EstablecimientoPublicoModel>().toList(growable: false);
+          return detalle.copiarCon(
+            distanciaMetros: (filaRpc['distancia_metros'] as num).toDouble(),
+            tienePromocionesRpc: filaRpc['tiene_promociones'] as bool? ?? false,
+          );
+        })
+        .whereType<EstablecimientoPublicoModel>()
+        .toList(growable: false);
   }
 
   Future<EstablecimientoPublicoModel?> obtenerPorId(

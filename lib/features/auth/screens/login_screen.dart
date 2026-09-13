@@ -2,10 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../services/auth_service.dart';
-import 'register_screen.dart';
+import 'seleccion_tipo_cuenta_screen.dart';
+
+typedef IniciarSesion =
+    Future<void> Function({required String email, required String password});
 
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key});
+  const LoginScreen({super.key, this.iniciarSesion});
+
+  final IniciarSesion? iniciarSesion;
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -15,7 +20,6 @@ class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-  final _authService = AuthService();
 
   bool _isLoading = false;
   bool _hidePassword = true;
@@ -33,16 +37,25 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => _isLoading = true);
 
     try {
-      await _authService.signIn(
-        email: _emailController.text,
-        password: _passwordController.text,
-      );
+      final iniciarSesion = widget.iniciarSesion;
+      if (iniciarSesion == null) {
+        await AuthService().signIn(
+          email: _emailController.text,
+          password: _passwordController.text,
+        );
+      } else {
+        await iniciarSesion(
+          email: _emailController.text,
+          password: _passwordController.text,
+        );
+      }
 
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Inicio de sesión correcto')),
       );
+      Navigator.popUntil(context, (route) => route.isFirst);
     } on AuthException catch (error) {
       if (!mounted) return;
 
@@ -74,14 +87,16 @@ class _LoginScreenState extends State<LoginScreen> {
   void _openRegister() {
     Navigator.push(
       context,
-      MaterialPageRoute<void>(builder: (_) => const RegisterScreen()),
+      MaterialPageRoute<void>(
+        builder: (_) => const SeleccionTipoCuentaScreen(),
+      ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Acceso para establecimientos')),
+      appBar: AppBar(title: const Text('Iniciar sesión')),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24),

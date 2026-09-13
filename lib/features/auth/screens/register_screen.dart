@@ -3,8 +3,23 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../services/auth_service.dart';
 
+typedef RegistrarCuenta =
+    Future<bool> Function({
+      required String nombre,
+      required String email,
+      required String password,
+      required TipoCuenta tipoCuenta,
+    });
+
 class RegisterScreen extends StatefulWidget {
-  const RegisterScreen({super.key});
+  const RegisterScreen({
+    this.tipoCuenta = TipoCuenta.usuario,
+    this.registrarCuenta,
+    super.key,
+  });
+
+  final TipoCuenta tipoCuenta;
+  final RegistrarCuenta? registrarCuenta;
 
   @override
   State<RegisterScreen> createState() => _RegisterScreenState();
@@ -16,7 +31,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
-  final _authService = AuthService();
 
   bool _isLoading = false;
   bool _hidePassword = true;
@@ -36,15 +50,26 @@ class _RegisterScreenState extends State<RegisterScreen> {
     setState(() => _isLoading = true);
 
     try {
-      final response = await _authService.register(
-        nombre: _nameController.text,
-        email: _emailController.text,
-        password: _passwordController.text,
-      );
+      final registrarCuenta = widget.registrarCuenta;
+      final bool requiresConfirmation;
+      if (registrarCuenta == null) {
+        final response = await AuthService().register(
+          nombre: _nameController.text,
+          email: _emailController.text,
+          password: _passwordController.text,
+          tipoCuenta: widget.tipoCuenta.name,
+        );
+        requiresConfirmation = response.session == null;
+      } else {
+        requiresConfirmation = await registrarCuenta(
+          nombre: _nameController.text,
+          email: _emailController.text,
+          password: _passwordController.text,
+          tipoCuenta: widget.tipoCuenta,
+        );
+      }
 
       if (!mounted) return;
-
-      final requiresConfirmation = response.session == null;
 
       final message = requiresConfirmation
           ? 'Cuenta creada. Revisa tu correo para confirmarla'
@@ -70,8 +95,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
       } else if (error.code == 'user_already_exists') {
         message = 'Este correo ya está registrado';
       }
-      if (error.code == 'user_already_exists') {
-        message = 'Este correo ya está registrado';
       } else if (error.code == 'weak_password') {
         message = 'La contraseña es demasiado débil';
       } else if (error.code == 'validation_failed') {
@@ -96,7 +119,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Crear cuenta')),
+      appBar: AppBar(
+        title: Text(
+          widget.tipoCuenta == TipoCuenta.propietario
+              ? 'Cuenta de propietario'
+              : 'Crear cuenta',
+        ),
+      ),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24),
@@ -217,3 +246,5 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
   }
 }
+
+enum TipoCuenta { usuario, propietario }
