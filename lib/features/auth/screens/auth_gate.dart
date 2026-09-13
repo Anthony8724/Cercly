@@ -3,6 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../administracion/screens/panel_administrador_screen.dart';
 import '../../establecimientos/screens/panel_establecimiento_screen.dart';
+import '../../explorar/screens/navegacion_principal_screen.dart';
 import '../services/auth_service.dart';
 import 'login_screen.dart';
 
@@ -141,9 +142,15 @@ class _PantallaSegunRolState extends State<_PantallaSegunRol> {
           return const PanelAdministradorScreen();
         }
 
-        return const PanelEstablecimientoScreen();
+        return const NavegacionPrincipalScreen(
+          negocioBuilder: _construirPanelNegocio,
+        );
       },
     );
+  }
+
+  static Widget _construirPanelNegocio(BuildContext context) {
+    return const PanelEstablecimientoScreen();
   }
 }
 
