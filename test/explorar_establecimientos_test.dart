@@ -12,7 +12,6 @@ import 'package:cercly/features/explorar/services/mapas_externos_service.dart';
 import 'package:cercly/features/explorar/services/ubicacion_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 const categoria = CategoriaPublicaModel(
   id: 'categoria-1',
@@ -56,17 +55,8 @@ class UbicacionFalsa implements UbicacionService {
   Future<ResultadoUbicacion> obtenerUbicacion() async => resultado;
 }
 
-SupabaseClient crearSupabaseClientePrueba() {
-  return SupabaseClient(
-    'https://example.supabase.co',
-    'publishable-key-de-prueba',
-    authOptions: const AuthClientOptions(autoRefreshToken: false),
-  );
-}
-
-class EstablecimientoServiceFalso extends EstablecimientoPublicoService {
-  EstablecimientoServiceFalso({this.respuesta = const [], this.error})
-    : super(supabase: crearSupabaseClientePrueba());
+class EstablecimientoServiceFalso implements EstablecimientoCercanoRepository {
+  EstablecimientoServiceFalso({this.respuesta = const [], this.error});
 
   List<EstablecimientoPublicoModel> respuesta;
   Object? error;
@@ -95,9 +85,7 @@ class EstablecimientoServiceFalso extends EstablecimientoPublicoService {
   }
 }
 
-class CategoriaServiceFalso extends CategoriaPublicaService {
-  CategoriaServiceFalso() : super(supabase: crearSupabaseClientePrueba());
-
+class CategoriaServiceFalso implements CategoriaPublicaRepository {
   @override
   Future<List<CategoriaModel>> listarCategorias() async => [
     CategoriaModel(

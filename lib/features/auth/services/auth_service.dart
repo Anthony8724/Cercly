@@ -18,11 +18,15 @@ class AuthService {
     required String email,
     required String password,
     String? nombre,
+    String tipoCuenta = 'usuario',
   }) {
     return _supabase.auth.signUp(
       email: email.trim(),
       password: password,
-      data: {if (nombre != null) 'nombre': nombre.trim()},
+      data: {
+        if (nombre != null) 'nombre': nombre.trim(),
+        'tipo_cuenta': tipoCuenta,
+      },
     );
   }
 

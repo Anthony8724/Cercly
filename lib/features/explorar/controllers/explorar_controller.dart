@@ -10,8 +10,8 @@ import '../services/ubicacion_service.dart';
 
 class ExplorarController extends ChangeNotifier {
   ExplorarController({
-    EstablecimientoPublicoService? establecimientoService,
-    CategoriaPublicaService? categoriaService,
+    EstablecimientoCercanoRepository? establecimientoService,
+    CategoriaPublicaRepository? categoriaService,
     UbicacionService? ubicacionService,
   }) : _establecimientoService =
            establecimientoService ?? EstablecimientoPublicoService(),
@@ -20,8 +20,8 @@ class ExplorarController extends ChangeNotifier {
 
   static const radiosDisponibles = <int>[500, 1000, 2000, 5000, 10000];
 
-  final EstablecimientoPublicoService _establecimientoService;
-  final CategoriaPublicaService _categoriaService;
+  final EstablecimientoCercanoRepository _establecimientoService;
+  final CategoriaPublicaRepository _categoriaService;
   final UbicacionService _ubicacionService;
 
   EstadoUbicacion estadoUbicacion = EstadoUbicacion.inicial;

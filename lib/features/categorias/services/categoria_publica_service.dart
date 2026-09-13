@@ -3,12 +3,19 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/categoria_model.dart';
 import '../models/subcategoria_model.dart';
 
-class CategoriaPublicaService {
+abstract interface class CategoriaPublicaRepository {
+  Future<List<CategoriaModel>> listarCategorias();
+
+  Future<List<SubcategoriaModel>> listarSubcategorias(String categoriaId);
+}
+
+class CategoriaPublicaService implements CategoriaPublicaRepository {
   CategoriaPublicaService({SupabaseClient? supabase})
     : _supabase = supabase ?? Supabase.instance.client;
 
   final SupabaseClient _supabase;
 
+  @override
   Future<List<CategoriaModel>> listarCategorias() async {
     final respuesta = await _supabase
         .from('categorias')
@@ -21,6 +28,7 @@ class CategoriaPublicaService {
         .toList(growable: false);
   }
 
+  @override
   Future<List<SubcategoriaModel>> listarSubcategorias(
     String categoriaId,
   ) async {
