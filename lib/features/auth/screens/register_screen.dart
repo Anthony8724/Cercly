@@ -94,7 +94,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
             'Espera unos minutos e inténtalo nuevamente.';
       } else if (error.code == 'user_already_exists') {
         message = 'Este correo ya está registrado';
-      }
       } else if (error.code == 'weak_password') {
         message = 'La contraseña es demasiado débil';
       } else if (error.code == 'validation_failed') {
