@@ -93,6 +93,7 @@ class EstablecimientoPublicoModel {
     this.urlFotoPortada,
     this.distanciaMetros,
     this.tienePromocionesRpc,
+    this.estadoHorario,
   });
 
   final String id;
@@ -112,6 +113,7 @@ class EstablecimientoPublicoModel {
   final List<PromocionPublicaModel> promociones;
   final double? distanciaMetros;
   final bool? tienePromocionesRpc;
+  final String? estadoHorario;
 
   String get categoriaId => categoria.id;
 
@@ -138,6 +140,7 @@ class EstablecimientoPublicoModel {
     List<PromocionPublicaModel>? promociones,
     double? distanciaMetros,
     bool? tienePromocionesRpc,
+    String? estadoHorario,
   }) {
     return EstablecimientoPublicoModel(
       id: id,
@@ -158,6 +161,7 @@ class EstablecimientoPublicoModel {
       distanciaMetros: distanciaMetros ?? this.distanciaMetros,
       tienePromocionesRpc:
           tienePromocionesRpc ?? this.tienePromocionesRpc,
+      estadoHorario: estadoHorario ?? this.estadoHorario,
     );
   }
 

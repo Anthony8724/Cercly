@@ -1,23 +1,85 @@
 import 'package:flutter/material.dart';
 
 import '../../establecimientos/models/establecimiento_publico_model.dart';
+import '../../establecimientos/models/turno_horario.dart';
+import '../../establecimientos/services/estado_horario_service.dart';
+import '../../establecimientos/services/horario_establecimiento_service.dart';
 import '../services/mapas_externos_service.dart';
 
-class DetalleEstablecimientoScreen extends StatelessWidget {
+typedef CargarHorarioEstablecimiento =
+    Future<Map<String, List<TurnoHorario>>> Function(String establecimientoId);
+
+class DetalleEstablecimientoScreen extends StatefulWidget {
   const DetalleEstablecimientoScreen({
     required this.establecimiento,
     this.mapasService,
+    this.cargarHorario,
+    this.ahora,
     super.key,
   });
 
   final EstablecimientoPublicoModel establecimiento;
   final MapasExternosService? mapasService;
+  final CargarHorarioEstablecimiento? cargarHorario;
+  final DateTime Function()? ahora;
+
+  @override
+  State<DetalleEstablecimientoScreen> createState() =>
+      _DetalleEstablecimientoScreenState();
+}
+
+class _DetalleEstablecimientoScreenState
+    extends State<DetalleEstablecimientoScreen> {
+  static const EstadoHorarioService _estadoHorarioService =
+      EstadoHorarioService();
+
+  EstadoHorario? _estadoHorario;
+  bool _cargandoHorario = true;
+
+  EstablecimientoPublicoModel get establecimiento => widget.establecimiento;
+
+  @override
+  void initState() {
+    super.initState();
+    _cargarEstadoHorario();
+  }
+
+  Future<void> _cargarEstadoHorario() async {
+    try {
+      final cargarHorario =
+          widget.cargarHorario ?? HorarioEstablecimientoService().obtener;
+      final horario = await cargarHorario(establecimiento.id);
+      final estado = _estadoHorarioService.calcular(
+        ahora: (widget.ahora ?? DateTime.now)(),
+        horario: horario,
+      );
+
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _estadoHorario = estado;
+        _cargandoHorario = false;
+      });
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _estadoHorario = EstadoHorario.sinHorario;
+        _cargandoHorario = false;
+      });
+    }
+  }
 
   Future<void> _comoLlegar(BuildContext context) async {
-    final abierto = await (mapasService ?? MapasExternosService()).comoLlegar(
-      latitud: establecimiento.latitud,
-      longitud: establecimiento.longitud,
-    );
+    final abierto = await (widget.mapasService ?? MapasExternosService())
+        .comoLlegar(
+          latitud: establecimiento.latitud,
+          longitud: establecimiento.longitud,
+        );
 
     if (!abierto && context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -25,6 +87,18 @@ class DetalleEstablecimientoScreen extends StatelessWidget {
           content: Text('No encontramos una aplicación de mapas disponible.'),
         ),
       );
+    }
+  }
+
+  String get _textoEstadoHorario {
+    switch (_estadoHorario) {
+      case EstadoHorario.abierto:
+        return 'Abierto';
+      case EstadoHorario.cerrado:
+        return 'Cerrado';
+      case EstadoHorario.sinHorario:
+      case null:
+        return 'Horario no disponible';
     }
   }
 
@@ -79,6 +153,12 @@ class DetalleEstablecimientoScreen extends StatelessWidget {
                     color: const Color(0xFF2563EB),
                     fontWeight: FontWeight.w600,
                   ),
+                ),
+                const SizedBox(height: 10),
+                _EstadoHorarioChip(
+                  cargando: _cargandoHorario,
+                  estado: _estadoHorario,
+                  texto: _textoEstadoHorario,
                 ),
                 if (establecimiento.descripcion.trim().isNotEmpty) ...[
                   const SizedBox(height: 18),
@@ -151,6 +231,45 @@ class _ImagenDetalle extends StatelessWidget {
         color: Color(0xFFDBEAFE),
         child: Center(child: Icon(Icons.storefront, size: 80)),
       ),
+    );
+  }
+}
+
+class _EstadoHorarioChip extends StatelessWidget {
+  const _EstadoHorarioChip({
+    required this.cargando,
+    required this.estado,
+    required this.texto,
+  });
+
+  final bool cargando;
+  final EstadoHorario? estado;
+  final String texto;
+
+  @override
+  Widget build(BuildContext context) {
+    if (cargando) {
+      return const Chip(
+        key: Key('estado-horario-cargando'),
+        avatar: SizedBox(
+          width: 14,
+          height: 14,
+          child: CircularProgressIndicator(strokeWidth: 2),
+        ),
+        label: Text('Consultando horario'),
+      );
+    }
+
+    final icono = switch (estado) {
+      EstadoHorario.abierto => Icons.check_circle,
+      EstadoHorario.cerrado => Icons.cancel,
+      _ => Icons.schedule,
+    };
+
+    return Chip(
+      key: const Key('estado-horario'),
+      avatar: Icon(icono, size: 18),
+      label: Text(texto),
     );
   }
 }
