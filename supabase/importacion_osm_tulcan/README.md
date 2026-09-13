@@ -1,4 +1,4 @@
-# Importación OSM de Tulcán a staging local
+# Importación y promoción local de OSM de Tulcán
 
 Este proceso carga el lote preparado de 306 objetos OSM únicamente en
 `staging.importacion_establecimientos_osm`. No inserta registros en
@@ -73,4 +73,51 @@ from public.establecimientos
 where fuente = 'osm';
 ```
 
-El segundo resultado debe ser `0` en esta fase.
+El segundo resultado debe ser `0` antes de ejecutar la promoción.
+
+## Flujo completo
+
+```text
+Excel / CSV
+  -> staging
+  -> refinamiento taxonómico
+  -> promoción de registros válidos
+  -> revisión y aprobación posterior
+```
+
+La promoción no equivale a publicación. Los 254 establecimientos válidos se
+crean con `estado = pendiente`, `publicable = false` y
+`estado_reclamo = no_reclamado`. Los 52 observados permanecen únicamente en
+staging.
+
+## Promoción local de los 254 registros válidos
+
+Después de cargar staging, ejecutar desde la raíz:
+
+```powershell
+.\scripts\promover_osm_establecimientos_local.ps1
+npx.cmd supabase test db
+```
+
+El script detecta un único contenedor `supabase_db_*`, copia temporalmente el
+SQL, lo ejecuta con `ON_ERROR_STOP` y siempre limpia el directorio temporal.
+La función interna usa un bloqueo transaccional y la identidad
+`osm_type + osm_id`, por lo que puede repetirse sin crear duplicados.
+
+En una repetición solo se actualizan nombre, dirección, categoría,
+coordenadas y territorio de establecimientos OSM que continúen sin reclamar.
+Nunca se alteran establecimientos creados en Cercly ni datos administrativos
+de establecimientos OSM reclamados. `datos_osm` se conserva desde la creación
+y tampoco se reemplaza después de un reclamo.
+
+La promoción puede comprobarse manualmente con:
+
+```sql
+select fuente, estado, publicable, count(*)
+from public.establecimientos
+where fuente = 'osm'
+group by fuente, estado, publicable;
+```
+
+El resultado esperado es `osm | pendiente | false | 254`. La aprobación y
+publicación se realizarán en una fase posterior y controlada.
