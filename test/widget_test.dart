@@ -188,7 +188,7 @@ void main() {
       'persona@cercly.app',
     );
     await tester.enterText(find.byType(TextFormField).at(1), '123456');
-    await tester.tap(find.text('Iniciar sesión'));
+    await tester.tap(find.widgetWithText(FilledButton, 'Iniciar sesión'));
     await tester.pump();
 
     expect(ejecutado, isTrue);
