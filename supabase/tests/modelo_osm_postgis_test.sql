@@ -1,52 +1,60 @@
--- Pruebas de contrato para la migracion modelo_osm_postgis.
--- Ejecutar despues de aplicar las migraciones en una base local o efimera.
--- Este archivo no inserta establecimientos OSM.
+-- Pruebas pgTAP del contrato creado por modelo_osm_postgis.
+-- Supabase ejecuta este archivo con: supabase test db
 
 begin;
 
-do $$
-declare
-  categorias_activas integer;
-  subcategorias_requeridas integer;
-  establecimientos_osm integer;
-  datos_legacy_invalidos integer;
-begin
-  select count(*)
-  into categorias_activas
-  from public.categorias
-  where activa;
+select plan(18);
 
-  if categorias_activas <> 12 then
-    raise exception
-      'Se esperaban 12 categorias activas y existen %',
-      categorias_activas;
-  end if;
+select is(
+  (select count(*)::bigint from public.categorias where activa),
+  12::bigint,
+  'existen exactamente 12 categorias activas'
+);
 
-  select count(*)
-  into subcategorias_requeridas
-  from public.subcategorias
-  where slug in (
-    'peluquerias',
-    'barberias',
-    'salones-belleza',
-    'cosmeticos',
-    'lavanderias',
-    'servicios-financieros',
-    'costura-confeccion',
-    'cerrajeria',
-    'fotografia',
-    'reparaciones',
-    'limpieza',
-    'otros-servicios-oficios'
-  );
+select set_eq(
+  $$select slug from public.categorias where activa$$,
+  $$values
+    ('comida-bebidas'),
+    ('tiendas-supermercados'),
+    ('moda-accesorios'),
+    ('belleza-cuidado-personal'),
+    ('tecnologia-electronica'),
+    ('automotriz-movilidad'),
+    ('hogar-construccion'),
+    ('salud-bienestar'),
+    ('educacion-papeleria'),
+    ('agropecuario-mascotas'),
+    ('entretenimiento-deporte-turismo'),
+    ('servicios-oficios')$$,
+  'las categorias activas corresponden a la taxonomia oficial'
+);
 
-  if subcategorias_requeridas <> 12 then
-    raise exception
-      'Faltan subcategorias obligatorias de belleza o servicios';
-  end if;
+select is(
+  (
+    select count(*)::bigint
+    from public.subcategorias
+    where slug in (
+      'peluquerias',
+      'barberias',
+      'salones-belleza',
+      'cosmeticos',
+      'lavanderias',
+      'servicios-financieros',
+      'costura-confeccion',
+      'cerrajeria',
+      'fotografia',
+      'reparaciones',
+      'limpieza',
+      'otros-servicios-oficios'
+    )
+  ),
+  12::bigint,
+  'existen todas las subcategorias obligatorias'
+);
 
-  if exists (
-    select 1
+select is_empty(
+  $$
+    select s.id
     from public.subcategorias s
     join public.categorias c on c.id = s.categoria_id
     where s.slug in (
@@ -57,62 +65,123 @@ begin
       'lavanderias'
     )
       and c.slug <> 'belleza-cuidado-personal'
-  ) then
-    raise exception
-      'Una subcategoria de belleza fue asignada a otra categoria';
-  end if;
+  $$,
+  'las subcategorias de belleza estan correctamente clasificadas'
+);
 
-  select count(*)
-  into establecimientos_osm
-  from public.establecimientos
-  where fuente = 'osm';
+select is_empty(
+  $$select id from public.establecimientos where fuente = 'osm'$$,
+  'la migracion estructural no importa establecimientos OSM'
+);
 
-  if establecimientos_osm <> 0 then
-    raise exception
-      'La migracion estructural no debe importar establecimientos OSM';
-  end if;
-
-  select count(*)
-  into datos_legacy_invalidos
-  from public.establecimientos
-  where fuente <> 'cercly'
-     or estado_reclamo is not null
-     or publicable <> (
-       estado = 'aprobado'::public.estado_establecimiento
-     );
-
-  if datos_legacy_invalidos <> 0 then
-    raise exception
-      'La adaptacion de establecimientos existentes es inconsistente';
-  end if;
-
-  if exists (
-    select 1
+select is_empty(
+  $$
+    select id
     from public.establecimientos
-    where ubicacion is null
-  ) then
-    raise exception 'Existen establecimientos sin punto geografico';
-  end if;
+    where fuente <> 'cercly'
+       or estado_reclamo is not null
+       or publicable <> (
+         estado = 'aprobado'::public.estado_establecimiento
+       )
+  $$,
+  'los establecimientos existentes fueron adaptados de forma segura'
+);
 
-  if to_regclass('public.subcategorias') is null
-     or to_regclass('public.establecimiento_categorias') is null
-     or to_regclass('public.evidencias_solicitud') is null
-     or to_regclass('staging.importacion_establecimientos_osm') is null then
-    raise exception 'Falta una tabla requerida por el modelo';
-  end if;
+select is_empty(
+  $$select id from public.establecimientos where ubicacion is null$$,
+  'todos los establecimientos existentes tienen ubicacion geografica'
+);
 
-  if to_regprocedure(
-    'public.buscar_establecimientos_cercanos(double precision,double precision,integer,uuid,uuid[],boolean,integer,integer)'
-  ) is null then
-    raise exception 'No existe la RPC de busqueda geografica';
-  end if;
+select is_empty(
+  $$
+    select e.id
+    from public.establecimientos e
+    left join public.establecimiento_categorias ec
+      on ec.establecimiento_id = e.id
+     and ec.es_principal
+    where ec.establecimiento_id is null
+  $$,
+  'cada establecimiento existente conserva una subcategoria principal'
+);
 
-  if has_schema_privilege('anon', 'staging', 'usage')
-     or has_schema_privilege('authenticated', 'staging', 'usage') then
-    raise exception
-      'La infraestructura staging es accesible desde Flutter';
-  end if;
-end;
-$$;
+select has_table(
+  'public',
+  'subcategorias',
+  'existe la tabla public.subcategorias'
+);
+
+select has_table(
+  'public',
+  'establecimiento_categorias',
+  'existe la tabla public.establecimiento_categorias'
+);
+
+select has_table(
+  'public',
+  'evidencias_solicitud',
+  'existe la tabla public.evidencias_solicitud'
+);
+
+select has_table(
+  'staging',
+  'importacion_establecimientos_osm',
+  'existe la tabla interna de importacion OSM'
+);
+
+select has_function(
+  'public',
+  'buscar_establecimientos_cercanos',
+  array[
+    'double precision',
+    'double precision',
+    'integer',
+    'uuid',
+    'uuid[]',
+    'boolean',
+    'integer',
+    'integer'
+  ],
+  'existe la RPC de busqueda geografica'
+);
+
+select has_index(
+  'public',
+  'establecimientos',
+  'establecimientos_ubicacion_gist_idx',
+  'existe el indice GiST para consultas geograficas'
+);
+
+select has_index(
+  'public',
+  'establecimientos',
+  'establecimientos_osm_identidad_unica_idx',
+  'existe el indice unico de identidad OSM'
+);
+
+select ok(
+  not has_schema_privilege('anon', 'staging', 'usage'),
+  'anon no puede usar el esquema staging'
+);
+
+select ok(
+  not has_schema_privilege('authenticated', 'staging', 'usage'),
+  'authenticated no puede usar el esquema staging'
+);
+
+select ok(
+  not has_table_privilege(
+    'anon',
+    'staging.importacion_establecimientos_osm',
+    'select'
+  )
+  and not has_table_privilege(
+    'authenticated',
+    'staging.importacion_establecimientos_osm',
+    'select'
+  ),
+  'anon y authenticated no pueden leer la tabla de importacion'
+);
+
+select * from finish();
 
 rollback;
