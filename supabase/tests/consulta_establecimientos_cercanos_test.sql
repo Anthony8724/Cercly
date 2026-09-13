@@ -3,7 +3,7 @@
 
 begin;
 
-select plan(17);
+select plan(19);
 
 select has_function(
   'public',
@@ -231,6 +231,36 @@ select lives_ok(
     select staging.configurar_osm_pruebas_local(true)
   $$,
   'el modo local puede restaurarse y habilitarse nuevamente'
+);
+
+select ok(
+  exists (
+    select 1
+    from pg_catalog.pg_trigger t
+    join pg_catalog.pg_class c on c.oid = t.tgrelid
+    join pg_catalog.pg_namespace n on n.oid = c.relnamespace
+    where n.nspname = 'public'
+      and c.relname = 'establecimientos'
+      and t.tgname = 'proteger_establecimiento_trigger'
+      and not t.tgisinternal
+      and t.tgenabled = 'O'
+  ),
+  'el trigger de proteccion queda habilitado despues del modo local'
+);
+
+select ok(
+  exists (
+    select 1
+    from pg_catalog.pg_trigger t
+    join pg_catalog.pg_class c on c.oid = t.tgrelid
+    join pg_catalog.pg_namespace n on n.oid = c.relnamespace
+    where n.nspname = 'public'
+      and c.relname = 'establecimientos'
+      and t.tgname = 'establecimientos_actualizar_fecha'
+      and not t.tgisinternal
+      and t.tgenabled = 'O'
+  ),
+  'el trigger de fecha permanece habilitado durante el modo local'
 );
 
 select is_empty(
