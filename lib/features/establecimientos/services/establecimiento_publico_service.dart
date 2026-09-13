@@ -4,9 +4,20 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../models/establecimiento_publico_model.dart';
 
+typedef EjecutarRpcCercanos =
+    Future<List<Map<String, dynamic>>> Function(Map<String, dynamic> parametros);
+
+typedef CargarDetallesPublicos =
+    Future<List<Map<String, dynamic>>> Function(List<String> ids);
+
 class EstablecimientoPublicoService {
-  EstablecimientoPublicoService({SupabaseClient? supabase})
-    : _supabase = supabase ?? Supabase.instance.client;
+  EstablecimientoPublicoService({
+    SupabaseClient? supabase,
+    EjecutarRpcCercanos? ejecutarRpcCercanos,
+    CargarDetallesPublicos? cargarDetallesPublicos,
+  }) : _supabase = supabase ?? Supabase.instance.client,
+       _ejecutarRpcCercanos = ejecutarRpcCercanos,
+       _cargarDetallesPublicos = cargarDetallesPublicos;
 
   static const String bucketEstablecimientos = 'establecimientos-imagenes';
 
@@ -15,6 +26,8 @@ class EstablecimientoPublicoService {
   static const double radioTierraMetros = 6371000;
 
   final SupabaseClient _supabase;
+  final EjecutarRpcCercanos? _ejecutarRpcCercanos;
+  final CargarDetallesPublicos? _cargarDetallesPublicos;
 
   static const String _columnasPublicas = '''
     id,
@@ -25,6 +38,9 @@ class EstablecimientoPublicoService {
     longitud,
     telefono_publico,
     zona_horaria,
+    ciudad,
+    provincia,
+    pais_codigo,
     categorias!inner(
       id,
       nombre,
@@ -53,6 +69,10 @@ class EstablecimientoPublicoService {
     double? latitudUsuario,
     double? longitudUsuario,
     double? radioMaximoMetros,
+    List<String>? subcategoriaIds,
+    bool soloPromociones = false,
+    int limite = 20,
+    int desplazamiento = 0,
   }) async {
     _validarUbicacion(
       latitudUsuario: latitudUsuario,
@@ -60,10 +80,24 @@ class EstablecimientoPublicoService {
       radioMaximoMetros: radioMaximoMetros,
     );
 
+    if (latitudUsuario != null && longitudUsuario != null) {
+      return buscarCercanos(
+        latitud: latitudUsuario,
+        longitud: longitudUsuario,
+        radioMetros: radioMaximoMetros?.round() ?? 5000,
+        categoriaId: categoriaId,
+        subcategoriaIds: subcategoriaIds,
+        soloPromociones: soloPromociones,
+        limite: limite,
+        desplazamiento: desplazamiento,
+      );
+    }
+
     var consulta = _supabase
         .from('establecimientos')
         .select(_columnasPublicas)
-        .eq('estado', 'aprobado');
+        .eq('estado', 'aprobado')
+        .eq('publicable', true);
 
     final categoria = categoriaId?.trim();
 
@@ -112,6 +146,98 @@ class EstablecimientoPublicoService {
     return resultado;
   }
 
+  Future<List<EstablecimientoPublicoModel>> buscarCercanos({
+    required double latitud,
+    required double longitud,
+    int radioMetros = 5000,
+    String? categoriaId,
+    List<String>? subcategoriaIds,
+    bool soloPromociones = false,
+    int limite = 20,
+    int desplazamiento = 0,
+  }) async {
+    _validarCoordenada(latitud: latitud, longitud: longitud);
+
+    if (radioMetros < 1 || radioMetros > 50000) {
+      throw ArgumentError('El radio debe estar entre 1 y 50000 metros.');
+    }
+
+    if (limite < 1 || limite > 100) {
+      throw ArgumentError('El límite debe estar entre 1 y 100.');
+    }
+
+    if (desplazamiento < 0) {
+      throw ArgumentError('El desplazamiento no puede ser negativo.');
+    }
+
+    final categoria = categoriaId?.trim();
+    final subcategorias = subcategoriaIds
+        ?.map((id) => id.trim())
+        .where((id) => id.isNotEmpty)
+        .toList(growable: false);
+
+    final parametros = <String, dynamic>{
+      'p_latitud': latitud,
+      'p_longitud': longitud,
+      'p_radio_metros': radioMetros,
+      'p_categoria_id': categoria == null || categoria.isEmpty
+          ? null
+          : categoria,
+      'p_subcategoria_ids': subcategorias == null || subcategorias.isEmpty
+          ? null
+          : subcategorias,
+      'p_solo_promociones': soloPromociones,
+      'p_limite': limite,
+      'p_desplazamiento': desplazamiento,
+    };
+
+    final filasRpc = _ejecutarRpcCercanos == null
+        ? List<Map<String, dynamic>>.from(
+            await _supabase.rpc(
+              'buscar_establecimientos_cercanos',
+              params: parametros,
+            ),
+          )
+        : await _ejecutarRpcCercanos(parametros);
+
+    if (filasRpc.isEmpty) {
+      return const <EstablecimientoPublicoModel>[];
+    }
+
+    final ids = filasRpc.map((fila) => fila['id'] as String).toList();
+    final filasDetalles = _cargarDetallesPublicos == null
+        ? List<Map<String, dynamic>>.from(
+            await _supabase
+                .from('establecimientos')
+                .select(_columnasPublicas)
+                .inFilter('id', ids)
+                .eq('estado', 'aprobado')
+                .eq('publicable', true),
+          )
+        : await _cargarDetallesPublicos(ids);
+
+    final detallesPorId = <String, EstablecimientoPublicoModel>{};
+
+    for (final fila in filasDetalles) {
+      final detalle = await _convertirEstablecimiento(fila);
+      detallesPorId[detalle.id] = detalle;
+    }
+
+    return filasRpc.map((filaRpc) {
+      final id = filaRpc['id'] as String;
+      final detalle = detallesPorId[id];
+
+      if (detalle == null) {
+        return null;
+      }
+
+      return detalle.copiarCon(
+        distanciaMetros: (filaRpc['distancia_metros'] as num).toDouble(),
+        tienePromocionesRpc: filaRpc['tiene_promociones'] as bool? ?? false,
+      );
+    }).whereType<EstablecimientoPublicoModel>().toList(growable: false);
+  }
+
   Future<EstablecimientoPublicoModel?> obtenerPorId(
     String establecimientoId, {
     double? latitudUsuario,
@@ -135,6 +261,7 @@ class EstablecimientoPublicoService {
         .select(_columnasPublicas)
         .eq('id', id)
         .eq('estado', 'aprobado')
+        .eq('publicable', true)
         .maybeSingle();
 
     if (respuesta == null) {

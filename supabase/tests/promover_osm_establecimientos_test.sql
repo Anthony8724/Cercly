@@ -3,6 +3,18 @@
 
 begin;
 
+-- Si el modo visual local fue habilitado antes de ejecutar toda la suite,
+-- restaurar el estado canonico solo dentro de esta transaccion de prueba.
+do $$
+begin
+  if to_regprocedure(
+    'staging.configurar_osm_pruebas_local(boolean,uuid)'
+  ) is not null then
+    execute 'select staging.configurar_osm_pruebas_local(false)';
+  end if;
+end;
+$$;
+
 select plan(28);
 
 select has_function(

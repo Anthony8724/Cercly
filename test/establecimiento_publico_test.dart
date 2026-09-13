@@ -4,6 +4,33 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:cercly/features/establecimientos/models/establecimiento_publico_model.dart';
 import 'package:cercly/features/establecimientos/services/establecimiento_publico_service.dart';
 
+Map<String, dynamic> crearDetallePublico({
+  String id = 'establecimiento-1',
+  String categoriaId = 'categoria-1',
+}) {
+  return <String, dynamic>{
+    'id': id,
+    'nombre': 'Cafetería Central',
+    'descripcion': 'Café y postres',
+    'direccion': 'Tulcán, Ecuador',
+    'latitud': 0.8119,
+    'longitud': -77.7173,
+    'telefono_publico': '0999999999',
+    'zona_horaria': 'America/Guayaquil',
+    'ciudad': 'Tulcán',
+    'provincia': 'Carchi',
+    'pais_codigo': 'EC',
+    'categorias': <String, dynamic>{
+      'id': categoriaId,
+      'nombre': 'Comida y bebidas',
+      'slug': 'comida-bebidas',
+      'icono': 'restaurant',
+    },
+    'fotos_establecimiento': <Map<String, dynamic>>[],
+    'promociones': <Map<String, dynamic>>[],
+  };
+}
+
 void main() {
   group('EstablecimientoPublicoModel', () {
     test('convierte correctamente los datos de Supabase', () {
@@ -68,6 +95,7 @@ void main() {
       );
       expect(establecimiento.promociones, hasLength(1));
       expect(establecimiento.tienePromociones, isTrue);
+      expect(establecimiento.categoriaId, 'categoria-1');
     });
 
     test('descarta promociones que ya finalizaron', () {
@@ -197,6 +225,136 @@ void main() {
           longitudOrigen: 0,
           latitudDestino: 0,
           longitudDestino: 0,
+        ),
+        throwsArgumentError,
+      );
+    });
+
+    test('envía todos los filtros y la paginación al RPC PostGIS', () async {
+      Map<String, dynamic>? parametrosRecibidos;
+      List<String>? idsSolicitados;
+
+      final servicioRpc = EstablecimientoPublicoService(
+        supabase: SupabaseClient(
+          'https://example.supabase.co',
+          'publishable-key-de-prueba',
+        ),
+        ejecutarRpcCercanos: (parametros) async {
+          parametrosRecibidos = parametros;
+          return <Map<String, dynamic>>[
+            <String, dynamic>{
+              'id': 'establecimiento-1',
+              'distancia_metros': 245.75,
+              'tiene_promociones': true,
+            },
+          ];
+        },
+        cargarDetallesPublicos: (ids) async {
+          idsSolicitados = ids;
+          return <Map<String, dynamic>>[crearDetallePublico()];
+        },
+      );
+
+      final resultado = await servicioRpc.buscarCercanos(
+        latitud: 0.8116,
+        longitud: -77.7172,
+        radioMetros: 2500,
+        categoriaId: ' categoria-1 ',
+        subcategoriaIds: const ['subcategoria-1', 'subcategoria-2'],
+        soloPromociones: true,
+        limite: 15,
+        desplazamiento: 30,
+      );
+
+      expect(parametrosRecibidos, <String, dynamic>{
+        'p_latitud': 0.8116,
+        'p_longitud': -77.7172,
+        'p_radio_metros': 2500,
+        'p_categoria_id': 'categoria-1',
+        'p_subcategoria_ids': ['subcategoria-1', 'subcategoria-2'],
+        'p_solo_promociones': true,
+        'p_limite': 15,
+        'p_desplazamiento': 30,
+      });
+      expect(idsSolicitados, ['establecimiento-1']);
+      expect(resultado, hasLength(1));
+      expect(resultado.single.distanciaMetros, 245.75);
+      expect(resultado.single.tienePromociones, isTrue);
+      expect(resultado.single.ciudad, 'Tulcán');
+      expect(resultado.single.provincia, 'Carchi');
+      expect(resultado.single.paisCodigo, 'EC');
+    });
+
+    test('envía filtros opcionales vacíos como null', () async {
+      Map<String, dynamic>? parametrosRecibidos;
+
+      final servicioRpc = EstablecimientoPublicoService(
+        supabase: SupabaseClient(
+          'https://example.supabase.co',
+          'publishable-key-de-prueba',
+        ),
+        ejecutarRpcCercanos: (parametros) async {
+          parametrosRecibidos = parametros;
+          return const <Map<String, dynamic>>[];
+        },
+      );
+
+      await servicioRpc.buscarCercanos(
+        latitud: 0.8116,
+        longitud: -77.7172,
+        categoriaId: ' ',
+        subcategoriaIds: const [' ', ''],
+      );
+
+      expect(parametrosRecibidos!['p_categoria_id'], isNull);
+      expect(parametrosRecibidos!['p_subcategoria_ids'], isNull);
+      expect(parametrosRecibidos!['p_solo_promociones'], isFalse);
+      expect(parametrosRecibidos!['p_limite'], 20);
+      expect(parametrosRecibidos!['p_desplazamiento'], 0);
+    });
+
+    test('rechaza coordenadas inválidas antes de llamar al RPC', () async {
+      var fueInvocado = false;
+      final servicioRpc = EstablecimientoPublicoService(
+        supabase: SupabaseClient(
+          'https://example.supabase.co',
+          'publishable-key-de-prueba',
+        ),
+        ejecutarRpcCercanos: (parametros) async {
+          fueInvocado = true;
+          return const <Map<String, dynamic>>[];
+        },
+      );
+
+      await expectLater(
+        servicioRpc.buscarCercanos(latitud: 91, longitud: -77.7172),
+        throwsArgumentError,
+      );
+      expect(fueInvocado, isFalse);
+    });
+
+    test('rechaza radio, límite y desplazamiento inválidos', () async {
+      await expectLater(
+        service.buscarCercanos(
+          latitud: 0.8116,
+          longitud: -77.7172,
+          radioMetros: 0,
+        ),
+        throwsArgumentError,
+      );
+      await expectLater(
+        service.buscarCercanos(
+          latitud: 0.8116,
+          longitud: -77.7172,
+          limite: 101,
+        ),
+        throwsArgumentError,
+      );
+      await expectLater(
+        service.buscarCercanos(
+          latitud: 0.8116,
+          longitud: -77.7172,
+          desplazamiento: -1,
         ),
         throwsArgumentError,
       );
