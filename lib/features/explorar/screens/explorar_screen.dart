@@ -81,7 +81,7 @@ class ExplorarScreen extends StatelessWidget {
                             if (!controller.cargandoResultados &&
                                 controller.ubicacion != null)
                               Text(
-                                '${controller.establecimientos.length} resultados',
+                                '${controller.establecimientos.length} lugares mostrados',
                                 style: Theme.of(context).textTheme.bodySmall,
                               ),
                           ],
