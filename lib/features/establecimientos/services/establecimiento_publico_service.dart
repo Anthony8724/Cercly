@@ -3,12 +3,18 @@ import 'dart:math' as math;
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../models/establecimiento_publico_model.dart';
+import '../models/turno_horario.dart';
+import 'estado_horario_service.dart';
 
 typedef EjecutarRpcCercanos = Future<List<Map<String, dynamic>>> Function(
   Map<String, dynamic> parametros,
 );
 
 typedef CargarDetallesPublicos = Future<List<Map<String, dynamic>>> Function(
+  List<String> ids,
+);
+
+typedef CargarHorariosPublicos = Future<List<Map<String, dynamic>>> Function(
   List<String> ids,
 );
 
@@ -31,19 +37,23 @@ class EstablecimientoPublicoService
     SupabaseClient? supabase,
     EjecutarRpcCercanos? ejecutarRpcCercanos,
     CargarDetallesPublicos? cargarDetallesPublicos,
+    CargarHorariosPublicos? cargarHorariosPublicos,
+    EstadoHorarioService estadoHorarioService = const EstadoHorarioService(),
   }) : _supabase = supabase ?? Supabase.instance.client,
        _ejecutarRpcCercanos = ejecutarRpcCercanos,
-       _cargarDetallesPublicos = cargarDetallesPublicos;
+       _cargarDetallesPublicos = cargarDetallesPublicos,
+       _cargarHorariosPublicos = cargarHorariosPublicos,
+       _estadoHorarioService = estadoHorarioService;
 
   static const String bucketEstablecimientos = 'establecimientos-imagenes';
-
   static const String bucketPromociones = 'promociones-imagenes';
-
   static const double radioTierraMetros = 6371000;
 
   final SupabaseClient _supabase;
   final EjecutarRpcCercanos? _ejecutarRpcCercanos;
   final CargarDetallesPublicos? _cargarDetallesPublicos;
+  final CargarHorariosPublicos? _cargarHorariosPublicos;
+  final EstadoHorarioService _estadoHorarioService;
 
   static const String _columnasPublicas = '''
     id,
@@ -122,7 +132,6 @@ class EstablecimientoPublicoService
     }
 
     final respuesta = await consulta.order('nombre');
-
     final filas = List<Map<String, dynamic>>.from(respuesta);
 
     final establecimientos = await Future.wait(
@@ -136,12 +145,8 @@ class EstablecimientoPublicoService
     );
 
     final resultado = establecimientos.where((establecimiento) {
-      if (radioMaximoMetros == null) {
-        return true;
-      }
-
+      if (radioMaximoMetros == null) return true;
       final distancia = establecimiento.distanciaMetros;
-
       return distancia != null && distancia <= radioMaximoMetros;
     }).toList();
 
@@ -178,11 +183,9 @@ class EstablecimientoPublicoService
     if (radioMetros < 1 || radioMetros > 50000) {
       throw ArgumentError('El radio debe estar entre 1 y 50000 metros.');
     }
-
     if (limite < 1 || limite > 100) {
       throw ArgumentError('El límite debe estar entre 1 y 100.');
     }
-
     if (desplazamiento < 0) {
       throw ArgumentError('El desplazamiento no puede ser negativo.');
     }
@@ -222,6 +225,7 @@ class EstablecimientoPublicoService
     }
 
     final ids = filasRpc.map((fila) => fila['id'] as String).toList();
+
     final filasDetalles = _cargarDetallesPublicos == null
         ? List<Map<String, dynamic>>.from(
             await _supabase
@@ -233,11 +237,14 @@ class EstablecimientoPublicoService
           )
         : await _cargarDetallesPublicos(ids);
 
+    final estadosHorario = await _cargarEstadosHorario(ids);
     final detallesPorId = <String, EstablecimientoPublicoModel>{};
 
     for (final fila in filasDetalles) {
       final detalle = await _convertirEstablecimiento(fila);
-      detallesPorId[detalle.id] = detalle;
+      detallesPorId[detalle.id] = detalle.copiarCon(
+        estadoHorario: estadosHorario[detalle.id] ?? 'sinHorario',
+      );
     }
 
     return filasRpc
@@ -245,9 +252,7 @@ class EstablecimientoPublicoService
           final id = filaRpc['id'] as String;
           final detalle = detallesPorId[id];
 
-          if (detalle == null) {
-            return null;
-          }
+          if (detalle == null) return null;
 
           return detalle.copiarCon(
             distanciaMetros: (filaRpc['distancia_metros'] as num).toDouble(),
@@ -256,6 +261,71 @@ class EstablecimientoPublicoService
         })
         .whereType<EstablecimientoPublicoModel>()
         .toList(growable: false);
+  }
+
+  Future<Map<String, String>> _cargarEstadosHorario(List<String> ids) async {
+    final filas = _cargarHorariosPublicos == null
+        ? List<Map<String, dynamic>>.from(
+            await _supabase
+                .from('horarios_establecimiento')
+                .select(
+                  'establecimiento_id, dia_semana, apertura_minutos, '
+                  'cierre_minutos, cierra_al_dia_siguiente',
+                )
+                .inFilter('establecimiento_id', ids),
+          )
+        : await _cargarHorariosPublicos(ids);
+
+    final horariosPorEstablecimiento = <
+      String,
+      Map<String, List<TurnoHorario>>
+    >{};
+
+    const dias = [
+      'lunes',
+      'martes',
+      'miercoles',
+      'jueves',
+      'viernes',
+      'sabado',
+      'domingo',
+    ];
+
+    for (final id in ids) {
+      horariosPorEstablecimiento[id] = {
+        for (final dia in dias) dia: <TurnoHorario>[],
+      };
+    }
+
+    for (final fila in filas) {
+      final id = fila['establecimiento_id'] as String?;
+      final numeroDia = fila['dia_semana'] as int?;
+
+      if (id == null ||
+          numeroDia == null ||
+          numeroDia < 1 ||
+          numeroDia > 7 ||
+          !horariosPorEstablecimiento.containsKey(id)) {
+        continue;
+      }
+
+      horariosPorEstablecimiento[id]![dias[numeroDia - 1]]!.add(
+        TurnoHorario(
+          aperturaMinutos: fila['apertura_minutos'] as int,
+          cierreMinutos: fila['cierre_minutos'] as int,
+          cierraAlDiaSiguiente:
+              fila['cierra_al_dia_siguiente'] as bool? ?? false,
+        ),
+      );
+    }
+
+    final ahora = DateTime.now();
+    return {
+      for (final entrada in horariosPorEstablecimiento.entries)
+        entrada.key: _estadoHorarioService
+            .calcular(ahora: ahora, horario: entrada.value)
+            .name,
+    };
   }
 
   Future<EstablecimientoPublicoModel?> obtenerPorId(
@@ -284,9 +354,7 @@ class EstablecimientoPublicoService
         .eq('publicable', true)
         .maybeSingle();
 
-    if (respuesta == null) {
-      return null;
-    }
+    if (respuesta == null) return null;
 
     return _convertirEstablecimiento(
       respuesta,
@@ -301,7 +369,6 @@ class EstablecimientoPublicoService
     double? longitudUsuario,
   }) async {
     final establecimiento = EstablecimientoPublicoModel.fromSupabase(datos);
-
     final rutaPortada = establecimiento.rutaFotoPortada;
 
     final urlPortada = rutaPortada == null
@@ -314,22 +381,17 @@ class EstablecimientoPublicoService
     final promocionesConImagen = await Future.wait(
       establecimiento.promociones.map((promocion) async {
         final rutaImagen = promocion.imagenRutaStorage;
-
-        if (rutaImagen == null || rutaImagen.isEmpty) {
-          return promocion;
-        }
+        if (rutaImagen == null || rutaImagen.isEmpty) return promocion;
 
         final url = await _crearUrlTemporal(
           bucket: bucketPromociones,
           ruta: rutaImagen,
         );
-
         return promocion.copiarConUrl(url);
       }),
     );
 
     double? distancia;
-
     if (latitudUsuario != null && longitudUsuario != null) {
       distancia = calcularDistanciaMetros(
         latitudOrigen: latitudUsuario,
@@ -364,14 +426,11 @@ class EstablecimientoPublicoService
     required double longitudDestino,
   }) {
     _validarCoordenada(latitud: latitudOrigen, longitud: longitudOrigen);
-
     _validarCoordenada(latitud: latitudDestino, longitud: longitudDestino);
 
     final latitud1 = _gradosARadianes(latitudOrigen);
     final latitud2 = _gradosARadianes(latitudDestino);
-
     final diferenciaLatitud = _gradosARadianes(latitudDestino - latitudOrigen);
-
     final diferenciaLongitud = _gradosARadianes(
       longitudDestino - longitudOrigen,
     );
@@ -384,7 +443,6 @@ class EstablecimientoPublicoService
             math.sin(diferenciaLongitud / 2);
 
     final valorSeguro = a.clamp(0.0, 1.0).toDouble();
-
     final angulo =
         2 * math.atan2(math.sqrt(valorSeguro), math.sqrt(1 - valorSeguro));
 
@@ -413,7 +471,6 @@ class EstablecimientoPublicoService
           'Para aplicar un radio debes indicar la ubicación.',
         );
       }
-
       if (radioMaximoMetros <= 0) {
         throw ArgumentError('El radio máximo debe ser mayor que cero.');
       }
@@ -424,7 +481,6 @@ class EstablecimientoPublicoService
     if (latitud < -90 || latitud > 90) {
       throw ArgumentError('La latitud debe estar entre -90 y 90.');
     }
-
     if (longitud < -180 || longitud > 180) {
       throw ArgumentError('La longitud debe estar entre -180 y 180.');
     }
