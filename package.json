@@ -1,0 +1,30 @@
+{
+  "name": "cercly",
+  "version": "1.0.0",
+  "description": "Aplicación móvil para descubrir establecimientos y promociones cercanas mediante geolocalización.",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs",
+    "lib": "lib",
+    "test": "test"
+  },
+"scripts": {
+  "test:rules": "node --test --test-concurrency=1 test-rules/firestore.rules.test.cjs test-rules/establecimientos.rules.test.cjs test-rules/categorias.rules.test.cjs test-rules/promociones.rules.test.cjs test-rules/solicitudes.rules.test.cjs"
+},
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Anthony8724/Cercly.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/Anthony8724/Cercly/issues"
+  },
+  "homepage": "https://github.com/Anthony8724/Cercly#readme",
+  "devDependencies": {
+    "@firebase/rules-unit-testing": "^5.0.2",
+    "firebase": "^12.19.0"
+  }
+}

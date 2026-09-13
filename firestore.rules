@@ -1,0 +1,343 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function estaAutenticado() {
+      return request.auth != null;
+    }
+
+    function esPropietario(usuarioId) {
+      return estaAutenticado() &&
+             request.auth.uid == usuarioId;
+    }
+
+ function esAdministrador() {
+  return estaAutenticado() &&
+         request.auth.token.get('admin', false) == true;
+}
+
+    function perfilValido() {
+      return request.resource.data.keys().hasOnly([
+               'nombre',
+               'creadoEn'
+             ]) &&
+             request.resource.data.nombre is string &&
+             request.resource.data.nombre.size() >= 2 &&
+             request.resource.data.nombre.size() <= 80;
+    }
+
+    function establecimientoValido() {
+      return request.resource.data.keys().hasOnly([
+               'propietarioId',
+               'nombre',
+               'descripcion',
+               'categoriaId',
+               'direccion',
+               'ubicacion',
+               'telefonoPublico',
+               'horario',
+               'zonaHoraria',
+               'estado',
+               'creadoEn',
+               'actualizadoEn'
+             ]) &&
+             request.resource.data.propietarioId is string &&
+             request.resource.data.nombre is string &&
+             request.resource.data.nombre.size() >= 2 &&
+             request.resource.data.nombre.size() <= 120 &&
+             request.resource.data.descripcion is string &&
+             request.resource.data.descripcion.size() <= 1000 &&
+             request.resource.data.categoriaId is string &&
+             request.resource.data.categoriaId.size() > 0 &&
+             request.resource.data.direccion is string &&
+             request.resource.data.direccion.size() > 0 &&
+             request.resource.data.direccion.size() <= 250 &&
+             request.resource.data.ubicacion is latlng &&
+             request.resource.data.telefonoPublico is string &&
+             request.resource.data.telefonoPublico.size() <= 20 &&
+             request.resource.data.horario is map &&
+             request.resource.data.zonaHoraria ==
+               'America/Guayaquil' &&
+             request.resource.data.estado in [
+               'pendiente',
+               'aprobado',
+               'rechazado'
+             ];
+    }
+
+    match /usuarios/{usuarioId} {
+      allow create: if esPropietario(usuarioId) &&
+                    perfilValido() &&
+                    request.resource.data.creadoEn == request.time;
+
+      allow read: if esPropietario(usuarioId);
+
+      allow update: if esPropietario(usuarioId) &&
+                    perfilValido() &&
+                    request.resource.data.creadoEn ==
+                      resource.data.creadoEn &&
+                    request.resource.data
+                      .diff(resource.data)
+                      .affectedKeys()
+                      .hasOnly(['nombre']);
+
+      allow delete: if false;
+    }
+
+    match /establecimientos/{establecimientoId} {
+      allow create: if establecimientoValido() &&
+                    esPropietario(
+                      request.resource.data.propietarioId
+                    ) &&
+                    request.resource.data.estado == 'pendiente' &&
+                    request.resource.data.creadoEn == request.time &&
+                    request.resource.data.actualizadoEn == request.time;
+
+      allow read: if resource.data.estado == 'aprobado' ||
+                  esPropietario(resource.data.propietarioId) ||
+                  esAdministrador();
+
+      allow update: if establecimientoValido() &&
+                    (
+                      (
+                        esPropietario(resource.data.propietarioId) &&
+                        request.resource.data.propietarioId ==
+                          resource.data.propietarioId &&
+                        request.resource.data.estado ==
+                          resource.data.estado &&
+                        request.resource.data.creadoEn ==
+                          resource.data.creadoEn &&
+                        request.resource.data
+                          .diff(resource.data)
+                          .affectedKeys()
+                          .hasOnly([
+                            'nombre',
+                            'descripcion',
+                            'categoriaId',
+                            'direccion',
+                            'ubicacion',
+                            'telefonoPublico',
+                            'horario',
+                            'zonaHoraria',
+                            'actualizadoEn'
+                          ])
+                      ) ||
+                      (
+                        esAdministrador() &&
+                        request.resource.data.propietarioId ==
+                          resource.data.propietarioId &&
+                        request.resource.data.creadoEn ==
+                          resource.data.creadoEn &&
+                        request.resource.data
+                          .diff(resource.data)
+                          .affectedKeys()
+                          .hasOnly([
+                            'estado',
+                            'actualizadoEn'
+                          ])
+                      )
+                    ) &&
+                    request.resource.data.actualizadoEn ==
+                      request.time;
+
+      allow delete: if esPropietario(
+                      resource.data.propietarioId
+                    ) ||
+                    esAdministrador();
+    }
+    match /categorias/{categoriaId} {
+  function categoriaValida() {
+    return request.resource.data.keys().hasOnly([
+             'nombre',
+             'icono',
+             'activa',
+             'orden',
+             'creadoEn',
+             'actualizadoEn'
+           ]) &&
+           request.resource.data.nombre is string &&
+           request.resource.data.nombre.size() >= 2 &&
+           request.resource.data.nombre.size() <= 80 &&
+           request.resource.data.icono is string &&
+           request.resource.data.icono.size() > 0 &&
+           request.resource.data.icono.size() <= 50 &&
+           request.resource.data.activa is bool &&
+           request.resource.data.orden is int &&
+           request.resource.data.orden >= 0;
+  }
+
+  allow create: if esAdministrador() &&
+                categoriaValida() &&
+                request.resource.data.creadoEn == request.time &&
+                request.resource.data.actualizadoEn == request.time;
+
+  allow read: if resource.data.activa == true ||
+              esAdministrador();
+
+  allow update: if esAdministrador() &&
+                categoriaValida() &&
+                request.resource.data.creadoEn ==
+                  resource.data.creadoEn &&
+                request.resource.data.actualizadoEn ==
+                  request.time;
+
+  allow delete: if esAdministrador();
+}
+    match /promociones/{promocionId} {
+      function promocionValida() {
+        return request.resource.data.keys().hasOnly([
+                 'establecimientoId',
+                 'titulo',
+                 'descripcion',
+                 'fechaInicio',
+                 'fechaFin',
+                 'radioAlertaMetros',
+                 'activa',
+                 'creadoEn',
+                 'actualizadoEn'
+               ]) &&
+               request.resource.data.establecimientoId is string &&
+               request.resource.data.establecimientoId.size() > 0 &&
+               request.resource.data.titulo is string &&
+               request.resource.data.titulo.size() >= 2 &&
+               request.resource.data.titulo.size() <= 120 &&
+               request.resource.data.descripcion is string &&
+               request.resource.data.descripcion.size() <= 1000 &&
+               request.resource.data.fechaInicio is timestamp &&
+               request.resource.data.fechaFin is timestamp &&
+               request.resource.data.fechaFin >
+                 request.resource.data.fechaInicio &&
+               request.resource.data.radioAlertaMetros is int &&
+               request.resource.data.radioAlertaMetros >= 10 &&
+               request.resource.data.radioAlertaMetros <= 2000 &&
+               request.resource.data.activa is bool;
+      }
+
+      function perteneceAlUsuario(establecimientoId) {
+        return estaAutenticado() &&
+               exists(
+                 /databases/$(database)/documents/establecimientos/$(establecimientoId)
+               ) &&
+               get(
+                 /databases/$(database)/documents/establecimientos/$(establecimientoId)
+               ).data.propietarioId == request.auth.uid;
+      }
+
+      allow create: if promocionValida() &&
+                    perteneceAlUsuario(
+                      request.resource.data.establecimientoId
+                    ) &&
+                    request.resource.data.creadoEn == request.time &&
+                    request.resource.data.actualizadoEn == request.time;
+
+      allow read: if (
+                    resource.data.activa == true &&
+                    resource.data.fechaInicio <= request.time &&
+                    resource.data.fechaFin >= request.time
+                  ) ||
+                  perteneceAlUsuario(
+                    resource.data.establecimientoId
+                  ) ||
+                  esAdministrador();
+
+      allow update: if promocionValida() &&
+                    request.resource.data.establecimientoId ==
+                      resource.data.establecimientoId &&
+                    request.resource.data.creadoEn ==
+                      resource.data.creadoEn &&
+                    request.resource.data.actualizadoEn ==
+                      request.time &&
+                    (
+                      perteneceAlUsuario(
+                        resource.data.establecimientoId
+                      ) ||
+                      esAdministrador()
+                    );
+
+      allow delete: if perteneceAlUsuario(
+                      resource.data.establecimientoId
+                    ) ||
+                    esAdministrador();
+    }
+        match /solicitudes_establecimientos/{solicitudId} {
+      function solicitudValida() {
+        return request.resource.data.keys().hasOnly([
+                 'solicitanteId',
+                 'establecimientoId',
+                 'mensaje',
+                 'estado',
+                 'motivoRespuesta',
+                 'creadoEn',
+                 'actualizadoEn'
+               ]) &&
+               request.resource.data.solicitanteId is string &&
+               request.resource.data.establecimientoId is string &&
+               request.resource.data.establecimientoId.size() > 0 &&
+               request.resource.data.mensaje is string &&
+               request.resource.data.mensaje.size() <= 1000 &&
+               request.resource.data.motivoRespuesta is string &&
+               request.resource.data.motivoRespuesta.size() <= 500 &&
+               request.resource.data.estado in [
+                 'pendiente',
+                 'aprobada',
+                 'rechazada'
+               ];
+      }
+
+      function solicitanteEsPropietario() {
+        return estaAutenticado() &&
+               exists(
+                 /databases/$(database)/documents/establecimientos/$(request.resource.data.establecimientoId)
+               ) &&
+               get(
+                 /databases/$(database)/documents/establecimientos/$(request.resource.data.establecimientoId)
+               ).data.propietarioId == request.auth.uid;
+      }
+
+      allow create: if solicitudValida() &&
+                    esPropietario(
+                      request.resource.data.solicitanteId
+                    ) &&
+                    solicitanteEsPropietario() &&
+                    request.resource.data.estado == 'pendiente' &&
+                    request.resource.data.motivoRespuesta == '' &&
+                    request.resource.data.creadoEn == request.time &&
+                    request.resource.data.actualizadoEn == request.time;
+
+      allow read: if esPropietario(
+                    resource.data.solicitanteId
+                  ) ||
+                  esAdministrador();
+
+      allow update: if esAdministrador() &&
+                    solicitudValida() &&
+                    request.resource.data.solicitanteId ==
+                      resource.data.solicitanteId &&
+                    request.resource.data.establecimientoId ==
+                      resource.data.establecimientoId &&
+                    request.resource.data.mensaje ==
+                      resource.data.mensaje &&
+                    request.resource.data.creadoEn ==
+                      resource.data.creadoEn &&
+                    request.resource.data.actualizadoEn ==
+                      request.time &&
+                    request.resource.data
+                      .diff(resource.data)
+                      .affectedKeys()
+                      .hasOnly([
+                        'estado',
+                        'motivoRespuesta',
+                        'actualizadoEn'
+                      ]);
+
+      allow delete: if (
+                      esPropietario(resource.data.solicitanteId) &&
+                      resource.data.estado == 'pendiente'
+                    ) ||
+                    esAdministrador();
+    }
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
