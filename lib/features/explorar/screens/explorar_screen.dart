@@ -65,6 +65,8 @@ class ExplorarScreen extends StatelessWidget {
                           style: TextStyle(color: Color(0xFF64748B)),
                         ),
                         const SizedBox(height: 16),
+                        _BuscadorEstablecimientos(controller: controller),
+                        const SizedBox(height: 16),
                         EstadoUbicacionCard(controller: controller),
                         const SizedBox(height: 16),
                         FiltrosExplorar(controller: controller),
@@ -73,7 +75,9 @@ class ExplorarScreen extends StatelessWidget {
                           children: [
                             Expanded(
                               child: Text(
-                                'Cerca de ti',
+                                controller.busqueda.trim().isEmpty
+                                    ? 'Cerca de ti'
+                                    : 'Resultados de búsqueda',
                                 style: Theme.of(context).textTheme.titleLarge
                                     ?.copyWith(fontWeight: FontWeight.w800),
                               ),
@@ -107,7 +111,8 @@ class ExplorarScreen extends StatelessWidget {
           child: _MensajeCentral(
             icono: Icons.explore_outlined,
             titulo: 'Activa tu ubicación para comenzar',
-            descripcion: 'Cercly usa tu posición solamente para buscar lugares cercanos.',
+            descripcion:
+                'Cercly usa tu posición solamente para buscar lugares cercanos.',
           ),
         ),
       ];
@@ -146,14 +151,19 @@ class ExplorarScreen extends StatelessWidget {
     }
 
     if (controller.establecimientos.isEmpty) {
-      return const [
+      final tieneBusqueda = controller.busqueda.trim().isNotEmpty;
+      return [
         SliverFillRemaining(
           hasScrollBody: false,
           child: _MensajeCentral(
-            key: Key('estado-sin-resultados'),
+            key: const Key('estado-sin-resultados'),
             icono: Icons.search_off,
-            titulo: 'No encontramos establecimientos',
-            descripcion: 'Prueba con otro radio o cambia los filtros.',
+            titulo: tieneBusqueda
+                ? 'No encontramos coincidencias'
+                : 'No encontramos establecimientos',
+            descripcion: tieneBusqueda
+                ? 'Prueba con otro nombre, categoría o subcategoría.'
+                : 'Prueba con otro radio o cambia los filtros.',
           ),
         ),
       ];
@@ -200,6 +210,72 @@ class ExplorarScreen extends StatelessWidget {
         ),
       ),
     ];
+  }
+}
+
+class _BuscadorEstablecimientos extends StatefulWidget {
+  const _BuscadorEstablecimientos({required this.controller});
+
+  final ExplorarController controller;
+
+  @override
+  State<_BuscadorEstablecimientos> createState() =>
+      _BuscadorEstablecimientosState();
+}
+
+class _BuscadorEstablecimientosState
+    extends State<_BuscadorEstablecimientos> {
+  late final TextEditingController _textoController;
+
+  @override
+  void initState() {
+    super.initState();
+    _textoController = TextEditingController(text: widget.controller.busqueda);
+  }
+
+  @override
+  void dispose() {
+    _textoController.dispose();
+    super.dispose();
+  }
+
+  void _limpiar() {
+    _textoController.clear();
+    widget.controller.limpiarBusqueda();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return TextField(
+      key: const Key('buscador-establecimientos'),
+      controller: _textoController,
+      textInputAction: TextInputAction.search,
+      onChanged: widget.controller.cambiarBusqueda,
+      onSubmitted: (_) => widget.controller.buscar(),
+      decoration: InputDecoration(
+        hintText: 'Buscar lugares cerca de ti',
+        prefixIcon: const Icon(Icons.search),
+        suffixIcon: ValueListenableBuilder<TextEditingValue>(
+          valueListenable: _textoController,
+          builder: (context, valor, _) {
+            if (valor.text.isEmpty) {
+              return const SizedBox.shrink();
+            }
+            return IconButton(
+              key: const Key('limpiar-busqueda'),
+              tooltip: 'Limpiar búsqueda',
+              onPressed: _limpiar,
+              icon: const Icon(Icons.close),
+            );
+          },
+        ),
+        filled: true,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: BorderSide.none,
+        ),
+      ),
+    );
   }
 }
 
