@@ -116,6 +116,8 @@ select throws_ok(
       '20000000-0000-0000-0000-000000000001',
       'reclamar', 'Segunda solicitud pendiente duplicada.'
     )$$,
+  '23505',
+  'duplicate key value violates unique constraint "solicitud_pendiente_unica"',
   'el indice impide solicitudes pendientes duplicadas'
 );
 
