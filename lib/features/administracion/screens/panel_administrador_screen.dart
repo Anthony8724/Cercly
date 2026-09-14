@@ -297,6 +297,43 @@ class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
     );
   }
 
+  Widget _marcaCercly() {
+    return const Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(Icons.location_on_rounded, color: _azulOscuro, size: 34),
+        SizedBox(width: 3),
+        Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Cercly',
+              style: TextStyle(
+                color: _azulOscuro,
+                fontSize: 24,
+                height: 0.95,
+                fontWeight: FontWeight.w900,
+                letterSpacing: -0.9,
+              ),
+            ),
+            SizedBox(height: 3),
+            Text(
+              'Descubre lo que te rodea',
+              style: TextStyle(
+                color: _azulOscuro,
+                fontSize: 6.5,
+                height: 1,
+                fontWeight: FontWeight.w700,
+                letterSpacing: -0.1,
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
   Widget _cabecera(String correo) {
     return Container(
       decoration: const BoxDecoration(
@@ -304,10 +341,10 @@ class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            Color(0xFF0C3D91),
-            Color(0xFF2468D8),
-            Color(0xFF65A8ED),
             Color(0xFFB9E7FA),
+            Color(0xFF65A8ED),
+            Color(0xFF2468D8),
+            Color(0xFF0C3D91),
           ],
           stops: [0, 0.37, 0.74, 1],
         ),
@@ -342,34 +379,7 @@ class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
                       Expanded(
                         child: Align(
                           alignment: Alignment.centerLeft,
-                          child: Container(
-                            constraints: const BoxConstraints(maxWidth: 162),
-                            height: 50,
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 11,
-                              vertical: 7,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.98),
-                              borderRadius: BorderRadius.circular(15),
-                              border: Border.all(
-                                color: Colors.white.withValues(alpha: 0.88),
-                              ),
-                              boxShadow: const [
-                                BoxShadow(
-                                  color: Color(0x26071F48),
-                                  blurRadius: 16,
-                                  offset: Offset(0, 5),
-                                ),
-                              ],
-                            ),
-                            child: Image.asset(
-                              'assets/branding/cercly_logo.webp',
-                              fit: BoxFit.contain,
-                              alignment: Alignment.centerLeft,
-                              filterQuality: FilterQuality.high,
-                            ),
-                          ),
+                          child: _marcaCercly(),
                         ),
                       ),
                       _accionCabecera(
@@ -391,7 +401,7 @@ class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
                     style: TextStyle(
                       fontSize: 25,
                       fontWeight: FontWeight.w900,
-                      color: Colors.white,
+                      color: _azulOscuro,
                       height: 1.05,
                       letterSpacing: -0.8,
                     ),
@@ -402,7 +412,7 @@ class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
                     style: TextStyle(
                       fontSize: 13,
                       height: 1.25,
-                      color: Colors.white.withValues(alpha: 0.84),
+                      color: _azulOscuro.withValues(alpha: 0.74),
                     ),
                   ),
                   const SizedBox(height: 12),
