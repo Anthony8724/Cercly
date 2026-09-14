@@ -8,9 +8,18 @@ import '../models/promocion_model.dart';
 import '../services/promocion_service.dart';
 
 class RegistroPromocionScreen extends StatefulWidget {
-  const RegistroPromocionScreen({required this.establecimiento, super.key});
+  const RegistroPromocionScreen({
+    required this.establecimiento,
+    this.promocion,
+    this.urlImagenActual,
+    super.key,
+  });
 
   final EstablecimientoModel establecimiento;
+  final PromocionModel? promocion;
+  final String? urlImagenActual;
+
+  bool get editando => promocion != null;
 
   @override
   State<RegistroPromocionScreen> createState() =>
@@ -24,22 +33,35 @@ class _RegistroPromocionScreenState extends State<RegistroPromocionScreen> {
 
   final _tituloController = TextEditingController();
   final _descripcionController = TextEditingController();
-  final _radioController = TextEditingController(text: '100');
+  final _radioController = TextEditingController();
 
   late DateTime _fechaInicio;
   late DateTime _fechaFin;
 
   XFile? _imagen;
   Uint8List? _imagenBytes;
+  bool _eliminarImagenActual = false;
   bool _guardando = false;
 
   @override
   void initState() {
     super.initState();
 
+    final existente = widget.promocion;
     final ahora = DateTime.now();
-    _fechaInicio = ahora;
-    _fechaFin = ahora.add(const Duration(days: 7));
+
+    if (existente == null) {
+      _fechaInicio = ahora;
+      _fechaFin = ahora.add(const Duration(days: 7));
+      _radioController.text = '100';
+      return;
+    }
+
+    _tituloController.text = existente.titulo;
+    _descripcionController.text = existente.descripcion;
+    _radioController.text = existente.radioAlertaMetros.toString();
+    _fechaInicio = existente.fechaInicio;
+    _fechaFin = existente.fechaFin;
   }
 
   @override
@@ -61,7 +83,7 @@ class _RegistroPromocionScreenState extends State<RegistroPromocionScreen> {
     final fecha = await showDatePicker(
       context: context,
       initialDate: _fechaInicio,
-      firstDate: DateTime.now().subtract(const Duration(days: 1)),
+      firstDate: DateTime.now().subtract(const Duration(days: 730)),
       lastDate: DateTime.now().add(const Duration(days: 730)),
     );
 
@@ -74,8 +96,8 @@ class _RegistroPromocionScreenState extends State<RegistroPromocionScreen> {
         fecha.year,
         fecha.month,
         fecha.day,
-        DateTime.now().hour,
-        DateTime.now().minute,
+        _fechaInicio.hour,
+        _fechaInicio.minute,
       );
 
       if (!_fechaFin.isAfter(_fechaInicio)) {
@@ -128,6 +150,7 @@ class _RegistroPromocionScreenState extends State<RegistroPromocionScreen> {
     setState(() {
       _imagen = imagen;
       _imagenBytes = bytes;
+      _eliminarImagenActual = false;
     });
   }
 
@@ -146,31 +169,51 @@ class _RegistroPromocionScreenState extends State<RegistroPromocionScreen> {
     });
 
     try {
+      final existente = widget.promocion;
       final promocion = PromocionModel(
-        id: '',
+        id: existente?.id ?? '',
         establecimientoId: widget.establecimiento.id,
         titulo: _tituloController.text,
         descripcion: _descripcionController.text,
+        imagenRutaStorage: existente?.imagenRutaStorage,
         fechaInicio: _fechaInicio,
         fechaFin: _fechaFin,
         radioAlertaMetros: int.parse(_radioController.text.trim()),
-        activa: true,
+        activa: existente?.activa ?? true,
+        creadoEn: existente?.creadoEn,
+        actualizadoEn: existente?.actualizadoEn,
       );
 
-      await _service.crear(promocion: promocion, imagen: _imagen);
+      if (existente == null) {
+        await _service.crear(promocion: promocion, imagen: _imagen);
+      } else {
+        await _service.actualizar(
+          promocion: promocion,
+          imagenNueva: _imagen,
+          eliminarImagenActual: _eliminarImagenActual,
+        );
+      }
 
       if (!mounted) {
         return;
       }
 
-      _mostrarMensaje('Promoción creada correctamente.');
+      _mostrarMensaje(
+        existente == null
+            ? 'Promoción creada correctamente.'
+            : 'Promoción actualizada correctamente.',
+      );
       Navigator.of(context).pop(true);
     } catch (error) {
       if (!mounted) {
         return;
       }
 
-      _mostrarMensaje('No se pudo crear la promoción: $error');
+      _mostrarMensaje(
+        widget.editando
+            ? 'No se pudo actualizar la promoción: $error'
+            : 'No se pudo crear la promoción: $error',
+      );
     } finally {
       if (mounted) {
         setState(() {
@@ -180,15 +223,32 @@ class _RegistroPromocionScreenState extends State<RegistroPromocionScreen> {
     }
   }
 
+  void _quitarImagen() {
+    setState(() {
+      _imagen = null;
+      _imagenBytes = null;
+      _eliminarImagenActual = true;
+    });
+  }
+
   void _mostrarMensaje(String mensaje) {
     ScaffoldMessenger.of(context)
         .showSnackBar(SnackBar(content: Text(mensaje)));
   }
 
+  bool get _mostrarImagenActual {
+    return !_eliminarImagenActual &&
+        _imagenBytes == null &&
+        widget.urlImagenActual != null &&
+        widget.urlImagenActual!.isNotEmpty;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Nueva promoción')),
+      appBar: AppBar(
+        title: Text(widget.editando ? 'Editar promoción' : 'Nueva promoción'),
+      ),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(20),
@@ -203,12 +263,14 @@ class _RegistroPromocionScreenState extends State<RegistroPromocionScreen> {
                       ?.copyWith(fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 8),
-                const Text(
-                  'Crea una promoción que posteriormente será '
-                  'visible para los clientes de Cercly.',
+                Text(
+                  widget.editando
+                      ? 'Actualiza los datos de esta promoción.'
+                      : 'Crea una promoción que posteriormente será visible para los clientes de Cercly.',
                 ),
                 const SizedBox(height: 24),
                 TextFormField(
+                  key: const Key('promocion-titulo'),
                   controller: _tituloController,
                   decoration: const InputDecoration(
                     labelText: 'Título',
@@ -229,6 +291,7 @@ class _RegistroPromocionScreenState extends State<RegistroPromocionScreen> {
                 ),
                 const SizedBox(height: 12),
                 TextFormField(
+                  key: const Key('promocion-descripcion'),
                   controller: _descripcionController,
                   decoration: const InputDecoration(
                     labelText: 'Descripción',
@@ -240,6 +303,7 @@ class _RegistroPromocionScreenState extends State<RegistroPromocionScreen> {
                 ),
                 const SizedBox(height: 12),
                 TextFormField(
+                  key: const Key('promocion-radio'),
                   controller: _radioController,
                   decoration: const InputDecoration(
                     labelText: 'Radio de alerta en metros',
@@ -285,13 +349,7 @@ class _RegistroPromocionScreenState extends State<RegistroPromocionScreen> {
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 12),
-                if (_imagenBytes == null)
-                  OutlinedButton.icon(
-                    onPressed: _guardando ? null : _seleccionarImagen,
-                    icon: const Icon(Icons.add_photo_alternate),
-                    label: const Text('Seleccionar imagen'),
-                  )
-                else ...[
+                if (_imagenBytes != null) ...[
                   ClipRRect(
                     borderRadius: BorderRadius.circular(16),
                     child: Image.memory(
@@ -301,33 +359,39 @@ class _RegistroPromocionScreenState extends State<RegistroPromocionScreen> {
                     ),
                   ),
                   const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: OutlinedButton.icon(
-                          onPressed: _guardando ? null : _seleccionarImagen,
-                          icon: const Icon(Icons.swap_horiz),
-                          label: const Text('Cambiar'),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      IconButton(
-                        onPressed: _guardando
-                            ? null
-                            : () {
-                                setState(() {
-                                  _imagen = null;
-                                  _imagenBytes = null;
-                                });
-                              },
-                        tooltip: 'Quitar imagen',
-                        icon: const Icon(Icons.delete_outline),
-                      ),
-                    ],
+                  _AccionesImagen(
+                    guardando: _guardando,
+                    onCambiar: _seleccionarImagen,
+                    onQuitar: _quitarImagen,
                   ),
-                ],
+                ] else if (_mostrarImagenActual) ...[
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(16),
+                    child: Image.network(
+                      widget.urlImagenActual!,
+                      height: 220,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, _, _) => const SizedBox(
+                        height: 120,
+                        child: Center(child: Icon(Icons.broken_image, size: 42)),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  _AccionesImagen(
+                    guardando: _guardando,
+                    onCambiar: _seleccionarImagen,
+                    onQuitar: _quitarImagen,
+                  ),
+                ] else
+                  OutlinedButton.icon(
+                    onPressed: _guardando ? null : _seleccionarImagen,
+                    icon: const Icon(Icons.add_photo_alternate),
+                    label: const Text('Seleccionar imagen'),
+                  ),
                 const SizedBox(height: 24),
                 FilledButton.icon(
+                  key: const Key('guardar-promocion'),
                   onPressed: _guardando ? null : _guardar,
                   icon: _guardando
                       ? const SizedBox(
@@ -336,13 +400,52 @@ class _RegistroPromocionScreenState extends State<RegistroPromocionScreen> {
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
                       : const Icon(Icons.save),
-                  label: Text(_guardando ? 'Guardando...' : 'Crear promoción'),
+                  label: Text(
+                    _guardando
+                        ? 'Guardando...'
+                        : widget.editando
+                        ? 'Guardar cambios'
+                        : 'Crear promoción',
+                  ),
                 ),
               ],
             ),
           ),
         ),
       ),
+    );
+  }
+}
+
+class _AccionesImagen extends StatelessWidget {
+  const _AccionesImagen({
+    required this.guardando,
+    required this.onCambiar,
+    required this.onQuitar,
+  });
+
+  final bool guardando;
+  final VoidCallback onCambiar;
+  final VoidCallback onQuitar;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: OutlinedButton.icon(
+            onPressed: guardando ? null : onCambiar,
+            icon: const Icon(Icons.swap_horiz),
+            label: const Text('Cambiar'),
+          ),
+        ),
+        const SizedBox(width: 8),
+        IconButton(
+          onPressed: guardando ? null : onQuitar,
+          tooltip: 'Quitar imagen',
+          icon: const Icon(Icons.delete_outline),
+        ),
+      ],
     );
   }
 }
