@@ -282,15 +282,15 @@ class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
     return Tooltip(
       message: tooltip,
       child: Material(
-        color: Colors.white.withValues(alpha: 0.94),
-        borderRadius: BorderRadius.circular(15),
+        color: Colors.white.withValues(alpha: 0.18),
+        borderRadius: BorderRadius.circular(13),
         child: InkWell(
           onTap: onPressed,
-          borderRadius: BorderRadius.circular(15),
+          borderRadius: BorderRadius.circular(13),
           child: SizedBox(
-            width: 44,
-            height: 44,
-            child: Icon(icono, size: 21, color: _azulOscuro),
+            width: 40,
+            height: 40,
+            child: Icon(icono, size: 20, color: Colors.white),
           ),
         ),
       ),
@@ -304,12 +304,12 @@ class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            Color(0xFFEFF8FF),
-            Color(0xFFCFE4FF),
-            Color(0xFF89B6F5),
-            Color(0xFF3977D3),
+            Color(0xFF0C3D91),
+            Color(0xFF2468D8),
+            Color(0xFF65A8ED),
+            Color(0xFFB9E7FA),
           ],
-          stops: [0, 0.36, 0.73, 1],
+          stops: [0, 0.37, 0.74, 1],
         ),
         borderRadius: BorderRadius.vertical(bottom: Radius.circular(30)),
       ),
@@ -332,7 +332,7 @@ class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
           SafeArea(
             bottom: false,
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 17),
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
@@ -343,23 +343,23 @@ class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
                         child: Align(
                           alignment: Alignment.centerLeft,
                           child: Container(
-                            constraints: const BoxConstraints(maxWidth: 154),
-                            height: 48,
+                            constraints: const BoxConstraints(maxWidth: 162),
+                            height: 50,
                             padding: const EdgeInsets.symmetric(
                               horizontal: 11,
                               vertical: 7,
                             ),
                             decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.96),
+                              color: Colors.white.withValues(alpha: 0.98),
                               borderRadius: BorderRadius.circular(15),
                               border: Border.all(
                                 color: Colors.white.withValues(alpha: 0.88),
                               ),
                               boxShadow: const [
                                 BoxShadow(
-                                  color: Color(0x180F2B5B),
-                                  blurRadius: 14,
-                                  offset: Offset(0, 4),
+                                  color: Color(0x26071F48),
+                                  blurRadius: 16,
+                                  offset: Offset(0, 5),
                                 ),
                               ],
                             ),
@@ -391,7 +391,7 @@ class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
                     style: TextStyle(
                       fontSize: 25,
                       fontWeight: FontWeight.w900,
-                      color: _azulOscuro,
+                      color: Colors.white,
                       height: 1.05,
                       letterSpacing: -0.8,
                     ),
@@ -402,7 +402,7 @@ class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
                     style: TextStyle(
                       fontSize: 13,
                       height: 1.25,
-                      color: _azulOscuro.withValues(alpha: 0.72),
+                      color: Colors.white.withValues(alpha: 0.84),
                     ),
                   ),
                   const SizedBox(height: 12),
@@ -413,16 +413,16 @@ class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
                       vertical: 10,
                     ),
                     decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.92),
+                      color: Colors.white.withValues(alpha: 0.96),
                       borderRadius: BorderRadius.circular(17),
                       border: Border.all(
                         color: Colors.white.withValues(alpha: 0.78),
                       ),
                       boxShadow: const [
                         BoxShadow(
-                          color: Color(0x120F2B5B),
-                          blurRadius: 14,
-                          offset: Offset(0, 5),
+                          color: Color(0x24071F48),
+                          blurRadius: 18,
+                          offset: Offset(0, 6),
                         ),
                       ],
                     ),
@@ -523,13 +523,14 @@ class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
       return Expanded(
         child: InkWell(
           onTap: () => setState(() => _estadoSeleccionado = estado),
-          borderRadius: BorderRadius.circular(17),
+          borderRadius: BorderRadius.circular(15),
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 180),
-            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 11),
+            height: 46,
+            padding: const EdgeInsets.symmetric(horizontal: 8),
             decoration: BoxDecoration(
               color: seleccionado ? _azul : Colors.white,
-              borderRadius: BorderRadius.circular(17),
+              borderRadius: BorderRadius.circular(15),
               border: Border.all(color: seleccionado ? _azul : _borde),
               boxShadow: seleccionado
                   ? [
@@ -541,53 +542,50 @@ class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
                     ]
                   : null,
             ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      icono,
-                      size: 15,
-                      color: seleccionado ? Colors.white : _azulOscuro,
-                    ),
-                    const SizedBox(width: 5),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 6,
-                        vertical: 2,
-                      ),
-                      decoration: BoxDecoration(
-                        color: seleccionado
-                            ? Colors.white
-                            : const Color(0xFFF0F5FD),
-                        borderRadius: BorderRadius.circular(99),
-                      ),
-                      child: Text(
-                        '$cantidad',
-                        style: const TextStyle(
-                          color: _azul,
-                          fontSize: 10,
-                          fontWeight: FontWeight.w900,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 5),
-                FittedBox(
-                  fit: BoxFit.scaleDown,
-                  child: Text(
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    icono,
+                    size: 14,
+                    color: seleccionado ? Colors.white : _azulOscuro,
+                  ),
+                  const SizedBox(width: 5),
+                  Text(
                     texto,
                     style: TextStyle(
                       color: seleccionado ? Colors.white : _azulOscuro,
-                      fontSize: 11,
+                      fontSize: 10.5,
                       fontWeight: FontWeight.w800,
                     ),
                   ),
-                ),
-              ],
+                  const SizedBox(width: 5),
+                  Container(
+                    constraints: const BoxConstraints(minWidth: 20),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 5,
+                      vertical: 2,
+                    ),
+                    decoration: BoxDecoration(
+                      color: seleccionado
+                          ? Colors.white
+                          : const Color(0xFFF0F5FD),
+                      borderRadius: BorderRadius.circular(99),
+                    ),
+                    child: Text(
+                      '$cantidad',
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        color: _azul,
+                        fontSize: 9.5,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -606,36 +604,48 @@ class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
   }
 
   Widget _buscador() {
-    return TextField(
-      controller: _busquedaController,
-      onChanged: (valor) => setState(() => _busqueda = valor.trim()),
-      decoration: InputDecoration(
-        hintText: 'Buscar establecimiento...',
-        hintStyle: const TextStyle(color: Color(0xFF8091AC)),
-        prefixIcon: const Icon(Icons.search_rounded),
-        suffixIcon: _busqueda.isEmpty
-            ? null
-            : IconButton(
-                onPressed: () {
-                  _busquedaController.clear();
-                  setState(() => _busqueda = '');
-                },
-                icon: const Icon(Icons.close_rounded),
-              ),
-        filled: true,
-        fillColor: Colors.white,
-        contentPadding: const EdgeInsets.symmetric(vertical: 15),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(17),
-          borderSide: const BorderSide(color: _borde),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(17),
-          borderSide: const BorderSide(color: _borde),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(17),
-          borderSide: const BorderSide(color: _azul, width: 1.4),
+    return Container(
+      decoration: const BoxDecoration(
+        borderRadius: BorderRadius.all(Radius.circular(17)),
+        boxShadow: [
+          BoxShadow(
+            color: Color(0x0D102A56),
+            blurRadius: 14,
+            offset: Offset(0, 5),
+          ),
+        ],
+      ),
+      child: TextField(
+        controller: _busquedaController,
+        onChanged: (valor) => setState(() => _busqueda = valor.trim()),
+        decoration: InputDecoration(
+          hintText: 'Buscar establecimiento...',
+          hintStyle: const TextStyle(color: Color(0xFF8091AC)),
+          prefixIcon: const Icon(Icons.search_rounded),
+          suffixIcon: _busqueda.isEmpty
+              ? null
+              : IconButton(
+                  onPressed: () {
+                    _busquedaController.clear();
+                    setState(() => _busqueda = '');
+                  },
+                  icon: const Icon(Icons.close_rounded),
+                ),
+          filled: true,
+          fillColor: Colors.white,
+          contentPadding: const EdgeInsets.symmetric(vertical: 14),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(17),
+            borderSide: const BorderSide(color: _borde),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(17),
+            borderSide: const BorderSide(color: _borde),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(17),
+            borderSide: const BorderSide(color: _azul, width: 1.4),
+          ),
         ),
       ),
     );
