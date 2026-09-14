@@ -64,6 +64,16 @@ class PromocionModel {
     };
   }
 
+  Map<String, dynamic> toSupabaseParaActualizar() {
+    return {
+      'titulo': titulo.trim(),
+      'descripcion': descripcion.trim(),
+      'fecha_inicio': fechaInicio.toUtc().toIso8601String(),
+      'fecha_fin': fechaFin.toUtc().toIso8601String(),
+      'radio_alerta_metros': radioAlertaMetros,
+    };
+  }
+
   factory PromocionModel.fromSupabase(Map<String, dynamic> datos) {
     return PromocionModel(
       id: datos['id'] as String,
