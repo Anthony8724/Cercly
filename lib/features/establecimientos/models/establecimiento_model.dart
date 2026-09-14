@@ -78,6 +78,16 @@ class EstablecimientoModel {
     };
   }
 
+  Map<String, dynamic> toSupabaseParaActualizarInformacion() {
+    return {
+      'nombre': nombre.trim(),
+      'descripcion': descripcion.trim(),
+      'direccion': direccion.trim(),
+      'telefono_publico': telefonoPublico.trim(),
+      if (estado == 'aprobado') 'estado': 'pendiente',
+    };
+  }
+
   List<Map<String, dynamic>> horariosParaSupabase(String establecimientoId) {
     final filas = <Map<String, dynamic>>[];
 

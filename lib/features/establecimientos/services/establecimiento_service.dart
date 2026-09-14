@@ -110,6 +110,21 @@ class EstablecimientoService {
     return respuesta != null;
   }
 
+  Future<bool> puedeGestionar(String establecimientoId) async {
+    final usuario = _supabase.auth.currentUser;
+
+    if (usuario == null) {
+      return false;
+    }
+
+    final respuesta = await _supabase.rpc(
+      'puede_gestionar_establecimiento',
+      params: {'p_establecimiento_id': establecimientoId},
+    );
+
+    return respuesta == true;
+  }
+
   Future<List<EstablecimientoModel>> listarEstablecimientosPendientes() async {
     final respuesta = await _supabase
         .from('establecimientos')
@@ -201,6 +216,31 @@ class EstablecimientoService {
 
       rethrow;
     }
+  }
+
+  Future<void> actualizarInformacion(EstablecimientoModel establecimiento) async {
+    final usuario = _supabase.auth.currentUser;
+
+    if (usuario == null) {
+      throw StateError('Debes iniciar sesión.');
+    }
+
+    if (establecimiento.id.trim().isEmpty) {
+      throw ArgumentError('El establecimiento no tiene un identificador válido.');
+    }
+
+    final tienePermiso = await puedeGestionar(establecimiento.id);
+
+    if (!tienePermiso) {
+      throw StateError(
+        'No tienes permiso para editar la información de este establecimiento.',
+      );
+    }
+
+    await _supabase
+        .from('establecimientos')
+        .update(establecimiento.toSupabaseParaActualizarInformacion())
+        .eq('id', establecimiento.id);
   }
 
   Future<EstablecimientoModel?> obtenerPorId(String id) async {
