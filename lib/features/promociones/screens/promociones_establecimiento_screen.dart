@@ -67,6 +67,22 @@ class _PromocionesEstablecimientoScreenState
     }
   }
 
+  Future<void> _abrirEdicion(_PromocionVista vista) async {
+    final actualizada = await Navigator.of(context).push<bool>(
+      MaterialPageRoute<bool>(
+        builder: (_) => RegistroPromocionScreen(
+          establecimiento: widget.establecimiento,
+          promocion: vista.promocion,
+          urlImagenActual: vista.urlImagen,
+        ),
+      ),
+    );
+
+    if (actualizada == true && mounted) {
+      setState(_cargar);
+    }
+  }
+
   Future<void> _cambiarEstado(PromocionModel promocion, bool activa) async {
     if (_procesando) {
       return;
@@ -317,6 +333,14 @@ class _PromocionesEstablecimientoScreenState
                                                 );
                                               },
                                       ),
+                                    ),
+                                    IconButton(
+                                      key: Key('editar-promocion-${promocion.id}'),
+                                      onPressed: _procesando
+                                          ? null
+                                          : () => _abrirEdicion(vista),
+                                      tooltip: 'Editar',
+                                      icon: const Icon(Icons.edit_outlined),
                                     ),
                                     IconButton(
                                       onPressed: _procesando
