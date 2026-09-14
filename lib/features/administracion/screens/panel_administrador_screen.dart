@@ -17,14 +17,14 @@ class PanelAdministradorScreen extends StatefulWidget {
 
 class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
   static const _azul = Color(0xFF1769FF);
-  static const _azulOscuro = Color(0xFF0E2C63);
-  static const _fondo = Color(0xFFF6F9FF);
+  static const _azulOscuro = Color(0xFF102A56);
+  static const _fondo = Color(0xFFF5F8FE);
+  static const _borde = Color(0xFFE2E9F5);
 
   final EstablecimientoService _service = EstablecimientoService();
   final TextEditingController _busquedaController = TextEditingController();
 
   late Future<List<EstablecimientoModel>> _establecimientosFuture;
-
   String _estadoSeleccionado = 'pendiente';
   String _busqueda = '';
   String? _establecimientoProcesando;
@@ -75,35 +75,30 @@ class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
 
     final confirmar = await showDialog<bool>(
       context: context,
-      builder: (dialogContext) {
-        return AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(24),
+      builder: (dialogContext) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        title: Text(
+          esAprobacion
+              ? 'Aprobar establecimiento'
+              : 'Rechazar establecimiento',
+        ),
+        content: Text(
+          '¿Deseas $accion el establecimiento "${establecimiento.nombre}"?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Cancelar'),
           ),
-          title: Text(
-            esAprobacion
-                ? 'Aprobar establecimiento'
-                : 'Rechazar establecimiento',
-          ),
-          content: Text(
-            '¿Deseas $accion el establecimiento '
-            '"${establecimiento.nombre}"?',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(false),
-              child: const Text('Cancelar'),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            style: FilledButton.styleFrom(
+              backgroundColor: esAprobacion ? _azul : const Color(0xFFE5484D),
             ),
-            FilledButton(
-              onPressed: () => Navigator.of(dialogContext).pop(true),
-              style: FilledButton.styleFrom(
-                backgroundColor: esAprobacion ? _azul : const Color(0xFFE84C4C),
-              ),
-              child: Text(esAprobacion ? 'Aprobar' : 'Rechazar'),
-            ),
-          ],
-        );
-      },
+            child: Text(esAprobacion ? 'Aprobar' : 'Rechazar'),
+          ),
+        ],
+      ),
     );
 
     if (confirmar != true || !mounted) return;
@@ -134,9 +129,7 @@ class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
       );
     } catch (error) {
       if (!mounted) return;
-
       setState(() => _establecimientoProcesando = null);
-
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('No se pudo actualizar: $error'),
@@ -144,120 +137,6 @@ class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
         ),
       );
     }
-  }
-
-  void _mostrarDetalles(EstablecimientoModel establecimiento) {
-    showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (bottomSheetContext) {
-        return Container(
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-          ),
-          child: SafeArea(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(24),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Center(
-                    child: Container(
-                      width: 44,
-                      height: 5,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFD9E2F3),
-                        borderRadius: BorderRadius.circular(99),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  Row(
-                    children: [
-                      Container(
-                        width: 58,
-                        height: 58,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFEAF2FF),
-                          borderRadius: BorderRadius.circular(18),
-                        ),
-                        child: const Icon(
-                          Icons.storefront_rounded,
-                          size: 30,
-                          color: _azul,
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: Text(
-                          establecimiento.nombre,
-                          style: Theme.of(context).textTheme.headlineSmall
-                              ?.copyWith(
-                                fontWeight: FontWeight.w800,
-                                color: _azulOscuro,
-                              ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 24),
-                  _Detalle(
-                    etiqueta: 'Descripción',
-                    valor: establecimiento.descripcion.isEmpty
-                        ? 'Sin descripción'
-                        : establecimiento.descripcion,
-                  ),
-                  _Detalle(
-                    etiqueta: 'Dirección',
-                    valor: establecimiento.direccion,
-                  ),
-                  _Detalle(
-                    etiqueta: 'Teléfono',
-                    valor: establecimiento.telefonoPublico.isEmpty
-                        ? 'Sin teléfono'
-                        : establecimiento.telefonoPublico,
-                  ),
-                  _Detalle(
-                    etiqueta: 'Categoría',
-                    valor: establecimiento.categoriaId,
-                  ),
-                  _Detalle(
-                    etiqueta: 'Ubicación',
-                    valor:
-                        '${establecimiento.latitud}, ${establecimiento.longitud}',
-                  ),
-                  _Detalle(
-                    etiqueta: 'Zona horaria',
-                    valor: establecimiento.zonaHoraria,
-                  ),
-                  _Detalle(
-                    etiqueta: 'Estado',
-                    valor: _nombreEstado(establecimiento.estado),
-                  ),
-                  const SizedBox(height: 8),
-                  SizedBox(
-                    width: double.infinity,
-                    child: FilledButton(
-                      onPressed: () => Navigator.of(bottomSheetContext).pop(),
-                      style: FilledButton.styleFrom(
-                        backgroundColor: _azul,
-                        padding: const EdgeInsets.symmetric(vertical: 15),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                      ),
-                      child: const Text('Cerrar'),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        );
-      },
-    );
   }
 
   String _nombreEstado(String estado) {
@@ -274,22 +153,22 @@ class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
   Color _colorEstado(String estado) {
     switch (estado) {
       case 'aprobado':
-        return const Color(0xFF20A464);
+        return const Color(0xFF168A54);
       case 'rechazado':
-        return const Color(0xFFE84C4C);
+        return const Color(0xFFE5484D);
       default:
-        return const Color(0xFFF59E0B);
+        return const Color(0xFFE99908);
     }
   }
 
   Color _fondoEstado(String estado) {
     switch (estado) {
       case 'aprobado':
-        return const Color(0xFFE9F8F0);
+        return const Color(0xFFE9F7F0);
       case 'rechazado':
         return const Color(0xFFFFEEEE);
       default:
-        return const Color(0xFFFFF6DD);
+        return const Color(0xFFFFF5D9);
     }
   }
 
@@ -304,94 +183,133 @@ class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
     }
   }
 
-  Widget _construirAcciones(EstablecimientoModel establecimiento) {
-    if (_establecimientoProcesando == establecimiento.id) {
-      return const SizedBox(
-        height: 44,
-        width: 44,
-        child: Padding(
-          padding: EdgeInsets.all(10),
-          child: CircularProgressIndicator(strokeWidth: 2.5),
+  void _mostrarDetalles(EstablecimientoModel establecimiento) {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (bottomSheetContext) => Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
         ),
-      );
-    }
-
-    if (establecimiento.estado == 'pendiente') {
-      return Wrap(
-        spacing: 8,
-        runSpacing: 8,
-        alignment: WrapAlignment.end,
-        children: [
-          OutlinedButton.icon(
-            onPressed: () => _cambiarEstado(establecimiento, 'rechazado'),
-            icon: const Icon(Icons.close_rounded, size: 18),
-            label: const Text('Rechazar'),
-            style: OutlinedButton.styleFrom(
-              foregroundColor: const Color(0xFFE84C4C),
-              side: const BorderSide(color: Color(0xFFFFB7B7)),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(14),
-              ),
+        child: SafeArea(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 44,
+                    height: 5,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFD9E2F3),
+                      borderRadius: BorderRadius.circular(99),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 24),
+                Row(
+                  children: [
+                    Container(
+                      width: 58,
+                      height: 58,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFEAF2FF),
+                        borderRadius: BorderRadius.circular(18),
+                      ),
+                      child: const Icon(
+                        Icons.storefront_rounded,
+                        size: 30,
+                        color: _azul,
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Text(
+                        establecimiento.nombre,
+                        style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                              fontWeight: FontWeight.w800,
+                              color: _azulOscuro,
+                            ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 24),
+                _Detalle(
+                  etiqueta: 'Descripción',
+                  valor: establecimiento.descripcion.isEmpty
+                      ? 'Sin descripción'
+                      : establecimiento.descripcion,
+                ),
+                _Detalle(
+                  etiqueta: 'Dirección',
+                  valor: establecimiento.direccion,
+                ),
+                _Detalle(
+                  etiqueta: 'Teléfono',
+                  valor: establecimiento.telefonoPublico.isEmpty
+                      ? 'Sin teléfono'
+                      : establecimiento.telefonoPublico,
+                ),
+                _Detalle(
+                  etiqueta: 'Categoría',
+                  valor: establecimiento.categoriaId,
+                ),
+                _Detalle(
+                  etiqueta: 'Ubicación',
+                  valor: '${establecimiento.latitud}, ${establecimiento.longitud}',
+                ),
+                _Detalle(
+                  etiqueta: 'Zona horaria',
+                  valor: establecimiento.zonaHoraria,
+                ),
+                _Detalle(
+                  etiqueta: 'Estado',
+                  valor: _nombreEstado(establecimiento.estado),
+                ),
+                const SizedBox(height: 8),
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton(
+                    onPressed: () => Navigator.of(bottomSheetContext).pop(),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: _azul,
+                      padding: const EdgeInsets.symmetric(vertical: 15),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                    ),
+                    child: const Text('Cerrar'),
+                  ),
+                ),
+              ],
             ),
           ),
-          FilledButton.icon(
-            onPressed: () => _cambiarEstado(establecimiento, 'aprobado'),
-            icon: const Icon(Icons.check_rounded, size: 18),
-            label: const Text('Aprobar'),
-            style: FilledButton.styleFrom(
-              backgroundColor: _azul,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(14),
-              ),
-            ),
-          ),
-        ],
-      );
-    }
-
-    if (establecimiento.estado == 'aprobado') {
-      return OutlinedButton.icon(
-        onPressed: () => _cambiarEstado(establecimiento, 'rechazado'),
-        icon: const Icon(Icons.block_rounded, size: 18),
-        label: const Text('Cambiar a rechazado'),
-        style: OutlinedButton.styleFrom(
-          foregroundColor: const Color(0xFFE84C4C),
-          side: const BorderSide(color: Color(0xFFFFB7B7)),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
-          ),
         ),
-      );
-    }
-
-    return FilledButton.icon(
-      onPressed: () => _cambiarEstado(establecimiento, 'aprobado'),
-      icon: const Icon(Icons.check_rounded, size: 18),
-      label: const Text('Cambiar a aprobado'),
-      style: FilledButton.styleFrom(
-        backgroundColor: _azul,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       ),
     );
   }
 
-  Widget _botonCabecera({
-    required IconData icono,
+  Widget _iconButton({
+    required IconData icon,
     required String tooltip,
     required VoidCallback onPressed,
   }) {
     return Tooltip(
       message: tooltip,
       child: Material(
-        color: Colors.white.withValues(alpha: 0.9),
-        borderRadius: BorderRadius.circular(16),
+        color: Colors.white.withValues(alpha: 0.92),
+        borderRadius: BorderRadius.circular(15),
         child: InkWell(
           onTap: onPressed,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(15),
           child: SizedBox(
-            width: 48,
-            height: 48,
-            child: Icon(icono, color: _azulOscuro),
+            width: 44,
+            height: 44,
+            child: Icon(icon, size: 22, color: _azulOscuro),
           ),
         ),
       ),
@@ -400,30 +318,28 @@ class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
 
   Widget _cabecera(String correo) {
     return Container(
-      height: 260,
       decoration: const BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [Color(0xFFEAF5FF), Color(0xFFBFD8FF), Color(0xFF174A9A)],
+          colors: [Color(0xFFEAF5FF), Color(0xFFBBD5FF), Color(0xFF2256A5)],
         ),
-        borderRadius: BorderRadius.vertical(bottom: Radius.circular(36)),
+        borderRadius: BorderRadius.vertical(bottom: Radius.circular(32)),
       ),
       child: Stack(
-        fit: StackFit.expand,
         children: [
-          const CustomPaint(painter: _StarPainter()),
+          const Positioned.fill(child: CustomPaint(painter: _StarPainter())),
           Positioned(
-            right: -36,
-            top: 26,
+            right: -42,
+            top: 24,
             child: Container(
-              width: 128,
-              height: 128,
+              width: 132,
+              height: 132,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: Colors.white.withValues(alpha: 0.13),
+                color: Colors.white.withValues(alpha: 0.12),
                 border: Border.all(
-                  color: Colors.white.withValues(alpha: 0.3),
+                  color: Colors.white.withValues(alpha: 0.28),
                 ),
               ),
             ),
@@ -431,33 +347,27 @@ class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
           SafeArea(
             bottom: false,
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 18, 20, 24),
+              padding: const EdgeInsets.fromLTRB(18, 16, 18, 22),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   Row(
                     children: [
                       Container(
-                        width: 48,
-                        height: 48,
+                        width: 44,
+                        height: 44,
                         decoration: BoxDecoration(
                           color: _azul,
-                          borderRadius: BorderRadius.circular(16),
-                          boxShadow: [
-                            BoxShadow(
-                              color: _azul.withValues(alpha: 0.28),
-                              blurRadius: 18,
-                              offset: const Offset(0, 8),
-                            ),
-                          ],
+                          borderRadius: BorderRadius.circular(14),
                         ),
                         child: const Icon(
                           Icons.location_on_rounded,
                           color: Colors.white,
-                          size: 30,
+                          size: 27,
                         ),
                       ),
-                      const SizedBox(width: 12),
+                      const SizedBox(width: 10),
                       const Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -465,81 +375,78 @@ class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
                             Text(
                               'Cercly',
                               style: TextStyle(
-                                fontSize: 31,
+                                fontSize: 27,
                                 fontWeight: FontWeight.w900,
                                 color: _azulOscuro,
-                                letterSpacing: -1,
+                                height: 1,
+                                letterSpacing: -0.7,
                               ),
                             ),
+                            SizedBox(height: 4),
                             Text(
                               'Descubre lo que te rodea',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                               style: TextStyle(
                                 color: Color(0xFF52698F),
-                                fontSize: 13,
+                                fontSize: 11.5,
                               ),
                             ),
                           ],
                         ),
                       ),
-                      _botonCabecera(
-                        icono: Icons.assignment_outlined,
-                        tooltip: 'Solicitudes',
-                        onPressed: _abrirSolicitudes,
-                      ),
-                      const SizedBox(width: 8),
-                      _botonCabecera(
-                        icono: Icons.refresh_rounded,
+                      _iconButton(
+                        icon: Icons.refresh_rounded,
                         tooltip: 'Actualizar',
                         onPressed: _recargar,
                       ),
                       const SizedBox(width: 8),
-                      _botonCabecera(
-                        icono: Icons.logout_rounded,
+                      _iconButton(
+                        icon: Icons.logout_rounded,
                         tooltip: 'Cerrar sesión',
                         onPressed: _cerrarSesion,
                       ),
                     ],
                   ),
-                  const Spacer(),
+                  const SizedBox(height: 24),
                   const Text(
                     'Panel administrativo',
                     style: TextStyle(
-                      fontSize: 30,
-                      height: 1,
+                      fontSize: 27,
                       fontWeight: FontWeight.w900,
                       color: _azulOscuro,
-                      letterSpacing: -0.8,
+                      height: 1.05,
+                      letterSpacing: -0.7,
                     ),
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 7),
                   Text(
                     'Gestión de establecimientos y solicitudes',
                     style: TextStyle(
-                      fontSize: 15,
+                      fontSize: 14,
                       color: _azulOscuro.withValues(alpha: 0.72),
                     ),
                   ),
                   const SizedBox(height: 18),
                   Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 14,
-                      vertical: 10,
-                    ),
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(13),
                     decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.82),
+                      color: Colors.white.withValues(alpha: 0.88),
                       borderRadius: BorderRadius.circular(18),
                       border: Border.all(
-                        color: Colors.white.withValues(alpha: 0.75),
+                        color: Colors.white.withValues(alpha: 0.7),
                       ),
                     ),
                     child: Row(
                       children: [
                         const CircleAvatar(
-                          radius: 18,
+                          radius: 19,
                           backgroundColor: Color(0xFFDDEAFF),
                           child: Icon(
                             Icons.admin_panel_settings_rounded,
                             color: _azul,
+                            size: 22,
                           ),
                         ),
                         const SizedBox(width: 10),
@@ -549,26 +456,31 @@ class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
                             children: [
                               const Text(
                                 'Administrador de Cercly',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                                 style: TextStyle(
                                   fontWeight: FontWeight.w800,
                                   color: _azulOscuro,
+                                  fontSize: 13.5,
                                 ),
                               ),
+                              const SizedBox(height: 2),
                               Text(
                                 correo,
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: const TextStyle(
                                   color: Color(0xFF6B7D9B),
-                                  fontSize: 12,
+                                  fontSize: 11.5,
                                 ),
                               ),
                             ],
                           ),
                         ),
+                        const SizedBox(width: 8),
                         Container(
                           padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
+                            horizontal: 9,
                             vertical: 6,
                           ),
                           decoration: BoxDecoration(
@@ -576,19 +488,20 @@ class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
                             borderRadius: BorderRadius.circular(99),
                           ),
                           child: const Row(
+                            mainAxisSize: MainAxisSize.min,
                             children: [
                               Icon(
                                 Icons.verified_user_rounded,
-                                size: 16,
+                                size: 14,
                                 color: _azul,
                               ),
-                              SizedBox(width: 5),
+                              SizedBox(width: 4),
                               Text(
-                                'Administrador',
+                                'Admin',
                                 style: TextStyle(
                                   color: _azul,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w700,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w800,
                                 ),
                               ),
                             ],
@@ -611,58 +524,49 @@ class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
 
     Widget opcion(String estado, String texto, IconData icono) {
       final seleccionado = _estadoSeleccionado == estado;
-      final cantidad = contar(estado);
-
-      return Expanded(
+      return Material(
+        color: Colors.transparent,
         child: InkWell(
           onTap: () => setState(() => _estadoSeleccionado = estado),
-          borderRadius: BorderRadius.circular(18),
+          borderRadius: BorderRadius.circular(16),
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 180),
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 14),
+            constraints: const BoxConstraints(minWidth: 124),
+            padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 12),
             decoration: BoxDecoration(
               color: seleccionado ? _azul : Colors.white,
-              borderRadius: BorderRadius.circular(18),
-              border: Border.all(
-                color: seleccionado
-                    ? _azul
-                    : const Color(0xFFDCE5F3),
-              ),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: seleccionado ? _azul : _borde),
               boxShadow: seleccionado
                   ? [
                       BoxShadow(
-                        color: _azul.withValues(alpha: 0.22),
-                        blurRadius: 18,
-                        offset: const Offset(0, 7),
+                        color: _azul.withValues(alpha: 0.18),
+                        blurRadius: 14,
+                        offset: const Offset(0, 5),
                       ),
                     ]
                   : null,
             ),
             child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisSize: MainAxisSize.min,
               children: [
                 Icon(
                   icono,
-                  size: 18,
+                  size: 17,
                   color: seleccionado ? Colors.white : _azulOscuro,
                 ),
                 const SizedBox(width: 7),
-                Flexible(
-                  child: Text(
-                    texto,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: seleccionado ? Colors.white : _azulOscuro,
-                      fontWeight: FontWeight.w700,
-                    ),
+                Text(
+                  texto,
+                  style: TextStyle(
+                    color: seleccionado ? Colors.white : _azulOscuro,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 12.5,
                   ),
                 ),
-                const SizedBox(width: 7),
+                const SizedBox(width: 8),
                 Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 7,
-                    vertical: 3,
-                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
                   decoration: BoxDecoration(
                     color: seleccionado
                         ? Colors.white
@@ -670,11 +574,11 @@ class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
                     borderRadius: BorderRadius.circular(99),
                   ),
                   child: Text(
-                    '$cantidad',
-                    style: TextStyle(
+                    '${contar(estado)}',
+                    style: const TextStyle(
                       color: _azul,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w800,
+                      fontSize: 10.5,
+                      fontWeight: FontWeight.w900,
                     ),
                   ),
                 ),
@@ -685,14 +589,18 @@ class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
       );
     }
 
-    return Row(
-      children: [
-        opcion('pendiente', 'Pendientes', Icons.schedule_rounded),
-        const SizedBox(width: 8),
-        opcion('aprobado', 'Aprobados', Icons.check_circle_outline_rounded),
-        const SizedBox(width: 8),
-        opcion('rechazado', 'Rechazados', Icons.cancel_outlined),
-      ],
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      clipBehavior: Clip.none,
+      child: Row(
+        children: [
+          opcion('pendiente', 'Pendientes', Icons.schedule_rounded),
+          const SizedBox(width: 9),
+          opcion('aprobado', 'Aprobados', Icons.check_circle_outline_rounded),
+          const SizedBox(width: 9),
+          opcion('rechazado', 'Rechazados', Icons.cancel_outlined),
+        ],
+      ),
     );
   }
 
@@ -702,6 +610,7 @@ class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
       onChanged: (valor) => setState(() => _busqueda = valor.trim()),
       decoration: InputDecoration(
         hintText: 'Buscar establecimiento...',
+        hintStyle: const TextStyle(color: Color(0xFF8091AC)),
         prefixIcon: const Icon(Icons.search_rounded),
         suffixIcon: _busqueda.isEmpty
             ? null
@@ -714,20 +623,99 @@ class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
               ),
         filled: true,
         fillColor: Colors.white,
-        contentPadding: const EdgeInsets.symmetric(vertical: 16),
+        contentPadding: const EdgeInsets.symmetric(vertical: 15),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(18),
-          borderSide: const BorderSide(color: Color(0xFFDCE5F3)),
+          borderRadius: BorderRadius.circular(17),
+          borderSide: const BorderSide(color: _borde),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(18),
-          borderSide: const BorderSide(color: Color(0xFFDCE5F3)),
+          borderRadius: BorderRadius.circular(17),
+          borderSide: const BorderSide(color: _borde),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(18),
-          borderSide: const BorderSide(color: _azul, width: 1.5),
+          borderRadius: BorderRadius.circular(17),
+          borderSide: const BorderSide(color: _azul, width: 1.4),
         ),
       ),
+    );
+  }
+
+  Widget _accionesTarjeta(EstablecimientoModel establecimiento) {
+    if (_establecimientoProcesando == establecimiento.id) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.symmetric(vertical: 6),
+          child: CircularProgressIndicator(strokeWidth: 2.5),
+        ),
+      );
+    }
+
+    if (establecimiento.estado == 'pendiente') {
+      return Row(
+        children: [
+          Expanded(
+            child: OutlinedButton.icon(
+              onPressed: () => _cambiarEstado(establecimiento, 'rechazado'),
+              icon: const Icon(Icons.close_rounded, size: 17),
+              label: const Text('Rechazar'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: const Color(0xFFE5484D),
+                side: const BorderSide(color: Color(0xFFFFB9BB)),
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(13),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: FilledButton.icon(
+              onPressed: () => _cambiarEstado(establecimiento, 'aprobado'),
+              icon: const Icon(Icons.check_rounded, size: 17),
+              label: const Text('Aprobar'),
+              style: FilledButton.styleFrom(
+                backgroundColor: _azul,
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(13),
+                ),
+              ),
+            ),
+          ),
+        ],
+      );
+    }
+
+    final volverAprobado = establecimiento.estado == 'rechazado';
+    return SizedBox(
+      width: double.infinity,
+      child: volverAprobado
+          ? FilledButton.icon(
+              onPressed: () => _cambiarEstado(establecimiento, 'aprobado'),
+              icon: const Icon(Icons.check_rounded, size: 17),
+              label: const Text('Cambiar a aprobado'),
+              style: FilledButton.styleFrom(
+                backgroundColor: _azul,
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(13),
+                ),
+              ),
+            )
+          : OutlinedButton.icon(
+              onPressed: () => _cambiarEstado(establecimiento, 'rechazado'),
+              icon: const Icon(Icons.block_rounded, size: 17),
+              label: const Text('Cambiar a rechazado'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: const Color(0xFFE5484D),
+                side: const BorderSide(color: Color(0xFFFFB9BB)),
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(13),
+                ),
+              ),
+            ),
     );
   }
 
@@ -735,17 +723,17 @@ class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
     final color = _colorEstado(establecimiento.estado);
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 14),
-      padding: const EdgeInsets.all(16),
+      margin: const EdgeInsets.only(bottom: 13),
+      padding: const EdgeInsets.all(15),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: const Color(0xFFE3EAF5)),
+        borderRadius: BorderRadius.circular(21),
+        border: Border.all(color: _borde),
         boxShadow: const [
           BoxShadow(
-            color: Color(0x0D0F2B5B),
-            blurRadius: 18,
-            offset: Offset(0, 7),
+            color: Color(0x0A102A56),
+            blurRadius: 16,
+            offset: Offset(0, 6),
           ),
         ],
       ),
@@ -756,84 +744,50 @@ class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Container(
-                width: 64,
-                height: 64,
+                width: 54,
+                height: 54,
                 decoration: BoxDecoration(
                   color: const Color(0xFFEAF2FF),
-                  borderRadius: BorderRadius.circular(18),
+                  borderRadius: BorderRadius.circular(16),
                 ),
                 child: const Icon(
                   Icons.storefront_rounded,
                   color: _azul,
-                  size: 32,
+                  size: 27,
                 ),
               ),
-              const SizedBox(width: 14),
+              const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 6,
-                      crossAxisAlignment: WrapCrossAlignment.center,
-                      children: [
-                        Text(
-                          establecimiento.nombre,
-                          style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w900,
-                            color: _azulOscuro,
-                          ),
-                        ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 9,
-                            vertical: 5,
-                          ),
-                          decoration: BoxDecoration(
-                            color: _fondoEstado(establecimiento.estado),
-                            borderRadius: BorderRadius.circular(99),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                _iconoEstado(establecimiento.estado),
-                                size: 15,
-                                color: color,
-                              ),
-                              const SizedBox(width: 5),
-                              Text(
-                                _nombreEstado(establecimiento.estado),
-                                style: TextStyle(
-                                  color: color,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w800,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
+                    Text(
+                      establecimiento.nombre,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.w900,
+                        color: _azulOscuro,
+                      ),
                     ),
-                    const SizedBox(height: 7),
+                    const SizedBox(height: 6),
                     Row(
                       children: [
                         const Icon(
                           Icons.location_on_outlined,
-                          size: 16,
+                          size: 15,
                           color: Color(0xFF60779C),
                         ),
-                        const SizedBox(width: 5),
+                        const SizedBox(width: 4),
                         Expanded(
                           child: Text(
                             establecimiento.direccion,
-                            maxLines: 2,
+                            maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: const TextStyle(
                               color: Color(0xFF60779C),
-                              fontSize: 13,
+                              fontSize: 12.5,
                             ),
                           ),
                         ),
@@ -842,9 +796,36 @@ class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
                   ],
                 ),
               ),
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                decoration: BoxDecoration(
+                  color: _fondoEstado(establecimiento.estado),
+                  borderRadius: BorderRadius.circular(99),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      _iconoEstado(establecimiento.estado),
+                      size: 13,
+                      color: color,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      _nombreEstado(establecimiento.estado),
+                      style: TextStyle(
+                        color: color,
+                        fontSize: 10.5,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ],
           ),
-          const SizedBox(height: 13),
+          const SizedBox(height: 12),
           Text(
             establecimiento.descripcion.isEmpty
                 ? 'Sin descripción disponible.'
@@ -852,24 +833,24 @@ class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
             style: const TextStyle(
-              color: Color(0xFF566B8C),
-              height: 1.4,
+              color: Color(0xFF5D708F),
+              height: 1.35,
+              fontSize: 13,
             ),
           ),
-          const SizedBox(height: 14),
-          const Divider(height: 1, color: Color(0xFFEDF1F7)),
           const SizedBox(height: 12),
-          Row(
-            children: [
-              TextButton.icon(
-                onPressed: () => _mostrarDetalles(establecimiento),
-                icon: const Icon(Icons.visibility_outlined, size: 18),
-                label: const Text('Ver detalles'),
-              ),
-              const Spacer(),
-              Flexible(child: _construirAcciones(establecimiento)),
-            ],
+          TextButton.icon(
+            onPressed: () => _mostrarDetalles(establecimiento),
+            icon: const Icon(Icons.visibility_outlined, size: 17),
+            label: const Text('Ver detalles'),
+            style: TextButton.styleFrom(
+              padding: EdgeInsets.zero,
+              minimumSize: const Size(0, 34),
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
           ),
+          const SizedBox(height: 9),
+          _accionesTarjeta(establecimiento),
         ],
       ),
     );
@@ -888,7 +869,7 @@ class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
           slivers: [
             SliverToBoxAdapter(child: _cabecera(correo)),
             SliverPadding(
-              padding: const EdgeInsets.fromLTRB(18, 20, 18, 36),
+              padding: const EdgeInsets.fromLTRB(16, 18, 16, 36),
               sliver: SliverToBoxAdapter(
                 child: FutureBuilder<List<EstablecimientoModel>>(
                   future: _establecimientosFuture,
@@ -920,7 +901,6 @@ class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
                           establecimiento.direccion
                               .toLowerCase()
                               .contains(consulta);
-
                       return coincideEstado && coincideBusqueda;
                     }).toList();
 
@@ -928,27 +908,29 @@ class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         _selectorEstado(todos),
-                        const SizedBox(height: 16),
+                        const SizedBox(height: 15),
                         _buscador(),
-                        const SizedBox(height: 18),
+                        const SizedBox(height: 16),
                         Row(
                           children: [
-                            Text(
-                              '${establecimientos.length} ${establecimientos.length == 1 ? 'establecimiento' : 'establecimientos'}',
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w800,
-                                color: _azulOscuro,
+                            Expanded(
+                              child: Text(
+                                '${establecimientos.length} ${establecimientos.length == 1 ? 'establecimiento' : 'establecimientos'}',
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w800,
+                                  color: _azulOscuro,
+                                  fontSize: 13,
+                                ),
                               ),
                             ),
-                            const Spacer(),
                             TextButton.icon(
                               onPressed: _abrirSolicitudes,
-                              icon: const Icon(Icons.assignment_outlined),
-                              label: const Text('Ver solicitudes'),
+                              icon: const Icon(Icons.assignment_outlined, size: 17),
+                              label: const Text('Solicitudes'),
                             ),
                           ],
                         ),
-                        const SizedBox(height: 8),
+                        const SizedBox(height: 7),
                         if (establecimientos.isEmpty)
                           _MensajePanel(
                             icono: _busqueda.isEmpty
@@ -979,18 +961,18 @@ class _StarPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final random = math.Random(27);
-    final paint = Paint()..color = Colors.white.withValues(alpha: 0.68);
+    final paint = Paint()..color = Colors.white.withValues(alpha: 0.62);
 
-    for (var i = 0; i < 32; i++) {
+    for (var i = 0; i < 26; i++) {
       final x = random.nextDouble() * size.width;
-      final y = random.nextDouble() * size.height * 0.72;
-      final radio = 0.7 + random.nextDouble() * 1.4;
+      final y = random.nextDouble() * size.height * 0.68;
+      final radio = 0.6 + random.nextDouble() * 1.2;
       canvas.drawCircle(Offset(x, y), radio, paint);
     }
 
     final brillo = Paint()
-      ..color = Colors.white.withValues(alpha: 0.78)
-      ..strokeWidth = 1.2;
+      ..color = Colors.white.withValues(alpha: 0.72)
+      ..strokeWidth = 1.1;
 
     for (final punto in [
       Offset(size.width * 0.55, 34),
@@ -998,13 +980,13 @@ class _StarPainter extends CustomPainter {
       Offset(size.width * 0.38, 106),
     ]) {
       canvas.drawLine(
-        Offset(punto.dx - 5, punto.dy),
-        Offset(punto.dx + 5, punto.dy),
+        Offset(punto.dx - 4, punto.dy),
+        Offset(punto.dx + 4, punto.dy),
         brillo,
       );
       canvas.drawLine(
-        Offset(punto.dx, punto.dy - 5),
-        Offset(punto.dx, punto.dy + 5),
+        Offset(punto.dx, punto.dy - 4),
+        Offset(punto.dx, punto.dy + 4),
         brillo,
       );
     }
@@ -1066,7 +1048,7 @@ class _MensajePanel extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(30),
+      padding: const EdgeInsets.all(28),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(22),
@@ -1075,13 +1057,13 @@ class _MensajePanel extends StatelessWidget {
       child: Column(
         children: [
           Container(
-            width: 58,
-            height: 58,
+            width: 56,
+            height: 56,
             decoration: const BoxDecoration(
               color: Color(0xFFEAF2FF),
               shape: BoxShape.circle,
             ),
-            child: Icon(icono, size: 30, color: const Color(0xFF1769FF)),
+            child: Icon(icono, size: 29, color: const Color(0xFF1769FF)),
           ),
           const SizedBox(height: 14),
           Text(
