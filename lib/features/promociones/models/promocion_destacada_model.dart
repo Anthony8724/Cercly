@@ -11,6 +11,7 @@ class PromocionDestacadaModel {
     required this.radioAlertaMetros,
     required this.latitud,
     required this.longitud,
+    this.activa = true,
     this.imagenRutaStorage,
     this.urlImagen,
     this.distanciaMetros,
@@ -29,13 +30,14 @@ class PromocionDestacadaModel {
   final int radioAlertaMetros;
   final double latitud;
   final double longitud;
+  final bool activa;
   final double? distanciaMetros;
 
-  bool get estaVigente {
-    final ahora = DateTime.now();
-
+  bool estaVigenteEn(DateTime ahora) {
     return !ahora.isBefore(fechaInicio) && !ahora.isAfter(fechaFin);
   }
+
+  bool get estaVigente => estaVigenteEn(DateTime.now());
 
   String get distanciaFormateada {
     final distancia = distanciaMetros;
@@ -69,6 +71,7 @@ class PromocionDestacadaModel {
       radioAlertaMetros: radioAlertaMetros,
       latitud: latitud,
       longitud: longitud,
+      activa: activa,
       distanciaMetros: distanciaMetros ?? this.distanciaMetros,
     );
   }
@@ -95,6 +98,7 @@ class PromocionDestacadaModel {
       radioAlertaMetros: datos['radio_alerta_metros'] as int? ?? 100,
       latitud: (establecimiento['latitud'] as num).toDouble(),
       longitud: (establecimiento['longitud'] as num).toDouble(),
+      activa: datos['activa'] as bool? ?? true,
     );
   }
 }

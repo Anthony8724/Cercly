@@ -3,6 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'config/supabase_options.dart';
 import 'features/auth/screens/auth_gate.dart';
+import 'features/notificaciones/widgets/monitor_proximidad_app.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -55,7 +56,7 @@ class CerclyApp extends StatelessWidget {
         ),
         useMaterial3: true,
       ),
-      home: const AuthGate(),
+      home: const MonitorProximidadApp(child: AuthGate()),
     );
   }
 }

@@ -4,7 +4,14 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../models/promocion_destacada_model.dart';
 
-class PromocionPublicaService {
+abstract interface class PromocionesCercanasRepository {
+  Future<List<PromocionDestacadaModel>> listarCercanas({
+    required double latitudUsuario,
+    required double longitudUsuario,
+  });
+}
+
+class PromocionPublicaService implements PromocionesCercanasRepository {
   PromocionPublicaService({SupabaseClient? supabase})
     : _supabase = supabase ?? Supabase.instance.client;
 
@@ -21,6 +28,7 @@ class PromocionPublicaService {
     fecha_inicio,
     fecha_fin,
     radio_alerta_metros,
+    activa,
     establecimientos!inner(
       id,
       nombre,
@@ -54,7 +62,8 @@ class PromocionPublicaService {
         .eq('activa', true)
         .lte('fecha_inicio', ahora)
         .gte('fecha_fin', ahora)
-        .eq('establecimientos.estado', 'aprobado');
+        .eq('establecimientos.estado', 'aprobado')
+        .eq('establecimientos.publicable', true);
 
     final categoria = categoriaId?.trim();
 
@@ -101,6 +110,7 @@ class PromocionPublicaService {
     return resultado;
   }
 
+  @override
   Future<List<PromocionDestacadaModel>> listarCercanas({
     required double latitudUsuario,
     required double longitudUsuario,
