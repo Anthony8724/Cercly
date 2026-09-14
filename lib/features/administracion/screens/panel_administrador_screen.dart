@@ -282,15 +282,28 @@ class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
     return Tooltip(
       message: tooltip,
       child: Material(
-        color: Colors.white.withValues(alpha: 0.18),
-        borderRadius: BorderRadius.circular(13),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(11),
+        elevation: 0,
+        shadowColor: const Color(0x1A0A2A66),
         child: InkWell(
           onTap: onPressed,
-          borderRadius: BorderRadius.circular(13),
-          child: SizedBox(
-            width: 40,
-            height: 40,
-            child: Icon(icono, size: 20, color: Colors.white),
+          borderRadius: BorderRadius.circular(11),
+          child: Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(11),
+              border: Border.all(color: const Color(0xFFE4EAF5)),
+              boxShadow: const [
+                BoxShadow(
+                  color: Color(0x0F0A2A66),
+                  blurRadius: 8,
+                  offset: Offset(0, 3),
+                ),
+              ],
+            ),
+            child: Icon(icono, size: 18, color: _azulOscuro),
           ),
         ),
       ),
@@ -301,8 +314,8 @@ class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
     return const Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(Icons.location_on_rounded, color: _azulOscuro, size: 34),
-        SizedBox(width: 3),
+        Icon(Icons.location_on_rounded, color: _azul, size: 38),
+        SizedBox(width: 2),
         Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -311,7 +324,7 @@ class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
               'Cercly',
               style: TextStyle(
                 color: _azulOscuro,
-                fontSize: 24,
+                fontSize: 27,
                 height: 0.95,
                 fontWeight: FontWeight.w900,
                 letterSpacing: -0.9,
@@ -322,7 +335,7 @@ class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
               'Descubre lo que te rodea',
               style: TextStyle(
                 color: _azulOscuro,
-                fontSize: 6.5,
+                fontSize: 7,
                 height: 1,
                 fontWeight: FontWeight.w700,
                 letterSpacing: -0.1,
@@ -335,59 +348,148 @@ class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
   }
 
   Widget _cabecera(String correo) {
-    return Container(
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            Color(0xFFB9E7FA),
-            Color(0xFF65A8ED),
-            Color(0xFF2468D8),
-            Color(0xFF0C3D91),
-          ],
-          stops: [0, 0.37, 0.74, 1],
-        ),
-        borderRadius: BorderRadius.vertical(bottom: Radius.circular(30)),
-      ),
+    return SizedBox(
+      height: 315,
       child: Stack(
+        clipBehavior: Clip.none,
         children: [
-          const Positioned.fill(child: CustomPaint(painter: _StarPainter())),
           Positioned(
-            right: -54,
-            top: -18,
-            child: Container(
-              width: 138,
-              height: 138,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: Colors.white.withValues(alpha: 0.08),
-                border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
+            top: 0,
+            left: 0,
+            right: 0,
+            height: 175,
+            child: DecoratedBox(
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    Color(0xFF8EC7FF),
+                    Color(0xFF3F7FE8),
+                    Color(0xFF174FAD),
+                    Color(0xFF0A2A66),
+                  ],
+                  stops: [0, 0.33, 0.7, 1],
+                ),
+              ),
+              child: Stack(
+                children: [
+                  const Positioned.fill(
+                    child: CustomPaint(painter: _StarPainter()),
+                  ),
+                  Positioned(
+                    left: -42,
+                    top: -30,
+                    child: Container(
+                      width: 220,
+                      height: 150,
+                      decoration: const BoxDecoration(
+                        gradient: RadialGradient(
+                          colors: [Color(0xB3FFFFFF), Color(0x00FFFFFF)],
+                        ),
+                      ),
+                    ),
+                  ),
+                  SafeArea(
+                    bottom: false,
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(child: _marcaCercly()),
+                          const SizedBox(width: 12),
+                          const Padding(
+                            padding: EdgeInsets.only(top: 8),
+                            child: Text(
+                              'Ciudades más\ncercanas, historias\nmás grandes',
+                              textAlign: TextAlign.right,
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 9.5,
+                                height: 1.35,
+                                fontWeight: FontWeight.w600,
+                                letterSpacing: 0.1,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
-          SafeArea(
-            bottom: false,
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+          Positioned(
+            top: 148,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: Container(
+              padding: const EdgeInsets.fromLTRB(16, 21, 16, 14),
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+                boxShadow: [
+                  BoxShadow(
+                    color: Color(0x140A2A66),
+                    blurRadius: 18,
+                    offset: Offset(0, -3),
+                  ),
+                ],
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
                 children: [
                   Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Expanded(
-                        child: Align(
-                          alignment: Alignment.centerLeft,
-                          child: _marcaCercly(),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const FittedBox(
+                              fit: BoxFit.scaleDown,
+                              alignment: Alignment.centerLeft,
+                              child: Text(
+                                'Panel administrativo',
+                                style: TextStyle(
+                                  fontSize: 22,
+                                  fontWeight: FontWeight.w900,
+                                  color: _azulOscuro,
+                                  height: 1.05,
+                                  letterSpacing: -0.55,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 5),
+                            Text(
+                              'Gestión de establecimientos y solicitudes',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 10.5,
+                                height: 1.2,
+                                color: _azulOscuro.withValues(alpha: 0.62),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
+                      const SizedBox(width: 10),
+                      _accionCabecera(
+                        icono: Icons.assignment_outlined,
+                        tooltip: 'Solicitudes',
+                        onPressed: _abrirSolicitudes,
+                      ),
+                      const SizedBox(width: 6),
                       _accionCabecera(
                         icono: Icons.refresh_rounded,
                         tooltip: 'Actualizar',
                         onPressed: _recargar,
                       ),
-                      const SizedBox(width: 8),
+                      const SizedBox(width: 6),
                       _accionCabecera(
                         icono: Icons.logout_rounded,
                         tooltip: 'Cerrar sesiÃ³n',
@@ -395,62 +497,36 @@ class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 15),
-                  const Text(
-                    'Panel administrativo',
-                    style: TextStyle(
-                      fontSize: 25,
-                      fontWeight: FontWeight.w900,
-                      color: _azulOscuro,
-                      height: 1.05,
-                      letterSpacing: -0.8,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Gestiona Cercly desde un solo lugar',
-                    style: TextStyle(
-                      fontSize: 13,
-                      height: 1.25,
-                      color: _azulOscuro.withValues(alpha: 0.74),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 13),
                   Container(
                     width: double.infinity,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 10,
-                    ),
+                    height: 58,
+                    padding: const EdgeInsets.symmetric(horizontal: 11),
                     decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.96),
-                      borderRadius: BorderRadius.circular(17),
-                      border: Border.all(
-                        color: Colors.white.withValues(alpha: 0.78),
-                      ),
+                      color: const Color(0xFFFBFDFF),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: const Color(0xFFE7EDF7)),
                       boxShadow: const [
                         BoxShadow(
-                          color: Color(0x24071F48),
-                          blurRadius: 18,
-                          offset: Offset(0, 6),
+                          color: Color(0x100A2A66),
+                          blurRadius: 12,
+                          offset: Offset(0, 4),
                         ),
                       ],
                     ),
                     child: Row(
                       children: [
                         Container(
-                          width: 38,
-                          height: 38,
+                          width: 36,
+                          height: 36,
                           decoration: BoxDecoration(
-                            gradient: const LinearGradient(
-                              colors: [_azul, _turquesa],
-                            ),
-                            borderRadius: BorderRadius.circular(12),
+                            color: const Color(0xFFEAF2FF),
+                            borderRadius: BorderRadius.circular(11),
                           ),
                           child: const Icon(
-                            Icons.shield_outlined,
-                            color: Colors.white,
-                            size: 19,
+                            Icons.person_rounded,
+                            color: _azul,
+                            size: 20,
                           ),
                         ),
                         const SizedBox(width: 11),
@@ -465,7 +541,7 @@ class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
                                 style: TextStyle(
                                   fontWeight: FontWeight.w900,
                                   color: _azulOscuro,
-                                  fontSize: 13,
+                                  fontSize: 12.5,
                                 ),
                               ),
                               const SizedBox(height: 2),
@@ -475,40 +551,43 @@ class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
                                 overflow: TextOverflow.ellipsis,
                                 style: const TextStyle(
                                   color: Color(0xFF6B7D9B),
-                                  fontSize: 11,
+                                  fontSize: 9.5,
                                 ),
                               ),
                             ],
                           ),
                         ),
                         const SizedBox(width: 8),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 9,
-                            vertical: 5,
-                          ),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFEAF2FF),
-                            borderRadius: BorderRadius.circular(99),
-                          ),
-                          child: const Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                Icons.verified_user_rounded,
-                                size: 14,
-                                color: _azul,
-                              ),
-                              SizedBox(width: 4),
-                              Text(
-                                'Admin',
-                                style: TextStyle(
+                        ConstrainedBox(
+                          constraints: const BoxConstraints(maxWidth: 112),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 5,
+                            ),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFEAF2FF),
+                              borderRadius: BorderRadius.circular(99),
+                            ),
+                            child: const Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.verified_user_rounded,
+                                  size: 14,
                                   color: _azul,
-                                  fontSize: 10.5,
-                                  fontWeight: FontWeight.w900,
                                 ),
-                              ),
-                            ],
+                                SizedBox(width: 4),
+                                Text(
+                                  'Administrador',
+                                  style: TextStyle(
+                                    color: _azul,
+                                    fontSize: 9.5,
+                                    fontWeight: FontWeight.w900,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
                       ],
@@ -879,7 +958,7 @@ class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
           slivers: [
             SliverToBoxAdapter(child: _cabecera(correo)),
             SliverPadding(
-              padding: const EdgeInsets.fromLTRB(16, 18, 16, 36),
+              padding: const EdgeInsets.fromLTRB(16, 10, 16, 36),
               sliver: SliverToBoxAdapter(
                 child: FutureBuilder<List<EstablecimientoModel>>(
                   future: _establecimientosFuture,
@@ -924,27 +1003,13 @@ class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
                         const SizedBox(height: 15),
                         _buscador(),
                         const SizedBox(height: 15),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: Text(
-                                '${establecimientos.length} ${establecimientos.length == 1 ? 'establecimiento' : 'establecimientos'}',
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.w800,
-                                  color: _azulOscuro,
-                                  fontSize: 13,
-                                ),
-                              ),
-                            ),
-                            TextButton.icon(
-                              onPressed: _abrirSolicitudes,
-                              icon: const Icon(
-                                Icons.assignment_outlined,
-                                size: 17,
-                              ),
-                              label: const Text('Solicitudes'),
-                            ),
-                          ],
+                        Text(
+                          '${establecimientos.length} ${establecimientos.length == 1 ? 'establecimiento' : 'establecimientos'}',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w800,
+                            color: _azulOscuro,
+                            fontSize: 13,
+                          ),
                         ),
                         const SizedBox(height: 7),
                         if (establecimientos.isEmpty)
@@ -976,23 +1041,41 @@ class _StarPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final random = math.Random(27);
-    final paint = Paint()..color = Colors.white.withValues(alpha: 0.30);
+    final resplandor = Paint()
+      ..shader = const RadialGradient(
+        colors: [Color(0x66FFFFFF), Color(0x00FFFFFF)],
+      ).createShader(
+        Rect.fromCircle(
+          center: Offset(size.width * 0.62, size.height * 0.36),
+          radius: 74,
+        ),
+      );
+    canvas.drawCircle(
+      Offset(size.width * 0.62, size.height * 0.36),
+      74,
+      resplandor,
+    );
 
-    for (var i = 0; i < 14; i++) {
+    final random = math.Random(27);
+    final paint = Paint();
+
+    for (var i = 0; i < 28; i++) {
       final x = random.nextDouble() * size.width;
-      final y = random.nextDouble() * size.height * 0.65;
-      final radio = 0.6 + random.nextDouble() * 1.1;
+      final y = random.nextDouble() * size.height * 0.82;
+      final intensidad = 0.25 + random.nextDouble() * 0.5;
+      final radio = 0.45 + random.nextDouble() * 1.05;
+      paint.color = Colors.white.withValues(alpha: intensidad);
       canvas.drawCircle(Offset(x, y), radio, paint);
     }
 
     final brillo = Paint()
-      ..color = Colors.white.withValues(alpha: 0.38)
-      ..strokeWidth = 0.9;
+      ..color = Colors.white.withValues(alpha: 0.72)
+      ..strokeWidth = 1;
 
     for (final punto in [
-      Offset(size.width * 0.52, 38),
-      Offset(size.width * 0.70, 82),
+      Offset(size.width * 0.46, 36),
+      Offset(size.width * 0.62, 72),
+      Offset(size.width * 0.84, 30),
     ]) {
       canvas.drawLine(
         Offset(punto.dx - 4, punto.dy),
@@ -1005,6 +1088,23 @@ class _StarPainter extends CustomPainter {
         brillo,
       );
     }
+
+    final halo = Path()
+      ..moveTo(size.width * 0.55, size.height * 0.54)
+      ..quadraticBezierTo(
+        size.width * 0.68,
+        size.height * 0.28,
+        size.width * 0.86,
+        size.height * 0.38,
+      );
+    canvas.drawPath(
+      halo,
+      Paint()
+        ..color = Colors.white.withValues(alpha: 0.5)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.15
+        ..strokeCap = StrokeCap.round,
+    );
   }
 
   @override
