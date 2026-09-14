@@ -5,6 +5,7 @@ import '../../promociones/screens/promociones_establecimiento_screen.dart';
 import '../../solicitudes_establecimientos/screens/mis_solicitudes_screen.dart';
 import '../models/establecimiento_model.dart';
 import '../services/establecimiento_service.dart';
+import 'editar_informacion_establecimiento_screen.dart';
 import 'fotos_establecimiento_screen.dart';
 import 'horarios_establecimiento_screen.dart';
 import 'registro_establecimiento_screen.dart';
@@ -54,6 +55,86 @@ class _PanelEstablecimientoScreenState
     }
   }
 
+  Future<void> _abrirInformacionEstablecimiento() async {
+    try {
+      final establecimientos = await _service.listarEstablecimientosDelUsuario();
+
+      if (!mounted) {
+        return;
+      }
+
+      if (establecimientos.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Primero debes registrar un establecimiento.'),
+          ),
+        );
+        return;
+      }
+
+      EstablecimientoModel? seleccionado;
+
+      if (establecimientos.length == 1) {
+        seleccionado = establecimientos.first;
+      } else {
+        seleccionado = await showDialog<EstablecimientoModel>(
+          context: context,
+          builder: (context) {
+            return SimpleDialog(
+              title: const Text('Selecciona un establecimiento'),
+              children: [
+                for (final establecimiento in establecimientos)
+                  SimpleDialogOption(
+                    onPressed: () => Navigator.of(context).pop(establecimiento),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            establecimiento.nombre,
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(establecimiento.direccion),
+                        ],
+                      ),
+                    ),
+                  ),
+              ],
+            );
+          },
+        );
+      }
+
+      if (!mounted || seleccionado == null) {
+        return;
+      }
+
+      final actualizado = await Navigator.of(context).push<bool>(
+        MaterialPageRoute<bool>(
+          builder: (_) => EditarInformacionEstablecimientoScreen(
+            establecimiento: seleccionado!,
+          ),
+        ),
+      );
+
+      if (actualizado == true && mounted) {
+        setState(_cargarEstablecimientos);
+      }
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('No se pudo abrir la información: $error'),
+        ),
+      );
+    }
+  }
+
   void _abrirFotografias(EstablecimientoModel establecimiento) {
     Navigator.of(context).push(
       MaterialPageRoute<void>(
@@ -78,12 +159,6 @@ class _PanelEstablecimientoScreenState
         builder: (_) =>
             PromocionesEstablecimientoScreen(establecimiento: establecimiento),
       ),
-    );
-  }
-
-  void _mostrarProximamente(String opcion) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('$opcion estará disponible próximamente.')),
     );
   }
 
@@ -265,13 +340,13 @@ class _PanelEstablecimientoScreenState
                 titulo: 'Información del establecimiento',
                 descripcion:
                     'Edita el nombre, descripción, dirección y teléfono.',
-                onTap: () =>
-                    _mostrarProximamente('Edición del establecimiento'),
+                onTap: _abrirInformacionEstablecimiento,
               ),
               _OpcionPanel(
                 icono: Icons.assignment,
                 titulo: 'Mis solicitudes',
-                descripcion: 'Envía solicitudes y consulta la respuesta del administrador.',
+                descripcion:
+                    'Envía solicitudes y consulta la respuesta del administrador.',
                 onTap: () {
                   Navigator.of(context).push(
                     MaterialPageRoute<void>(
