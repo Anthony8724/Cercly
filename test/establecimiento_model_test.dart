@@ -10,6 +10,10 @@ Map<String, List<TurnoHorario>> horarioCompleto() {
 
 EstablecimientoModel crearEstablecimiento({
   String nombre = 'Cafetería de prueba',
+  String descripcion = 'Negocio ficticio para pruebas',
+  String direccion = 'Dirección de prueba',
+  String telefonoPublico = '',
+  String estado = 'pendiente',
   double latitud = 0.8119,
   double longitud = -77.7173,
   Map<String, List<TurnoHorario>>? horario,
@@ -18,14 +22,15 @@ EstablecimientoModel crearEstablecimiento({
     id: '',
     propietarioId: '00000000-0000-0000-0000-000000000001',
     nombre: nombre,
-    descripcion: 'Negocio ficticio para pruebas',
+    descripcion: descripcion,
     categoriaId: '00000000-0000-0000-0000-000000000002',
-    direccion: 'Dirección de prueba',
+    direccion: direccion,
     latitud: latitud,
     longitud: longitud,
-    telefonoPublico: '',
+    telefonoPublico: telefonoPublico,
     horario: horario ?? horarioCompleto(),
     zonaHoraria: 'America/Guayaquil',
+    estado: estado,
   );
 }
 
@@ -40,6 +45,35 @@ void main() {
     expect(datos['longitud'], -77.7173);
     expect(datos.containsKey('creado_en'), isFalse);
     expect(datos.containsKey('actualizado_en'), isFalse);
+  });
+
+  test('prepara solo los campos editables de información general', () {
+    final establecimiento = crearEstablecimiento(
+      nombre: ' Café actualizado ',
+      descripcion: ' Descripción nueva ',
+      direccion: ' Calle nueva ',
+      telefonoPublico: ' 0999999999 ',
+    );
+
+    final datos = establecimiento.toSupabaseParaActualizarInformacion();
+
+    expect(datos, {
+      'nombre': 'Café actualizado',
+      'descripcion': 'Descripción nueva',
+      'direccion': 'Calle nueva',
+      'telefono_publico': '0999999999',
+    });
+    expect(datos.containsKey('categoria_id'), isFalse);
+    expect(datos.containsKey('latitud'), isFalse);
+    expect(datos.containsKey('longitud'), isFalse);
+  });
+
+  test('un establecimiento aprobado vuelve a pendiente al editar información', () {
+    final datos = crearEstablecimiento(
+      estado: 'aprobado',
+    ).toSupabaseParaActualizarInformacion();
+
+    expect(datos['estado'], 'pendiente');
   });
 
   test('rechaza un nombre vacío', () {
