@@ -17,7 +17,6 @@ class PanelAdministradorScreen extends StatefulWidget {
 
 class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
   static const _azul = Color(0xFF2468F2);
-  static const _turquesa = Color(0xFF17B9AE);
   static const _azulOscuro = Color(0xFF102A56);
   static const _fondo = Color(0xFFF5F8FE);
   static const _borde = Color(0xFFE2E9F5);
@@ -314,7 +313,7 @@ class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
     return const Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(Icons.location_on_rounded, color: _azul, size: 38),
+        Icon(Icons.location_on_rounded, color: _azul, size: 43),
         SizedBox(width: 2),
         Column(
           mainAxisSize: MainAxisSize.min,
@@ -324,7 +323,7 @@ class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
               'Cercly',
               style: TextStyle(
                 color: _azulOscuro,
-                fontSize: 27,
+                fontSize: 31,
                 height: 0.95,
                 fontWeight: FontWeight.w900,
                 letterSpacing: -0.9,
@@ -335,7 +334,7 @@ class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
               'Descubre lo que te rodea',
               style: TextStyle(
                 color: _azulOscuro,
-                fontSize: 7,
+                fontSize: 8,
                 height: 1,
                 fontWeight: FontWeight.w700,
                 letterSpacing: -0.1,
@@ -349,7 +348,7 @@ class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
 
   Widget _cabecera(String correo) {
     return SizedBox(
-      height: 315,
+      height: 323,
       child: Stack(
         clipBehavior: Clip.none,
         children: [
@@ -406,7 +405,7 @@ class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
                               textAlign: TextAlign.right,
                               style: TextStyle(
                                 color: Colors.white,
-                                fontSize: 9.5,
+                                fontSize: 10.2,
                                 height: 1.35,
                                 fontWeight: FontWeight.w600,
                                 letterSpacing: 0.1,
@@ -422,7 +421,7 @@ class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
             ),
           ),
           Positioned(
-            top: 148,
+            top: 156,
             left: 0,
             right: 0,
             bottom: 0,
@@ -483,13 +482,13 @@ class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
                         tooltip: 'Solicitudes',
                         onPressed: _abrirSolicitudes,
                       ),
-                      const SizedBox(width: 6),
+                      const SizedBox(width: 8),
                       _accionCabecera(
                         icono: Icons.refresh_rounded,
                         tooltip: 'Actualizar',
                         onPressed: _recargar,
                       ),
-                      const SizedBox(width: 6),
+                      const SizedBox(width: 8),
                       _accionCabecera(
                         icono: Icons.logout_rounded,
                         tooltip: 'Cerrar sesiÃ³n',
