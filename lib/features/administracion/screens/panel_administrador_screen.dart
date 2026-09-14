@@ -16,7 +16,8 @@ class PanelAdministradorScreen extends StatefulWidget {
 }
 
 class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
-  static const _azul = Color(0xFF1769FF);
+  static const _azul = Color(0xFF2468F2);
+  static const _turquesa = Color(0xFF17B9AE);
   static const _azulOscuro = Color(0xFF102A56);
   static const _fondo = Color(0xFFF5F8FE);
   static const _borde = Color(0xFFE2E9F5);
@@ -71,7 +72,6 @@ class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
     String nuevoEstado,
   ) async {
     final esAprobacion = nuevoEstado == 'aprobado';
-    final accion = esAprobacion ? 'aprobar' : 'rechazar';
 
     final confirmar = await showDialog<bool>(
       context: context,
@@ -83,7 +83,8 @@ class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
               : 'Rechazar establecimiento',
         ),
         content: Text(
-          '¿Deseas $accion el establecimiento "${establecimiento.nombre}"?',
+          '¿Deseas ${esAprobacion ? 'aprobar' : 'rechazar'} '
+          '"${establecimiento.nombre}"?',
         ),
         actions: [
           TextButton(
@@ -93,7 +94,8 @@ class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
           FilledButton(
             onPressed: () => Navigator.of(dialogContext).pop(true),
             style: FilledButton.styleFrom(
-              backgroundColor: esAprobacion ? _azul : const Color(0xFFE5484D),
+              backgroundColor:
+                  esAprobacion ? _azul : const Color(0xFFE5484D),
             ),
             child: Text(esAprobacion ? 'Aprobar' : 'Rechazar'),
           ),
@@ -209,35 +211,16 @@ class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
                     ),
                   ),
                 ),
-                const SizedBox(height: 24),
-                Row(
-                  children: [
-                    Container(
-                      width: 58,
-                      height: 58,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFEAF2FF),
-                        borderRadius: BorderRadius.circular(18),
-                      ),
-                      child: const Icon(
-                        Icons.storefront_rounded,
-                        size: 30,
-                        color: _azul,
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Text(
-                        establecimiento.nombre,
-                        style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                              fontWeight: FontWeight.w800,
-                              color: _azulOscuro,
-                            ),
-                      ),
-                    ),
-                  ],
+                const SizedBox(height: 22),
+                Text(
+                  establecimiento.nombre,
+                  style: const TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.w900,
+                    color: _azulOscuro,
+                  ),
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 18),
                 _Detalle(
                   etiqueta: 'Descripción',
                   valor: establecimiento.descripcion.isEmpty
@@ -277,7 +260,7 @@ class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
                     onPressed: () => Navigator.of(bottomSheetContext).pop(),
                     style: FilledButton.styleFrom(
                       backgroundColor: _azul,
-                      padding: const EdgeInsets.symmetric(vertical: 15),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(16),
                       ),
@@ -293,15 +276,15 @@ class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
     );
   }
 
-  Widget _iconButton({
-    required IconData icon,
+  Widget _accionCabecera({
+    required IconData icono,
     required String tooltip,
     required VoidCallback onPressed,
   }) {
     return Tooltip(
       message: tooltip,
       child: Material(
-        color: Colors.white.withValues(alpha: 0.92),
+        color: Colors.white.withValues(alpha: 0.94),
         borderRadius: BorderRadius.circular(15),
         child: InkWell(
           onTap: onPressed,
@@ -309,7 +292,7 @@ class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
           child: SizedBox(
             width: 44,
             height: 44,
-            child: Icon(icon, size: 22, color: _azulOscuro),
+            child: Icon(icono, size: 21, color: _azulOscuro),
           ),
         ),
       ),
@@ -322,22 +305,28 @@ class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [Color(0xFFEAF5FF), Color(0xFFBBD5FF), Color(0xFF2256A5)],
+          colors: [
+            Color(0xFFF4FBFF),
+            Color(0xFFD9E9FF),
+            Color(0xFFAFCBFF),
+            Color(0xFF5D8ED8),
+          ],
+          stops: [0, 0.34, 0.72, 1],
         ),
-        borderRadius: BorderRadius.vertical(bottom: Radius.circular(32)),
+        borderRadius: BorderRadius.vertical(bottom: Radius.circular(34)),
       ),
       child: Stack(
         children: [
           const Positioned.fill(child: CustomPaint(painter: _StarPainter())),
           Positioned(
-            right: -42,
-            top: 24,
+            right: -44,
+            top: 18,
             child: Container(
-              width: 132,
-              height: 132,
+              width: 138,
+              height: 138,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: Colors.white.withValues(alpha: 0.12),
+                color: Colors.white.withValues(alpha: 0.10),
                 border: Border.all(
                   color: Colors.white.withValues(alpha: 0.28),
                 ),
@@ -354,102 +343,119 @@ class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
                 children: [
                   Row(
                     children: [
-                      Container(
-                        width: 44,
-                        height: 44,
-                        decoration: BoxDecoration(
-                          color: _azul,
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                        child: const Icon(
-                          Icons.location_on_rounded,
-                          color: Colors.white,
-                          size: 27,
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      const Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Cercly',
-                              style: TextStyle(
-                                fontSize: 27,
-                                fontWeight: FontWeight.w900,
-                                color: _azulOscuro,
-                                height: 1,
-                                letterSpacing: -0.7,
-                              ),
-                            ),
-                            SizedBox(height: 4),
-                            Text(
-                              'Descubre lo que te rodea',
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                color: Color(0xFF52698F),
-                                fontSize: 11.5,
-                              ),
-                            ),
-                          ],
+                      Expanded(
+                        child: Align(
+                          alignment: Alignment.centerLeft,
+                          child: Image.asset(
+                            'assets/branding/cercly_logo.webp',
+                            width: 142,
+                            height: 48,
+                            fit: BoxFit.contain,
+                            alignment: Alignment.centerLeft,
+                            filterQuality: FilterQuality.high,
+                          ),
                         ),
                       ),
-                      _iconButton(
-                        icon: Icons.refresh_rounded,
+                      _accionCabecera(
+                        icono: Icons.refresh_rounded,
                         tooltip: 'Actualizar',
                         onPressed: _recargar,
                       ),
                       const SizedBox(width: 8),
-                      _iconButton(
-                        icon: Icons.logout_rounded,
+                      _accionCabecera(
+                        icono: Icons.logout_rounded,
                         tooltip: 'Cerrar sesión',
                         onPressed: _cerrarSesion,
                       ),
                     ],
                   ),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 20),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 5,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.54),
+                      borderRadius: BorderRadius.circular(99),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.admin_panel_settings_outlined,
+                          size: 14,
+                          color: _azul,
+                        ),
+                        SizedBox(width: 5),
+                        Text(
+                          'ADMINISTRACIÓN',
+                          style: TextStyle(
+                            color: _azulOscuro,
+                            fontSize: 9.5,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: 0.7,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 10),
                   const Text(
                     'Panel administrativo',
                     style: TextStyle(
-                      fontSize: 27,
+                      fontSize: 28,
                       fontWeight: FontWeight.w900,
                       color: _azulOscuro,
                       height: 1.05,
-                      letterSpacing: -0.7,
+                      letterSpacing: -0.8,
                     ),
                   ),
                   const SizedBox(height: 7),
                   Text(
-                    'Gestión de establecimientos y solicitudes',
+                    'Gestiona establecimientos y solicitudes desde un solo lugar.',
                     style: TextStyle(
-                      fontSize: 14,
+                      fontSize: 13.5,
+                      height: 1.35,
                       color: _azulOscuro.withValues(alpha: 0.72),
                     ),
                   ),
-                  const SizedBox(height: 18),
+                  const SizedBox(height: 17),
                   Container(
                     width: double.infinity,
                     padding: const EdgeInsets.all(13),
                     decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.88),
-                      borderRadius: BorderRadius.circular(18),
+                      color: Colors.white.withValues(alpha: 0.92),
+                      borderRadius: BorderRadius.circular(19),
                       border: Border.all(
-                        color: Colors.white.withValues(alpha: 0.7),
+                        color: Colors.white.withValues(alpha: 0.78),
                       ),
+                      boxShadow: const [
+                        BoxShadow(
+                          color: Color(0x120F2B5B),
+                          blurRadius: 18,
+                          offset: Offset(0, 7),
+                        ),
+                      ],
                     ),
                     child: Row(
                       children: [
-                        const CircleAvatar(
-                          radius: 19,
-                          backgroundColor: Color(0xFFDDEAFF),
-                          child: Icon(
-                            Icons.admin_panel_settings_rounded,
-                            color: _azul,
-                            size: 22,
+                        Container(
+                          width: 42,
+                          height: 42,
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              colors: [_azul, _turquesa],
+                            ),
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          child: const Icon(
+                            Icons.shield_outlined,
+                            color: Colors.white,
+                            size: 21,
                           ),
                         ),
-                        const SizedBox(width: 10),
+                        const SizedBox(width: 11),
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -459,7 +465,7 @@ class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: TextStyle(
-                                  fontWeight: FontWeight.w800,
+                                  fontWeight: FontWeight.w900,
                                   color: _azulOscuro,
                                   fontSize: 13.5,
                                 ),
@@ -500,8 +506,8 @@ class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
                                 'Admin',
                                 style: TextStyle(
                                   color: _azul,
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w800,
+                                  fontSize: 10.5,
+                                  fontWeight: FontWeight.w900,
                                 ),
                               ),
                             ],
@@ -524,61 +530,72 @@ class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
 
     Widget opcion(String estado, String texto, IconData icono) {
       final seleccionado = _estadoSeleccionado == estado;
-      return Material(
-        color: Colors.transparent,
+      final cantidad = contar(estado);
+
+      return Expanded(
         child: InkWell(
           onTap: () => setState(() => _estadoSeleccionado = estado),
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(17),
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 180),
-            constraints: const BoxConstraints(minWidth: 124),
-            padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 11),
             decoration: BoxDecoration(
               color: seleccionado ? _azul : Colors.white,
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(17),
               border: Border.all(color: seleccionado ? _azul : _borde),
               boxShadow: seleccionado
                   ? [
                       BoxShadow(
-                        color: _azul.withValues(alpha: 0.18),
+                        color: _azul.withValues(alpha: 0.16),
                         blurRadius: 14,
                         offset: const Offset(0, 5),
                       ),
                     ]
                   : null,
             ),
-            child: Row(
+            child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(
-                  icono,
-                  size: 17,
-                  color: seleccionado ? Colors.white : _azulOscuro,
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      icono,
+                      size: 15,
+                      color: seleccionado ? Colors.white : _azulOscuro,
+                    ),
+                    const SizedBox(width: 5),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 2,
+                      ),
+                      decoration: BoxDecoration(
+                        color: seleccionado
+                            ? Colors.white
+                            : const Color(0xFFF0F5FD),
+                        borderRadius: BorderRadius.circular(99),
+                      ),
+                      child: Text(
+                        '$cantidad',
+                        style: const TextStyle(
+                          color: _azul,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(width: 7),
-                Text(
-                  texto,
-                  style: TextStyle(
-                    color: seleccionado ? Colors.white : _azulOscuro,
-                    fontWeight: FontWeight.w700,
-                    fontSize: 12.5,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-                  decoration: BoxDecoration(
-                    color: seleccionado
-                        ? Colors.white
-                        : const Color(0xFFF0F5FD),
-                    borderRadius: BorderRadius.circular(99),
-                  ),
+                const SizedBox(height: 5),
+                FittedBox(
+                  fit: BoxFit.scaleDown,
                   child: Text(
-                    '${contar(estado)}',
-                    style: const TextStyle(
-                      color: _azul,
-                      fontSize: 10.5,
-                      fontWeight: FontWeight.w900,
+                    texto,
+                    style: TextStyle(
+                      color: seleccionado ? Colors.white : _azulOscuro,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w800,
                     ),
                   ),
                 ),
@@ -589,18 +606,14 @@ class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
       );
     }
 
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      clipBehavior: Clip.none,
-      child: Row(
-        children: [
-          opcion('pendiente', 'Pendientes', Icons.schedule_rounded),
-          const SizedBox(width: 9),
-          opcion('aprobado', 'Aprobados', Icons.check_circle_outline_rounded),
-          const SizedBox(width: 9),
-          opcion('rechazado', 'Rechazados', Icons.cancel_outlined),
-        ],
-      ),
+    return Row(
+      children: [
+        opcion('pendiente', 'Pendientes', Icons.schedule_rounded),
+        const SizedBox(width: 8),
+        opcion('aprobado', 'Aprobados', Icons.check_circle_outline_rounded),
+        const SizedBox(width: 8),
+        opcion('rechazado', 'Rechazados', Icons.cancel_outlined),
+      ],
     );
   }
 
@@ -695,13 +708,7 @@ class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
               onPressed: () => _cambiarEstado(establecimiento, 'aprobado'),
               icon: const Icon(Icons.check_rounded, size: 17),
               label: const Text('Cambiar a aprobado'),
-              style: FilledButton.styleFrom(
-                backgroundColor: _azul,
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(13),
-                ),
-              ),
+              style: FilledButton.styleFrom(backgroundColor: _azul),
             )
           : OutlinedButton.icon(
               onPressed: () => _cambiarEstado(establecimiento, 'rechazado'),
@@ -709,11 +716,6 @@ class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
               label: const Text('Cambiar a rechazado'),
               style: OutlinedButton.styleFrom(
                 foregroundColor: const Color(0xFFE5484D),
-                side: const BorderSide(color: Color(0xFFFFB9BB)),
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(13),
-                ),
               ),
             ),
     );
@@ -838,7 +840,7 @@ class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
               fontSize: 13,
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 10),
           TextButton.icon(
             onPressed: () => _mostrarDetalles(establecimiento),
             icon: const Icon(Icons.visibility_outlined, size: 17),
@@ -849,7 +851,7 @@ class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
               tapTargetSize: MaterialTapTargetSize.shrinkWrap,
             ),
           ),
-          const SizedBox(height: 9),
+          const SizedBox(height: 8),
           _accionesTarjeta(establecimiento),
         ],
       ),
@@ -910,7 +912,7 @@ class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
                         _selectorEstado(todos),
                         const SizedBox(height: 15),
                         _buscador(),
-                        const SizedBox(height: 16),
+                        const SizedBox(height: 15),
                         Row(
                           children: [
                             Expanded(
@@ -961,23 +963,23 @@ class _StarPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final random = math.Random(27);
-    final paint = Paint()..color = Colors.white.withValues(alpha: 0.62);
+    final paint = Paint()..color = Colors.white.withValues(alpha: 0.60);
 
-    for (var i = 0; i < 26; i++) {
+    for (var i = 0; i < 24; i++) {
       final x = random.nextDouble() * size.width;
-      final y = random.nextDouble() * size.height * 0.68;
-      final radio = 0.6 + random.nextDouble() * 1.2;
+      final y = random.nextDouble() * size.height * 0.65;
+      final radio = 0.6 + random.nextDouble() * 1.1;
       canvas.drawCircle(Offset(x, y), radio, paint);
     }
 
     final brillo = Paint()
-      ..color = Colors.white.withValues(alpha: 0.72)
+      ..color = Colors.white.withValues(alpha: 0.70)
       ..strokeWidth = 1.1;
 
     for (final punto in [
-      Offset(size.width * 0.55, 34),
-      Offset(size.width * 0.72, 78),
-      Offset(size.width * 0.38, 106),
+      Offset(size.width * 0.52, 38),
+      Offset(size.width * 0.70, 82),
+      Offset(size.width * 0.36, 112),
     ]) {
       canvas.drawLine(
         Offset(punto.dx - 4, punto.dy),
@@ -1063,7 +1065,7 @@ class _MensajePanel extends StatelessWidget {
               color: Color(0xFFEAF2FF),
               shape: BoxShape.circle,
             ),
-            child: Icon(icono, size: 29, color: const Color(0xFF1769FF)),
+            child: Icon(icono, size: 29, color: _azul),
           ),
           const SizedBox(height: 14),
           Text(
