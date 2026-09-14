@@ -9,6 +9,7 @@ Map<String, List<TurnoHorario>> horarioCompleto() {
 }
 
 EstablecimientoModel crearEstablecimiento({
+  String propietarioId = '00000000-0000-0000-0000-000000000001',
   String nombre = 'Cafetería de prueba',
   String descripcion = 'Negocio ficticio para pruebas',
   String direccion = 'Dirección de prueba',
@@ -20,7 +21,7 @@ EstablecimientoModel crearEstablecimiento({
 }) {
   return EstablecimientoModel(
     id: '',
-    propietarioId: '00000000-0000-0000-0000-000000000001',
+    propietarioId: propietarioId,
     nombre: nombre,
     descripcion: descripcion,
     categoriaId: '00000000-0000-0000-0000-000000000002',
@@ -74,6 +75,31 @@ void main() {
     ).toSupabaseParaActualizarInformacion();
 
     expect(datos['estado'], 'pendiente');
+  });
+
+  test('permite leer un OSM sin propietario desde Supabase', () {
+    final establecimiento = EstablecimientoModel.fromSupabase({
+      'id': '00000000-0000-0000-0000-000000000010',
+      'propietario_id': null,
+      'nombre': 'Negocio OSM',
+      'descripcion': null,
+      'categoria_id': '00000000-0000-0000-0000-000000000002',
+      'direccion': 'Tulcán',
+      'latitud': 0.8119,
+      'longitud': -77.7173,
+      'telefono_publico': null,
+      'zona_horaria': null,
+      'estado': 'aprobado',
+    });
+
+    expect(establecimiento.propietarioId, isEmpty);
+    expect(establecimiento.nombre, 'Negocio OSM');
+  });
+
+  test('no permite crear en Cercly un establecimiento sin propietario', () {
+    final establecimiento = crearEstablecimiento(propietarioId: '');
+
+    expect(establecimiento.toSupabaseParaCrear, throwsArgumentError);
   });
 
   test('rechaza un nombre vacío', () {
