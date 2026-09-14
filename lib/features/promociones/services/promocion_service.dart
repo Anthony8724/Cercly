@@ -114,6 +114,65 @@ class PromocionService {
     }
   }
 
+  Future<void> actualizar({
+    required PromocionModel promocion,
+    XFile? imagenNueva,
+    bool eliminarImagenActual = false,
+  }) async {
+    final usuario = _supabase.auth.currentUser;
+
+    if (usuario == null) {
+      throw StateError('Debes iniciar sesión.');
+    }
+
+    if (promocion.id.trim().isEmpty) {
+      throw ArgumentError('La promoción es obligatoria.');
+    }
+
+    await _verificarPermiso(promocion.establecimientoId);
+
+    final rutaAnterior = promocion.imagenRutaStorage;
+    String? rutaNueva;
+
+    try {
+      if (imagenNueva != null) {
+        rutaNueva = await _subirImagen(
+          usuarioId: usuario.id,
+          establecimientoId: promocion.establecimientoId,
+          promocionId: promocion.id,
+          imagen: imagenNueva,
+          versionUnica: true,
+        );
+      }
+
+      final datos = promocion.toSupabaseParaActualizar();
+
+      if (rutaNueva != null) {
+        datos['imagen_ruta_storage'] = rutaNueva;
+      } else if (eliminarImagenActual) {
+        datos['imagen_ruta_storage'] = null;
+      }
+
+      await _supabase
+          .from('promociones')
+          .update(datos)
+          .eq('id', promocion.id)
+          .eq('establecimiento_id', promocion.establecimientoId);
+
+      if ((rutaNueva != null || eliminarImagenActual) &&
+          rutaAnterior != null &&
+          rutaAnterior.isNotEmpty &&
+          rutaAnterior != rutaNueva) {
+        await _supabase.storage.from(bucket).remove([rutaAnterior]);
+      }
+    } catch (_) {
+      if (rutaNueva != null) {
+        await _supabase.storage.from(bucket).remove([rutaNueva]);
+      }
+      rethrow;
+    }
+  }
+
   Future<void> cambiarEstado({
     required String promocionId,
     required String establecimientoId,
@@ -149,6 +208,7 @@ class PromocionService {
     required String establecimientoId,
     required String promocionId,
     required XFile imagen,
+    bool versionUnica = false,
   }) async {
     final bytes = await imagen.readAsBytes();
 
@@ -158,10 +218,13 @@ class PromocionService {
 
     final extension = _obtenerExtension(imagen.name);
     final contentType = _obtenerContentType(extension);
+    final sufijo = versionUnica
+        ? '_${DateTime.now().microsecondsSinceEpoch}'
+        : '';
 
     final ruta =
         '$usuarioId/$establecimientoId/'
-        '$promocionId.$extension';
+        '$promocionId$sufijo.$extension';
 
     await _supabase.storage
         .from(bucket)
