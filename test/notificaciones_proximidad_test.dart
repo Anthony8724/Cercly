@@ -145,13 +145,23 @@ void main() {
     });
 
     test('salir y volver después del cooldown permite notificar', () {
-      expect(control.evaluar([promocion()], ahora: instanteBase), hasLength(1));
+      final promocionVigente = promocion(
+        fin: instanteBase.add(const Duration(hours: 4)),
+      );
+
+      expect(
+        control.evaluar([promocionVigente], ahora: instanteBase),
+        hasLength(1),
+      );
       control.evaluar([
-        promocion(distancia: 500),
+        promocion(
+          distancia: 500,
+          fin: instanteBase.add(const Duration(hours: 4)),
+        ),
       ], ahora: instanteBase.add(const Duration(minutes: 30)));
 
       final resultado = control.evaluar([
-        promocion(),
+        promocionVigente,
       ], ahora: instanteBase.add(const Duration(hours: 3)));
 
       expect(resultado, hasLength(1));
@@ -180,35 +190,33 @@ void main() {
         ),
         promocionesService: promociones,
         notificaciones: notificaciones,
-        ahora: () => instanteBase,
+        control: ControlNotificacionesPromocion(),
       );
 
-      await controller.verificarAhora();
+      await controller.comprobarAhora();
 
       expect(promociones.consultas, 1);
       expect(notificaciones.mostradas, hasLength(1));
-      controller.dispose();
     });
 
-    test('sin permiso de ubicación no consulta promociones', () async {
+    test('permiso de ubicación denegado no consulta promociones', () async {
       final promociones = _PromocionesFalsas([promocion()]);
       final notificaciones = _NotificacionesFalsas();
       final controller = MonitorProximidadController(
         ubicacionService: _UbicacionFalsa(
           const ResultadoUbicacion(
             estado: EstadoUbicacion.permisoDenegado,
-            mensaje: 'Permiso denegado',
           ),
         ),
         promocionesService: promociones,
         notificaciones: notificaciones,
+        control: ControlNotificacionesPromocion(),
       );
 
-      await controller.verificarAhora();
+      await controller.comprobarAhora();
 
       expect(promociones.consultas, 0);
       expect(notificaciones.mostradas, isEmpty);
-      controller.dispose();
     });
   });
 }
