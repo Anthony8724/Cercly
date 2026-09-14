@@ -33,6 +33,43 @@ Map<String, dynamic> crearDetallePublico({
 
 void main() {
   group('EstablecimientoPublicoModel', () {
+    test('identifica solamente un OSM no reclamado sin propietario', () {
+      final datos = crearDetallePublico()
+        ..addAll({
+          'fuente': 'osm',
+          'estado_reclamo': 'no_reclamado',
+          'propietario_id': null,
+        });
+
+      final establecimiento = EstablecimientoPublicoModel.fromSupabase(datos);
+
+      expect(establecimiento.esReclamable, isTrue);
+      expect(
+        establecimiento.copiarCon(estadoHorario: 'abierto').esReclamable,
+        isTrue,
+      );
+    });
+
+    test('no permite reclamar un negocio Cercly ni un OSM con propietario', () {
+      final cercly = EstablecimientoPublicoModel.fromSupabase(
+        crearDetallePublico()..addAll({
+          'fuente': 'cercly',
+          'estado_reclamo': null,
+          'propietario_id': 'usuario-1',
+        }),
+      );
+      final osmReclamado = EstablecimientoPublicoModel.fromSupabase(
+        crearDetallePublico()..addAll({
+          'fuente': 'osm',
+          'estado_reclamo': 'reclamado',
+          'propietario_id': 'usuario-1',
+        }),
+      );
+
+      expect(cercly.esReclamable, isFalse);
+      expect(osmReclamado.esReclamable, isFalse);
+    });
+
     test('convierte correctamente los datos de Supabase', () {
       final ahora = DateTime.now();
 

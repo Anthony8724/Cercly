@@ -94,6 +94,9 @@ class EstablecimientoPublicoModel {
     this.distanciaMetros,
     this.tienePromocionesRpc,
     this.estadoHorario,
+    this.fuente,
+    this.estadoReclamo,
+    this.tienePropietario = false,
   });
 
   final String id;
@@ -114,11 +117,16 @@ class EstablecimientoPublicoModel {
   final double? distanciaMetros;
   final bool? tienePromocionesRpc;
   final String? estadoHorario;
+  final String? fuente;
+  final String? estadoReclamo;
+  final bool tienePropietario;
+
+  bool get esReclamable =>
+      fuente == 'osm' && estadoReclamo == 'no_reclamado' && !tienePropietario;
 
   String get categoriaId => categoria.id;
 
-  bool get tienePromociones =>
-      tienePromocionesRpc ?? promociones.isNotEmpty;
+  bool get tienePromociones => tienePromocionesRpc ?? promociones.isNotEmpty;
 
   String get distanciaFormateada {
     final distancia = distanciaMetros;
@@ -159,9 +167,11 @@ class EstablecimientoPublicoModel {
       urlFotoPortada: urlFotoPortada ?? this.urlFotoPortada,
       promociones: promociones ?? this.promociones,
       distanciaMetros: distanciaMetros ?? this.distanciaMetros,
-      tienePromocionesRpc:
-          tienePromocionesRpc ?? this.tienePromocionesRpc,
+      tienePromocionesRpc: tienePromocionesRpc ?? this.tienePromocionesRpc,
       estadoHorario: estadoHorario ?? this.estadoHorario,
+      fuente: fuente,
+      estadoReclamo: estadoReclamo,
+      tienePropietario: tienePropietario,
     );
   }
 
@@ -209,6 +219,9 @@ class EstablecimientoPublicoModel {
       ciudad: datos['ciudad'] as String?,
       provincia: datos['provincia'] as String?,
       paisCodigo: datos['pais_codigo'] as String?,
+      fuente: datos['fuente'] as String?,
+      estadoReclamo: datos['estado_reclamo'] as String?,
+      tienePropietario: datos['propietario_id'] != null,
       rutaFotoPortada: rutaPortada,
       promociones: promocionesDatos
           .map(PromocionPublicaModel.fromSupabase)

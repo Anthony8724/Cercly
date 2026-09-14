@@ -4,13 +4,20 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../services/auth_service.dart';
 import 'seleccion_tipo_cuenta_screen.dart';
 
-typedef IniciarSesion =
-    Future<void> Function({required String email, required String password});
+typedef IniciarSesion = Future<void> Function({
+  required String email,
+  required String password,
+});
 
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key, this.iniciarSesion});
+  const LoginScreen({
+    super.key,
+    this.iniciarSesion,
+    this.devolverResultado = false,
+  });
 
   final IniciarSesion? iniciarSesion;
+  final bool devolverResultado;
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -55,7 +62,11 @@ class _LoginScreenState extends State<LoginScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Inicio de sesión correcto')),
       );
-      Navigator.popUntil(context, (route) => route.isFirst);
+      if (widget.devolverResultado) {
+        Navigator.of(context).pop(true);
+      } else {
+        Navigator.popUntil(context, (route) => route.isFirst);
+      }
     } on AuthException catch (error) {
       if (!mounted) return;
 
@@ -84,13 +95,19 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  void _openRegister() {
-    Navigator.push(
+  Future<void> _openRegister() async {
+    final cuentaCreada = await Navigator.push<bool>(
       context,
-      MaterialPageRoute<void>(
-        builder: (_) => const SeleccionTipoCuentaScreen(),
+      MaterialPageRoute<bool>(
+        builder: (_) => SeleccionTipoCuentaScreen(
+          devolverResultado: widget.devolverResultado,
+        ),
       ),
     );
+
+    if (cuentaCreada == true && widget.devolverResultado && mounted) {
+      Navigator.of(context).pop(true);
+    }
   }
 
   @override

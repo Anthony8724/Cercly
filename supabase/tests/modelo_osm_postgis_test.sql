@@ -149,6 +149,7 @@ select has_function(
     'uuid',
     'uuid[]',
     'boolean',
+    'text',
     'integer',
     'integer'
   ],

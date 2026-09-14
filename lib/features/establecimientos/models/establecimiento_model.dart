@@ -18,8 +18,7 @@ class EstablecimientoModel {
          for (final entry in horario.entries)
            entry.key: List<TurnoHorario>.unmodifiable(entry.value),
        }) {
-    if (propietarioId.trim().isEmpty ||
-        nombre.trim().length < 2 ||
+    if (nombre.trim().length < 2 ||
         categoriaId.trim().isEmpty ||
         direccion.trim().isEmpty ||
         zonaHoraria.trim().isEmpty) {
@@ -64,6 +63,12 @@ class EstablecimientoModel {
   final String estado;
 
   Map<String, dynamic> toSupabaseParaCrear() {
+    if (propietarioId.trim().isEmpty) {
+      throw ArgumentError(
+        'Un establecimiento creado en Cercly debe tener propietario.',
+      );
+    }
+
     return {
       'propietario_id': propietarioId,
       'categoria_id': categoriaId,
@@ -115,7 +120,7 @@ class EstablecimientoModel {
   }) {
     return EstablecimientoModel(
       id: datos['id'] as String,
-      propietarioId: datos['propietario_id'] as String,
+      propietarioId: datos['propietario_id'] as String? ?? '',
       nombre: datos['nombre'] as String,
       descripcion: datos['descripcion'] as String? ?? '',
       categoriaId: datos['categoria_id'] as String,

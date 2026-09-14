@@ -1,13 +1,20 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../auth/screens/login_screen.dart';
 import '../../establecimientos/models/establecimiento_publico_model.dart';
 import '../../establecimientos/models/turno_horario.dart';
 import '../../establecimientos/services/estado_horario_service.dart';
 import '../../establecimientos/services/horario_establecimiento_service.dart';
+import '../../solicitudes_establecimientos/models/solicitud_establecimiento_model.dart';
+import '../../solicitudes_establecimientos/screens/nueva_solicitud_screen.dart';
 import '../services/mapas_externos_service.dart';
 
 typedef CargarHorarioEstablecimiento =
     Future<Map<String, List<TurnoHorario>>> Function(String establecimientoId);
+typedef EstaAutenticado = bool Function();
+typedef CrearPantallaAcceso = Widget Function();
+typedef CrearPantallaReclamo = Widget Function(String establecimientoId);
 
 class DetalleEstablecimientoScreen extends StatefulWidget {
   const DetalleEstablecimientoScreen({
@@ -15,6 +22,9 @@ class DetalleEstablecimientoScreen extends StatefulWidget {
     this.mapasService,
     this.cargarHorario,
     this.ahora,
+    this.estaAutenticado,
+    this.crearPantallaAcceso,
+    this.crearPantallaReclamo,
     super.key,
   });
 
@@ -22,6 +32,9 @@ class DetalleEstablecimientoScreen extends StatefulWidget {
   final MapasExternosService? mapasService;
   final CargarHorarioEstablecimiento? cargarHorario;
   final DateTime Function()? ahora;
+  final EstaAutenticado? estaAutenticado;
+  final CrearPantallaAcceso? crearPantallaAcceso;
+  final CrearPantallaReclamo? crearPantallaReclamo;
 
   @override
   State<DetalleEstablecimientoScreen> createState() =>
@@ -88,6 +101,42 @@ class _DetalleEstablecimientoScreenState
         ),
       );
     }
+  }
+
+  Future<void> _reclamarEstablecimiento() async {
+    final autenticado =
+        widget.estaAutenticado?.call() ??
+        Supabase.instance.client.auth.currentUser != null;
+
+    if (!autenticado) {
+      final inicioExitoso = await Navigator.of(context).push<bool>(
+        MaterialPageRoute<bool>(
+          builder: (_) =>
+              widget.crearPantallaAcceso?.call() ??
+              const LoginScreen(devolverResultado: true),
+        ),
+      );
+
+      if (inicioExitoso != true || !mounted) {
+        return;
+      }
+    }
+
+    if (!mounted) {
+      return;
+    }
+
+    await Navigator.of(context).push<bool>(
+      MaterialPageRoute<bool>(
+        builder: (_) =>
+            widget.crearPantallaReclamo?.call(establecimiento.id) ??
+            NuevaSolicitudScreen(
+              tipoInicial: SolicitudEstablecimientoModel.tipoReclamar,
+              establecimientoIdInicial: establecimiento.id,
+              bloquearTipo: true,
+            ),
+      ),
+    );
   }
 
   String get _textoEstadoHorario {
@@ -189,6 +238,36 @@ class _DetalleEstablecimientoScreenState
                       establecimiento.provincia,
                     ].whereType<String>().where((v) => v.isNotEmpty).join(', '),
                   ),
+                if (establecimiento.esReclamable) ...[
+                  const SizedBox(height: 8),
+                  Card(
+                    color: const Color(0xFFEFF6FF),
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Text(
+                            '¿Este negocio es tuyo?',
+                            style: Theme.of(context).textTheme.titleMedium
+                                ?.copyWith(fontWeight: FontWeight.w700),
+                          ),
+                          const SizedBox(height: 6),
+                          const Text(
+                            'Envía una solicitud para administrarlo en Cercly.',
+                          ),
+                          const SizedBox(height: 12),
+                          OutlinedButton.icon(
+                            key: const Key('reclamar-establecimiento'),
+                            onPressed: _reclamarEstablecimiento,
+                            icon: const Icon(Icons.verified_user_outlined),
+                            label: const Text('Reclamar establecimiento'),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
                 if (establecimiento.promociones.isNotEmpty) ...[
                   const SizedBox(height: 24),
                   Text(
