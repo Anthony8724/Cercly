@@ -10,7 +10,7 @@ select has_function(
   'buscar_establecimientos_cercanos',
   array[
     'double precision', 'double precision', 'integer', 'uuid', 'uuid[]',
-    'boolean', 'integer', 'integer'
+    'boolean', 'text', 'integer', 'integer'
   ],
   'existe el RPC PostGIS de establecimientos cercanos'
 );
@@ -36,7 +36,7 @@ select isnt_empty(
   $$
     select id
     from public.buscar_establecimientos_cercanos(
-      0.8116, -77.7172, 5000, null, null, false, 20, 0
+      0.8116, -77.7172, 5000, null, null, false, null, 20, 0
     )
   $$,
   'el RPC devuelve establecimientos cercanos a Tulcan'
@@ -49,7 +49,7 @@ select is_empty(
         distancia_metros,
         lag(distancia_metros) over () as distancia_anterior
       from public.buscar_establecimientos_cercanos(
-        0.8116, -77.7172, 50000, null, null, false, 100, 0
+        0.8116, -77.7172, 50000, null, null, false, null, 100, 0
       )
     )
     select distancia_metros
@@ -63,7 +63,7 @@ select is_empty(
   $$
     select id
     from public.buscar_establecimientos_cercanos(
-      0.8116, -77.7172, 1000, null, null, false, 100, 0
+      0.8116, -77.7172, 1000, null, null, false, null, 100, 0
     )
     where distancia_metros > 1000
   $$,
@@ -75,13 +75,13 @@ select is_empty(
     with categoria as (
       select categoria_id
       from public.buscar_establecimientos_cercanos(
-        0.8116, -77.7172, 50000, null, null, false, 1, 0
+        0.8116, -77.7172, 50000, null, null, false, null, 1, 0
       )
     )
     select r.id
     from categoria c
     cross join lateral public.buscar_establecimientos_cercanos(
-      0.8116, -77.7172, 50000, c.categoria_id, null, false, 100, 0
+      0.8116, -77.7172, 50000, c.categoria_id, null, false, null, 100, 0
     ) r
     where r.categoria_id <> c.categoria_id
   $$,
@@ -100,7 +100,7 @@ select is_empty(
     select r.id
     from subcategoria s
     cross join lateral public.buscar_establecimientos_cercanos(
-      0.8116, -77.7172, 50000, null, array[s.subcategoria_id], false, 100, 0
+      0.8116, -77.7172, 50000, null, array[s.subcategoria_id], false, null, 100, 0
     ) r
     where not exists (
       select 1
@@ -137,7 +137,7 @@ select is_empty(
   $$
     select id
     from public.buscar_establecimientos_cercanos(
-      0.8116, -77.7172, 50000, null, null, true, 100, 0
+      0.8116, -77.7172, 50000, null, null, true, null, 100, 0
     )
     where not tiene_promociones
   $$,
@@ -148,7 +148,7 @@ select ok(
   (
     select count(*) <= 3
     from public.buscar_establecimientos_cercanos(
-      0.8116, -77.7172, 50000, null, null, false, 3, 0
+      0.8116, -77.7172, 50000, null, null, false, null, 3, 0
     )
   ),
   'el RPC respeta el limite'
@@ -158,13 +158,13 @@ select isnt(
   (
     select id
     from public.buscar_establecimientos_cercanos(
-      0.8116, -77.7172, 50000, null, null, false, 1, 0
+      0.8116, -77.7172, 50000, null, null, false, null, 1, 0
     )
   ),
   (
     select id
     from public.buscar_establecimientos_cercanos(
-      0.8116, -77.7172, 50000, null, null, false, 1, 1
+      0.8116, -77.7172, 50000, null, null, false, null, 1, 1
     )
   ),
   'el desplazamiento cambia la pagina de resultados'
@@ -181,7 +181,7 @@ select throws_ok(
   $$
     select *
     from public.buscar_establecimientos_cercanos(
-      0.8116, -77.7172, 0, null, null, false, 20, 0
+      0.8116, -77.7172, 0, null, null, false, null, 20, 0
     )
   $$,
   'P0001',
@@ -207,7 +207,7 @@ select is_empty(
   $$
     select id
     from public.buscar_establecimientos_cercanos(
-      0.8116, -77.7172, 100, null, null, false, 100, 0
+      0.8116, -77.7172, 100, null, null, false, null, 100, 0
     )
     where nombre = 'Pendiente pgTAP'
   $$,
