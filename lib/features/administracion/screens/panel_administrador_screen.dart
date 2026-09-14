@@ -18,7 +18,6 @@ class PanelAdministradorScreen extends StatefulWidget {
 class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
   static const _azul = Color(0xFF1769FF);
   static const _azulOscuro = Color(0xFF102A56);
-  static const _turquesa = Color(0xFF13B8AE);
   static const _fondo = Color(0xFFF5F8FE);
   static const _borde = Color(0xFFE2E9F5);
 
@@ -302,16 +301,15 @@ class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
     return Tooltip(
       message: tooltip,
       child: Material(
-        color: Colors.white.withValues(alpha: 0.90),
-        elevation: 0,
-        borderRadius: BorderRadius.circular(16),
+        color: Colors.white.withValues(alpha: 0.92),
+        borderRadius: BorderRadius.circular(15),
         child: InkWell(
           onTap: onPressed,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(15),
           child: SizedBox(
-            width: 43,
-            height: 43,
-            child: Icon(icon, size: 21, color: _azulOscuro),
+            width: 44,
+            height: 44,
+            child: Icon(icon, size: 22, color: _azulOscuro),
           ),
         ),
       ),
@@ -319,247 +317,204 @@ class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
   }
 
   Widget _cabecera(String correo) {
-    return ClipRRect(
-      borderRadius: const BorderRadius.vertical(bottom: Radius.circular(34)),
-      child: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              Color(0xFFF5FBFF),
-              Color(0xFFD8E9FF),
-              Color(0xFF9EC4FF),
-              Color(0xFF467CD4),
-            ],
-            stops: [0, 0.34, 0.7, 1],
-          ),
+    return Container(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFFEAF5FF), Color(0xFFBBD5FF), Color(0xFF2256A5)],
         ),
-        child: Stack(
-          children: [
-            const Positioned.fill(child: CustomPaint(painter: _StarPainter())),
-            Positioned(
-              right: -45,
-              top: 15,
-              child: Container(
-                width: 145,
-                height: 145,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: Colors.white.withValues(alpha: 0.10),
-                  border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.30),
-                  ),
+        borderRadius: BorderRadius.vertical(bottom: Radius.circular(32)),
+      ),
+      child: Stack(
+        children: [
+          const Positioned.fill(child: CustomPaint(painter: _StarPainter())),
+          Positioned(
+            right: -42,
+            top: 24,
+            child: Container(
+              width: 132,
+              height: 132,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.white.withValues(alpha: 0.12),
+                border: Border.all(
+                  color: Colors.white.withValues(alpha: 0.28),
                 ),
               ),
             ),
-            Positioned(
-              right: 46,
-              top: 106,
-              child: Container(
-                width: 7,
-                height: 7,
-                decoration: const BoxDecoration(
-                  color: _turquesa,
-                  shape: BoxShape.circle,
-                ),
-              ),
-            ),
-            SafeArea(
-              bottom: false,
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(18, 16, 18, 22),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        Expanded(
-                          child: Align(
-                            alignment: Alignment.centerLeft,
-                            child: Image.asset(
-                              'assets/branding/cercly_logo.png',
-                              width: 136,
-                              height: 46,
-                              fit: BoxFit.contain,
-                              alignment: Alignment.centerLeft,
-                              filterQuality: FilterQuality.high,
+          ),
+          SafeArea(
+            bottom: false,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(18, 16, 18, 22),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        width: 44,
+                        height: 44,
+                        decoration: BoxDecoration(
+                          color: _azul,
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: const Icon(
+                          Icons.location_on_rounded,
+                          color: Colors.white,
+                          size: 27,
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      const Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Cercly',
+                              style: TextStyle(
+                                fontSize: 27,
+                                fontWeight: FontWeight.w900,
+                                color: _azulOscuro,
+                                height: 1,
+                                letterSpacing: -0.7,
+                              ),
                             ),
+                            SizedBox(height: 4),
+                            Text(
+                              'Descubre lo que te rodea',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: Color(0xFF52698F),
+                                fontSize: 11.5,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      _iconButton(
+                        icon: Icons.refresh_rounded,
+                        tooltip: 'Actualizar',
+                        onPressed: _recargar,
+                      ),
+                      const SizedBox(width: 8),
+                      _iconButton(
+                        icon: Icons.logout_rounded,
+                        tooltip: 'Cerrar sesión',
+                        onPressed: _cerrarSesion,
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 24),
+                  const Text(
+                    'Panel administrativo',
+                    style: TextStyle(
+                      fontSize: 27,
+                      fontWeight: FontWeight.w900,
+                      color: _azulOscuro,
+                      height: 1.05,
+                      letterSpacing: -0.7,
+                    ),
+                  ),
+                  const SizedBox(height: 7),
+                  Text(
+                    'Gestión de establecimientos y solicitudes',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: _azulOscuro.withValues(alpha: 0.72),
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(13),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.88),
+                      borderRadius: BorderRadius.circular(18),
+                      border: Border.all(
+                        color: Colors.white.withValues(alpha: 0.7),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        const CircleAvatar(
+                          radius: 19,
+                          backgroundColor: Color(0xFFDDEAFF),
+                          child: Icon(
+                            Icons.admin_panel_settings_rounded,
+                            color: _azul,
+                            size: 22,
                           ),
                         ),
-                        _iconButton(
-                          icon: Icons.refresh_rounded,
-                          tooltip: 'Actualizar',
-                          onPressed: _recargar,
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'Administrador de Cercly',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w800,
+                                  color: _azulOscuro,
+                                  fontSize: 13.5,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                correo,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  color: Color(0xFF6B7D9B),
+                                  fontSize: 11.5,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                         const SizedBox(width: 8),
-                        _iconButton(
-                          icon: Icons.logout_rounded,
-                          tooltip: 'Cerrar sesión',
-                          onPressed: _cerrarSesion,
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 9,
+                            vertical: 6,
+                          ),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFEAF2FF),
+                            borderRadius: BorderRadius.circular(99),
+                          ),
+                          child: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.verified_user_rounded,
+                                size: 14,
+                                color: _azul,
+                              ),
+                              SizedBox(width: 4),
+                              Text(
+                                'Admin',
+                                style: TextStyle(
+                                  color: _azul,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 24),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 5,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.52),
-                        borderRadius: BorderRadius.circular(99),
-                        border: Border.all(
-                          color: Colors.white.withValues(alpha: 0.55),
-                        ),
-                      ),
-                      child: const Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            Icons.admin_panel_settings_outlined,
-                            size: 14,
-                            color: _azul,
-                          ),
-                          SizedBox(width: 5),
-                          Text(
-                            'ADMINISTRACIÓN',
-                            style: TextStyle(
-                              color: _azulOscuro,
-                              fontSize: 9.5,
-                              fontWeight: FontWeight.w900,
-                              letterSpacing: 0.8,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    const Text(
-                      'Panel administrativo',
-                      style: TextStyle(
-                        fontSize: 29,
-                        height: 1.05,
-                        fontWeight: FontWeight.w900,
-                        color: _azulOscuro,
-                        letterSpacing: -0.8,
-                      ),
-                    ),
-                    const SizedBox(height: 7),
-                    Text(
-                      'Controla establecimientos, solicitudes y estados desde un solo lugar.',
-                      style: TextStyle(
-                        fontSize: 13.5,
-                        height: 1.35,
-                        color: _azulOscuro.withValues(alpha: 0.72),
-                      ),
-                    ),
-                    const SizedBox(height: 18),
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(13),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.91),
-                        borderRadius: BorderRadius.circular(19),
-                        border: Border.all(
-                          color: Colors.white.withValues(alpha: 0.75),
-                        ),
-                        boxShadow: const [
-                          BoxShadow(
-                            color: Color(0x140F2B5B),
-                            blurRadius: 18,
-                            offset: Offset(0, 7),
-                          ),
-                        ],
-                      ),
-                      child: Row(
-                        children: [
-                          Container(
-                            width: 42,
-                            height: 42,
-                            decoration: BoxDecoration(
-                              gradient: const LinearGradient(
-                                colors: [_azul, _turquesa],
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                              ),
-                              borderRadius: BorderRadius.circular(14),
-                            ),
-                            child: const Icon(
-                              Icons.shield_outlined,
-                              color: Colors.white,
-                              size: 22,
-                            ),
-                          ),
-                          const SizedBox(width: 11),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text(
-                                  'Administrador de Cercly',
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.w900,
-                                    color: _azulOscuro,
-                                    fontSize: 13.5,
-                                  ),
-                                ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  correo,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(
-                                    color: Color(0xFF6B7D9B),
-                                    fontSize: 11.5,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 9,
-                              vertical: 6,
-                            ),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFEAF2FF),
-                              borderRadius: BorderRadius.circular(99),
-                            ),
-                            child: const Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(
-                                  Icons.verified_user_rounded,
-                                  size: 14,
-                                  color: _azul,
-                                ),
-                                SizedBox(width: 4),
-                                Text(
-                                  'Admin',
-                                  style: TextStyle(
-                                    color: _azul,
-                                    fontSize: 10.5,
-                                    fontWeight: FontWeight.w900,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -569,94 +524,83 @@ class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
 
     Widget opcion(String estado, String texto, IconData icono) {
       final seleccionado = _estadoSeleccionado == estado;
-      final cantidad = contar(estado);
-
-      return Expanded(
-        child: Material(
-          color: Colors.transparent,
-          child: InkWell(
-            onTap: () => setState(() => _estadoSeleccionado = estado),
-            borderRadius: BorderRadius.circular(17),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 180),
-              height: 72,
-              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 8),
-              decoration: BoxDecoration(
-                color: seleccionado ? _azul : Colors.white,
-                borderRadius: BorderRadius.circular(17),
-                border: Border.all(color: seleccionado ? _azul : _borde),
-                boxShadow: seleccionado
-                    ? [
-                        BoxShadow(
-                          color: _azul.withValues(alpha: 0.18),
-                          blurRadius: 14,
-                          offset: const Offset(0, 5),
-                        ),
-                      ]
-                    : null,
-              ),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        icono,
-                        size: 15,
-                        color: seleccionado ? Colors.white : _azulOscuro,
+      return Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () => setState(() => _estadoSeleccionado = estado),
+          borderRadius: BorderRadius.circular(16),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 180),
+            constraints: const BoxConstraints(minWidth: 124),
+            padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 12),
+            decoration: BoxDecoration(
+              color: seleccionado ? _azul : Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: seleccionado ? _azul : _borde),
+              boxShadow: seleccionado
+                  ? [
+                      BoxShadow(
+                        color: _azul.withValues(alpha: 0.18),
+                        blurRadius: 14,
+                        offset: const Offset(0, 5),
                       ),
-                      const SizedBox(width: 4),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 6,
-                          vertical: 2,
-                        ),
-                        decoration: BoxDecoration(
-                          color: seleccionado
-                              ? Colors.white
-                              : const Color(0xFFF0F5FD),
-                          borderRadius: BorderRadius.circular(99),
-                        ),
-                        child: Text(
-                          '$cantidad',
-                          style: const TextStyle(
-                            color: _azul,
-                            fontSize: 9.5,
-                            fontWeight: FontWeight.w900,
-                          ),
-                        ),
-                      ),
-                    ],
+                    ]
+                  : null,
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  icono,
+                  size: 17,
+                  color: seleccionado ? Colors.white : _azulOscuro,
+                ),
+                const SizedBox(width: 7),
+                Text(
+                  texto,
+                  style: TextStyle(
+                    color: seleccionado ? Colors.white : _azulOscuro,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 12.5,
                   ),
-                  const SizedBox(height: 6),
-                  Text(
-                    texto,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: seleccionado ? Colors.white : _azulOscuro,
-                      fontWeight: FontWeight.w800,
+                ),
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: seleccionado
+                        ? Colors.white
+                        : const Color(0xFFF0F5FD),
+                    borderRadius: BorderRadius.circular(99),
+                  ),
+                  child: Text(
+                    '${contar(estado)}',
+                    style: const TextStyle(
+                      color: _azul,
                       fontSize: 10.5,
+                      fontWeight: FontWeight.w900,
                     ),
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
         ),
       );
     }
 
-    return Row(
-      children: [
-        opcion('pendiente', 'Pendientes', Icons.schedule_rounded),
-        const SizedBox(width: 8),
-        opcion('aprobado', 'Aprobados', Icons.check_circle_outline_rounded),
-        const SizedBox(width: 8),
-        opcion('rechazado', 'Rechazados', Icons.cancel_outlined),
-      ],
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      clipBehavior: Clip.none,
+      child: Row(
+        children: [
+          opcion('pendiente', 'Pendientes', Icons.schedule_rounded),
+          const SizedBox(width: 9),
+          opcion('aprobado', 'Aprobados', Icons.check_circle_outline_rounded),
+          const SizedBox(width: 9),
+          opcion('rechazado', 'Rechazados', Icons.cancel_outlined),
+        ],
+      ),
     );
   }
 
@@ -1016,46 +960,36 @@ class _StarPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final random = math.Random(42);
-    final starPaint = Paint()..color = Colors.white.withValues(alpha: 0.62);
+    final random = math.Random(27);
+    final paint = Paint()..color = Colors.white.withValues(alpha: 0.62);
 
-    for (var i = 0; i < 31; i++) {
+    for (var i = 0; i < 26; i++) {
       final x = random.nextDouble() * size.width;
-      final y = random.nextDouble() * size.height * 0.70;
-      final radius = 0.55 + random.nextDouble() * 1.15;
-      canvas.drawCircle(Offset(x, y), radius, starPaint);
+      final y = random.nextDouble() * size.height * 0.68;
+      final radio = 0.6 + random.nextDouble() * 1.2;
+      canvas.drawCircle(Offset(x, y), radio, paint);
     }
 
-    final glow = Paint()
-      ..color = Colors.white.withValues(alpha: 0.76)
+    final brillo = Paint()
+      ..color = Colors.white.withValues(alpha: 0.72)
       ..strokeWidth = 1.1;
 
-    for (final point in [
-      Offset(size.width * 0.48, 42),
-      Offset(size.width * 0.70, 83),
-      Offset(size.width * 0.35, 120),
+    for (final punto in [
+      Offset(size.width * 0.55, 34),
+      Offset(size.width * 0.72, 78),
+      Offset(size.width * 0.38, 106),
     ]) {
       canvas.drawLine(
-        Offset(point.dx - 4, point.dy),
-        Offset(point.dx + 4, point.dy),
-        glow,
+        Offset(punto.dx - 4, punto.dy),
+        Offset(punto.dx + 4, punto.dy),
+        brillo,
       );
       canvas.drawLine(
-        Offset(point.dx, point.dy - 4),
-        Offset(point.dx, point.dy + 4),
-        glow,
+        Offset(punto.dx, punto.dy - 4),
+        Offset(punto.dx, punto.dy + 4),
+        brillo,
       );
     }
-
-    final orbit = Paint()
-      ..color = Colors.white.withValues(alpha: 0.18)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1;
-    final rect = Rect.fromCircle(
-      center: Offset(size.width * 0.90, 95),
-      radius: 57,
-    );
-    canvas.drawArc(rect, math.pi * 0.15, math.pi * 0.90, false, orbit);
   }
 
   @override
