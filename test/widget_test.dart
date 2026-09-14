@@ -28,6 +28,7 @@ class _EstablecimientosVacios implements EstablecimientoCercanoRepository {
     String? categoriaId,
     List<String>? subcategoriaIds,
     bool soloPromociones = false,
+    String? busqueda,
     int limite = 20,
     int desplazamiento = 0,
   }) async => const [];
