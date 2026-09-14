@@ -421,8 +421,15 @@ void main() {
       );
       await tester.pump();
 
-      expect(find.byKey(const Key('reclamar-establecimiento')), findsOneWidget);
-      await tester.tap(find.byKey(const Key('reclamar-establecimiento')));
+      final botonReclamar = find.byKey(
+        const Key('reclamar-establecimiento'),
+      );
+      expect(botonReclamar, findsOneWidget);
+
+      await tester.ensureVisible(botonReclamar);
+      await tester.pumpAndSettle();
+
+      await tester.tap(botonReclamar);
       await tester.pumpAndSettle();
 
       expect(establecimientoSeleccionado, 'osm-1');
