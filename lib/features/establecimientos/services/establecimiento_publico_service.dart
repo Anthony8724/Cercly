@@ -68,6 +68,9 @@ class EstablecimientoPublicoService
     ciudad,
     provincia,
     pais_codigo,
+    fuente,
+    estado_reclamo,
+    propietario_id,
     categorias!inner(
       id,
       nombre,
@@ -295,10 +298,8 @@ class EstablecimientoPublicoService
           )
         : await _cargarHorariosPublicos(ids);
 
-    final horariosPorEstablecimiento = <
-      String,
-      Map<String, List<TurnoHorario>>
-    >{};
+    final horariosPorEstablecimiento =
+        <String, Map<String, List<TurnoHorario>>>{};
 
     const dias = [
       'lunes',

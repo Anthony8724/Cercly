@@ -5,7 +5,18 @@ import '../models/solicitud_establecimiento_model.dart';
 import '../services/solicitud_establecimiento_service.dart';
 
 class NuevaSolicitudScreen extends StatefulWidget {
-  const NuevaSolicitudScreen({super.key});
+  const NuevaSolicitudScreen({
+    super.key,
+    this.tipoInicial = SolicitudEstablecimientoModel.tipoReclamar,
+    this.establecimientoIdInicial,
+    this.bloquearTipo = false,
+    this.service,
+  });
+
+  final String tipoInicial;
+  final String? establecimientoIdInicial;
+  final bool bloquearTipo;
+  final SolicitudEstablecimientoRepository? service;
 
   @override
   State<NuevaSolicitudScreen> createState() => _NuevaSolicitudScreenState();
@@ -14,18 +25,20 @@ class NuevaSolicitudScreen extends StatefulWidget {
 class _NuevaSolicitudScreenState extends State<NuevaSolicitudScreen> {
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
   final TextEditingController _mensajeController = TextEditingController();
-  final SolicitudEstablecimientoService _service =
-      SolicitudEstablecimientoService();
+  late final SolicitudEstablecimientoRepository _service;
 
   late Future<List<EstablecimientoSolicitudOpcion>> _establecimientosFuture;
 
   String? _establecimientoId;
-  String _tipo = SolicitudEstablecimientoModel.tipoReclamar;
+  late String _tipo;
   bool _guardando = false;
 
   @override
   void initState() {
     super.initState();
+    _service = widget.service ?? SolicitudEstablecimientoService();
+    _tipo = widget.tipoInicial;
+    _establecimientoId = widget.establecimientoIdInicial;
     _cargarEstablecimientos();
   }
 
@@ -36,11 +49,30 @@ class _NuevaSolicitudScreenState extends State<NuevaSolicitudScreen> {
   }
 
   void _cargarEstablecimientos() {
-    _establecimientosFuture = _service.listarEstablecimientosAprobados();
+    _establecimientosFuture = _service.listarEstablecimientosParaTipo(_tipo);
   }
 
   void _recargar() {
     setState(_cargarEstablecimientos);
+  }
+
+  void _cambiarTipo(String tipo) {
+    setState(() {
+      _tipo = tipo;
+      _establecimientoId = null;
+      _cargarEstablecimientos();
+    });
+  }
+
+  String get _mensajeSinResultados {
+    switch (_tipo) {
+      case SolicitudEstablecimientoModel.tipoReclamar:
+        return 'No hay establecimientos OSM disponibles para reclamar.';
+      case SolicitudEstablecimientoModel.tipoAcceso:
+        return 'No hay establecimientos administrados disponibles.';
+      default:
+        return 'No hay establecimientos públicos disponibles.';
+    }
   }
 
   String _descripcionTipo(String tipo) {
@@ -160,17 +192,17 @@ class _NuevaSolicitudScreenState extends State<NuevaSolicitudScreen> {
             final establecimientos =
                 snapshot.data ?? <EstablecimientoSolicitudOpcion>[];
 
-            if (establecimientos.isEmpty) {
-              return const Center(
+            if (establecimientos.isEmpty && widget.bloquearTipo) {
+              return Center(
                 child: Padding(
-                  padding: EdgeInsets.all(24),
+                  padding: const EdgeInsets.all(24),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.storefront_outlined, size: 64),
-                      SizedBox(height: 16),
+                      const Icon(Icons.storefront_outlined, size: 64),
+                      const SizedBox(height: 16),
                       Text(
-                        'No hay establecimientos aprobados disponibles.',
+                        _mensajeSinResultados,
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           fontSize: 18,
@@ -201,7 +233,22 @@ class _NuevaSolicitudScreenState extends State<NuevaSolicitudScreen> {
                       'claramente lo que necesitas.',
                     ),
                     const SizedBox(height: 24),
+                    if (establecimientos.isEmpty) ...[
+                      Card(
+                        child: Padding(
+                          padding: const EdgeInsets.all(14),
+                          child: Text(_mensajeSinResultados),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                    ],
                     DropdownButtonFormField<String>(
+                      initialValue:
+                          establecimientos.any(
+                            (item) => item.id == _establecimientoId,
+                          )
+                          ? _establecimientoId
+                          : null,
                       decoration: const InputDecoration(
                         labelText: 'Establecimiento',
                         border: OutlineInputBorder(),
@@ -216,7 +263,7 @@ class _NuevaSolicitudScreenState extends State<NuevaSolicitudScreen> {
                           ),
                         );
                       }).toList(),
-                      onChanged: _guardando
+                      onChanged: _guardando || establecimientos.isEmpty
                           ? null
                           : (valor) {
                               setState(() {
@@ -258,16 +305,14 @@ class _NuevaSolicitudScreenState extends State<NuevaSolicitudScreen> {
                           child: Text(_etiquetaTipo(tipo)),
                         );
                       }).toList(),
-                      onChanged: _guardando
+                      onChanged: _guardando || widget.bloquearTipo
                           ? null
                           : (valor) {
                               if (valor == null) {
                                 return;
                               }
 
-                              setState(() {
-                                _tipo = valor;
-                              });
+                              _cambiarTipo(valor);
                             },
                     ),
                     const SizedBox(height: 10),

@@ -3,23 +3,24 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../services/auth_service.dart';
 
-typedef RegistrarCuenta =
-    Future<bool> Function({
-      required String nombre,
-      required String email,
-      required String password,
-      required TipoCuenta tipoCuenta,
-    });
+typedef RegistrarCuenta = Future<bool> Function({
+  required String nombre,
+  required String email,
+  required String password,
+  required TipoCuenta tipoCuenta,
+});
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({
     this.tipoCuenta = TipoCuenta.usuario,
     this.registrarCuenta,
+    this.devolverResultado = false,
     super.key,
   });
 
   final TipoCuenta tipoCuenta;
   final RegistrarCuenta? registrarCuenta;
+  final bool devolverResultado;
 
   @override
   State<RegisterScreen> createState() => _RegisterScreenState();
@@ -80,6 +81,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
       if (requiresConfirmation) {
         Navigator.pop(context);
+      } else if (widget.devolverResultado) {
+        Navigator.of(context).pop(true);
       } else {
         Navigator.popUntil(context, (route) => route.isFirst);
       }

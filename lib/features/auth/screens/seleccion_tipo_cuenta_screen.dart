@@ -3,14 +3,26 @@ import 'package:flutter/material.dart';
 import 'register_screen.dart';
 
 class SeleccionTipoCuentaScreen extends StatelessWidget {
-  const SeleccionTipoCuentaScreen({super.key});
+  const SeleccionTipoCuentaScreen({super.key, this.devolverResultado = false});
 
-  void _abrirRegistro(BuildContext context, TipoCuenta tipoCuenta) {
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (_) => RegisterScreen(tipoCuenta: tipoCuenta),
+  final bool devolverResultado;
+
+  Future<void> _abrirRegistro(
+    BuildContext context,
+    TipoCuenta tipoCuenta,
+  ) async {
+    final cuentaCreada = await Navigator.of(context).push<bool>(
+      MaterialPageRoute<bool>(
+        builder: (_) => RegisterScreen(
+          tipoCuenta: tipoCuenta,
+          devolverResultado: devolverResultado,
+        ),
       ),
     );
+
+    if (cuentaCreada == true && devolverResultado && context.mounted) {
+      Navigator.of(context).pop(true);
+    }
   }
 
   @override
@@ -25,9 +37,8 @@ class SeleccionTipoCuentaScreen extends StatelessWidget {
             children: [
               Text(
                 '¿Cómo quieres usar Cercly?',
-                style: Theme.of(
-                  context,
-                ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
+                style: Theme.of(context).textTheme.headlineSmall
+                    ?.copyWith(fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 24),
               _OpcionCuenta(

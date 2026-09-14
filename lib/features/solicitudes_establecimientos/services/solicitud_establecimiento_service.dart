@@ -57,7 +57,20 @@ class SolicitudEstablecimientoDetalle {
   }
 }
 
-class SolicitudEstablecimientoService {
+abstract interface class SolicitudEstablecimientoRepository {
+  Future<List<EstablecimientoSolicitudOpcion>> listarEstablecimientosParaTipo(
+    String tipo,
+  );
+
+  Future<String> crear({
+    required String establecimientoId,
+    required String tipo,
+    required String mensaje,
+  });
+}
+
+class SolicitudEstablecimientoService
+    implements SolicitudEstablecimientoRepository {
   SolicitudEstablecimientoService({SupabaseClient? supabase})
     : _supabase = supabase ?? Supabase.instance.client;
 
@@ -76,11 +89,35 @@ class SolicitudEstablecimientoService {
 
   Future<List<EstablecimientoSolicitudOpcion>>
   listarEstablecimientosAprobados() async {
-    final respuesta = await _supabase
+    return listarEstablecimientosParaTipo(
+      SolicitudEstablecimientoModel.tipoCorreccion,
+    );
+  }
+
+  @override
+  Future<List<EstablecimientoSolicitudOpcion>> listarEstablecimientosParaTipo(
+    String tipo,
+  ) async {
+    if (!SolicitudEstablecimientoModel.tiposPermitidos.contains(tipo)) {
+      throw ArgumentError('El tipo de solicitud no es válido.');
+    }
+
+    var consulta = _supabase
         .from('establecimientos')
         .select('id, nombre, direccion')
         .eq('estado', 'aprobado')
-        .order('nombre');
+        .eq('publicable', true);
+
+    if (tipo == SolicitudEstablecimientoModel.tipoReclamar) {
+      consulta = consulta
+          .eq('fuente', 'osm')
+          .eq('estado_reclamo', 'no_reclamado')
+          .isFilter('propietario_id', null);
+    } else if (tipo == SolicitudEstablecimientoModel.tipoAcceso) {
+      consulta = consulta.not('propietario_id', 'is', null);
+    }
+
+    final respuesta = await consulta.order('nombre');
 
     return respuesta
         .map<EstablecimientoSolicitudOpcion>(
@@ -177,6 +214,7 @@ class SolicitudEstablecimientoService {
     );
   }
 
+  @override
   Future<String> crear({
     required String establecimientoId,
     required String tipo,
@@ -210,9 +248,14 @@ class SolicitudEstablecimientoService {
       tipo: tipo,
     );
 
+    final datosCrear = solicitud.toSupabaseParaCrear();
+    if (tipo == SolicitudEstablecimientoModel.tipoCorreccion) {
+      datosCrear['datos_propuestos'] = {'descripcion_solicitud': texto};
+    }
+
     final respuesta = await _supabase
         .from('solicitudes_establecimientos')
-        .insert(solicitud.toSupabaseParaCrear())
+        .insert(datosCrear)
         .select('id')
         .single();
 

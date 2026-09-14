@@ -135,29 +135,26 @@ ExplorarController crearController({
 
 void main() {
   group('ExplorarController', () {
-    test(
-      'envía radio, categoría, subcategoría, promociones y búsqueda al servicio',
-      () async {
-        final servicio = EstablecimientoServiceFalso(
-          respuesta: [establecimiento()],
-        );
-        final controller = crearController(establecimientos: servicio);
+    test('envía radio, categoría, subcategoría, promociones y búsqueda al servicio', () async {
+      final servicio = EstablecimientoServiceFalso(
+        respuesta: [establecimiento()],
+      );
+      final controller = crearController(establecimientos: servicio);
 
-        await controller.solicitarUbicacion();
-        await controller.cambiarRadio(2000);
-        await controller.cambiarCategoria('categoria-1');
-        await controller.cambiarSubcategoria('subcategoria-1');
-        controller.busqueda = 'cafeteria';
-        await controller.cambiarSoloPromociones(true);
+      await controller.solicitarUbicacion();
+      await controller.cambiarRadio(2000);
+      await controller.cambiarCategoria('categoria-1');
+      await controller.cambiarSubcategoria('subcategoria-1');
+      controller.busqueda = 'cafeteria';
+      await controller.cambiarSoloPromociones(true);
 
-        expect(servicio.radioRecibido, 2000);
-        expect(servicio.categoriaRecibida, 'categoria-1');
-        expect(servicio.subcategoriasRecibidas, ['subcategoria-1']);
-        expect(servicio.soloPromocionesRecibido, isTrue);
-        expect(servicio.busquedaRecibida, 'cafeteria');
-        expect(controller.establecimientos, hasLength(1));
-      },
-    );
+      expect(servicio.radioRecibido, 2000);
+      expect(servicio.categoriaRecibida, 'categoria-1');
+      expect(servicio.subcategoriasRecibidas, ['subcategoria-1']);
+      expect(servicio.soloPromocionesRecibido, isTrue);
+      expect(servicio.busquedaRecibida, 'cafeteria');
+      expect(controller.establecimientos, hasLength(1));
+    });
 
     test('aplica búsqueda después del debounce', () async {
       final servicio = EstablecimientoServiceFalso(
@@ -389,6 +386,47 @@ void main() {
       await tester.pump();
       expect(uriAbierta.toString(), contains('0.8117'));
       expect(uriAbierta.toString(), contains('-77.7171'));
+    });
+
+    testWidgets('OSM reclamable abre la solicitud preseleccionada', (
+      tester,
+    ) async {
+      String? establecimientoSeleccionado;
+      final reclamable = EstablecimientoPublicoModel(
+        id: 'osm-1',
+        nombre: 'Negocio OSM',
+        descripcion: '',
+        direccion: 'Tulcán',
+        latitud: 0.8116,
+        longitud: -77.7172,
+        telefonoPublico: '',
+        zonaHoraria: 'America/Guayaquil',
+        categoria: categoria,
+        promociones: const [],
+        fuente: 'osm',
+        estadoReclamo: 'no_reclamado',
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: DetalleEstablecimientoScreen(
+            establecimiento: reclamable,
+            estaAutenticado: () => true,
+            crearPantallaReclamo: (id) {
+              establecimientoSeleccionado = id;
+              return const Scaffold(body: Text('Formulario de reclamo'));
+            },
+          ),
+        ),
+      );
+      await tester.pump();
+
+      expect(find.byKey(const Key('reclamar-establecimiento')), findsOneWidget);
+      await tester.tap(find.byKey(const Key('reclamar-establecimiento')));
+      await tester.pumpAndSettle();
+
+      expect(establecimientoSeleccionado, 'osm-1');
+      expect(find.text('Formulario de reclamo'), findsOneWidget);
     });
   });
 }
