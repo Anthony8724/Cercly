@@ -78,12 +78,10 @@ class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
       builder: (dialogContext) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
         title: Text(
-          esAprobacion
-              ? 'Aprobar establecimiento'
-              : 'Rechazar establecimiento',
+          esAprobacion ? 'Aprobar establecimiento' : 'Rechazar establecimiento',
         ),
         content: Text(
-          '¿Deseas ${esAprobacion ? 'aprobar' : 'rechazar'} '
+          'Â¿Deseas ${esAprobacion ? 'aprobar' : 'rechazar'} '
           '"${establecimiento.nombre}"?',
         ),
         actions: [
@@ -94,8 +92,7 @@ class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
           FilledButton(
             onPressed: () => Navigator.of(dialogContext).pop(true),
             style: FilledButton.styleFrom(
-              backgroundColor:
-                  esAprobacion ? _azul : const Color(0xFFE5484D),
+              backgroundColor: esAprobacion ? _azul : const Color(0xFFE5484D),
             ),
             child: Text(esAprobacion ? 'Aprobar' : 'Rechazar'),
           ),
@@ -222,28 +219,29 @@ class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
                 ),
                 const SizedBox(height: 18),
                 _Detalle(
-                  etiqueta: 'Descripción',
+                  etiqueta: 'DescripciÃ³n',
                   valor: establecimiento.descripcion.isEmpty
-                      ? 'Sin descripción'
+                      ? 'Sin descripciÃ³n'
                       : establecimiento.descripcion,
                 ),
                 _Detalle(
-                  etiqueta: 'Dirección',
+                  etiqueta: 'DirecciÃ³n',
                   valor: establecimiento.direccion,
                 ),
                 _Detalle(
-                  etiqueta: 'Teléfono',
+                  etiqueta: 'TelÃ©fono',
                   valor: establecimiento.telefonoPublico.isEmpty
-                      ? 'Sin teléfono'
+                      ? 'Sin telÃ©fono'
                       : establecimiento.telefonoPublico,
                 ),
                 _Detalle(
-                  etiqueta: 'Categoría',
+                  etiqueta: 'CategorÃ­a',
                   valor: establecimiento.categoriaId,
                 ),
                 _Detalle(
-                  etiqueta: 'Ubicación',
-                  valor: '${establecimiento.latitud}, ${establecimiento.longitud}',
+                  etiqueta: 'UbicaciÃ³n',
+                  valor:
+                      '${establecimiento.latitud}, ${establecimiento.longitud}',
                 ),
                 _Detalle(
                   etiqueta: 'Zona horaria',
@@ -327,9 +325,7 @@ class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 color: Colors.white.withValues(alpha: 0.10),
-                border: Border.all(
-                  color: Colors.white.withValues(alpha: 0.28),
-                ),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.28)),
               ),
             ),
           ),
@@ -364,7 +360,7 @@ class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
                       const SizedBox(width: 8),
                       _accionCabecera(
                         icono: Icons.logout_rounded,
-                        tooltip: 'Cerrar sesión',
+                        tooltip: 'Cerrar sesiÃ³n',
                         onPressed: _cerrarSesion,
                       ),
                     ],
@@ -389,7 +385,7 @@ class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
                         ),
                         SizedBox(width: 5),
                         Text(
-                          'ADMINISTRACIÓN',
+                          'ADMINISTRACIÃ“N',
                           style: TextStyle(
                             color: _azulOscuro,
                             fontSize: 9.5,
@@ -830,7 +826,7 @@ class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
           const SizedBox(height: 12),
           Text(
             establecimiento.descripcion.isEmpty
-                ? 'Sin descripción disponible.'
+                ? 'Sin descripciÃ³n disponible.'
                 : establecimiento.descripcion,
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
@@ -898,11 +894,14 @@ class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
                     final establecimientos = todos.where((establecimiento) {
                       final coincideEstado =
                           establecimiento.estado == _estadoSeleccionado;
-                      final coincideBusqueda = consulta.isEmpty ||
-                          establecimiento.nombre.toLowerCase().contains(consulta) ||
-                          establecimiento.direccion
-                              .toLowerCase()
-                              .contains(consulta);
+                      final coincideBusqueda =
+                          consulta.isEmpty ||
+                          establecimiento.nombre.toLowerCase().contains(
+                            consulta,
+                          ) ||
+                          establecimiento.direccion.toLowerCase().contains(
+                            consulta,
+                          );
                       return coincideEstado && coincideBusqueda;
                     }).toList();
 
@@ -927,7 +926,10 @@ class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
                             ),
                             TextButton.icon(
                               onPressed: _abrirSolicitudes,
-                              icon: const Icon(Icons.assignment_outlined, size: 17),
+                              icon: const Icon(
+                                Icons.assignment_outlined,
+                                size: 17,
+                              ),
                               label: const Text('Solicitudes'),
                             ),
                           ],
@@ -940,7 +942,7 @@ class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
                                 : Icons.search_off_rounded,
                             mensaje: _busqueda.isEmpty
                                 ? 'No hay establecimientos ${_nombreEstado(_estadoSeleccionado).toLowerCase()}s.'
-                                : 'No encontramos resultados para “$_busqueda”.',
+                                : 'No encontramos resultados para â€œ$_busquedaâ€.',
                           )
                         else
                           ...establecimientos.map(_tarjetaEstablecimiento),
@@ -1065,7 +1067,7 @@ class _MensajePanel extends StatelessWidget {
               color: Color(0xFFEAF2FF),
               shape: BoxShape.circle,
             ),
-            child: Icon(icono, size: 29, color: _azul),
+            child: Icon(icono, size: 29, color: const Color(0xFF2468F2)),
           ),
           const SizedBox(height: 14),
           Text(
