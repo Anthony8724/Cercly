@@ -193,7 +193,7 @@ void main() {
         control: ControlNotificacionesPromocion(),
       );
 
-      await controller.comprobarAhora();
+      await controller.verificarAhora();
 
       expect(promociones.consultas, 1);
       expect(notificaciones.mostradas, hasLength(1));
@@ -213,7 +213,7 @@ void main() {
         control: ControlNotificacionesPromocion(),
       );
 
-      await controller.comprobarAhora();
+      await controller.verificarAhora();
 
       expect(promociones.consultas, 0);
       expect(notificaciones.mostradas, isEmpty);
