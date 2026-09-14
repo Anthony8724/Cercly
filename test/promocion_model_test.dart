@@ -37,6 +37,21 @@ void main() {
     expect(datos['fecha_inicio'], '2026-09-12T12:00:00.000Z');
   });
 
+  test('genera solo campos editables para actualizar', () {
+    final promocion = crearPromocion();
+
+    final datos = promocion.toSupabaseParaActualizar();
+
+    expect(datos['titulo'], 'Descuento de prueba');
+    expect(datos['descripcion'], 'Promoción utilizada para pruebas');
+    expect(datos['radio_alerta_metros'], 100);
+    expect(datos['fecha_inicio'], '2026-09-12T12:00:00.000Z');
+    expect(datos['fecha_fin'], '2026-09-13T12:00:00.000Z');
+    expect(datos.containsKey('establecimiento_id'), isFalse);
+    expect(datos.containsKey('activa'), isFalse);
+    expect(datos.containsKey('imagen_ruta_storage'), isFalse);
+  });
+
   test('rechaza un título vacío', () {
     expect(() => crearPromocion(titulo: ' '), throwsArgumentError);
   });
