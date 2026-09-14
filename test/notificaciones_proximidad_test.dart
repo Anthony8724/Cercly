@@ -191,6 +191,7 @@ void main() {
         promocionesService: promociones,
         notificaciones: notificaciones,
         control: ControlNotificacionesPromocion(),
+        ahora: () => instanteBase,
       );
 
       await controller.verificarAhora();
@@ -211,6 +212,7 @@ void main() {
         promocionesService: promociones,
         notificaciones: notificaciones,
         control: ControlNotificacionesPromocion(),
+        ahora: () => instanteBase,
       );
 
       await controller.verificarAhora();
