@@ -40,6 +40,8 @@ class ExplorarScreen extends StatelessWidget {
     return AnimatedBuilder(
       animation: controller,
       builder: (context, _) {
+        final ubicacion = controller.ubicacion;
+
         return AnnotatedRegion<SystemUiOverlayStyle>(
           value: SystemUiOverlayStyle.light.copyWith(
             statusBarColor: const Color(0xFF02142F),
@@ -79,6 +81,10 @@ class ExplorarScreen extends StatelessWidget {
                             PromocionesExplorar(
                               establecimientos: controller.establecimientos,
                               cargarPromociones: cargarPromociones,
+                              latitudUsuario: ubicacion?.latitud,
+                              longitudUsuario: ubicacion?.longitud,
+                              radioMaximoMetros:
+                                  controller.radioMetros.toDouble(),
                               onEstablecimiento: (establecimiento) =>
                                   _abrirDetalle(context, establecimiento),
                               onVerTodas: () =>
@@ -232,37 +238,43 @@ class _EncabezadoResultados extends StatelessWidget {
             ),
           ),
         ),
-        if (!controller.cargandoResultados && controller.ubicacion != null) ...[
-          Text(
-            '${controller.establecimientos.length} lugares mostrados',
-            style: const TextStyle(
-              color: Color(0xFF6F819A),
-              fontSize: 9.5,
-              fontWeight: FontWeight.w500,
+        if (!controller.cargandoResultados && controller.ubicacion != null)
+          Flexible(
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerRight,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    '${controller.establecimientos.length} lugares mostrados',
+                    style: const TextStyle(
+                      color: Color(0xFF6F819A),
+                      fontSize: 9.5,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  if (controller.busqueda.trim().isEmpty) ...[
+                    const SizedBox(width: 10),
+                    const Icon(
+                      Icons.tune_rounded,
+                      size: 15,
+                      color: Color(0xFF526B91),
+                    ),
+                    const SizedBox(width: 3),
+                    const Text(
+                      'Más cercanos',
+                      style: TextStyle(
+                        color: Color(0xFF526B91),
+                        fontSize: 9.5,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
             ),
           ),
-          const SizedBox(width: 10),
-          if (controller.busqueda.trim().isEmpty)
-            const Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  Icons.tune_rounded,
-                  size: 15,
-                  color: Color(0xFF526B91),
-                ),
-                SizedBox(width: 3),
-                Text(
-                  'Más cercanos',
-                  style: TextStyle(
-                    color: Color(0xFF526B91),
-                    fontSize: 9.5,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
-            ),
-        ],
       ],
     );
   }
