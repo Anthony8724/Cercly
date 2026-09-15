@@ -13,7 +13,7 @@ class CabeceraExplorar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ClipRRect(
-      borderRadius: const BorderRadius.vertical(bottom: Radius.circular(26)),
+      borderRadius: const BorderRadius.vertical(bottom: Radius.circular(30)),
       child: DecoratedBox(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
@@ -32,18 +32,18 @@ class CabeceraExplorar extends StatelessWidget {
           child: SafeArea(
             bottom: false,
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 10, 16, 14),
+              padding: const EdgeInsets.fromLTRB(16, 14, 16, 18),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
                     children: [
                       const SizedBox(
-                        width: 44,
-                        height: 38,
+                        width: 48,
+                        height: 42,
                         child: CustomPaint(painter: _LogoCerclyPainter()),
                       ),
-                      const SizedBox(width: 7),
+                      const SizedBox(width: 8),
                       const Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -53,10 +53,10 @@ class CabeceraExplorar extends StatelessWidget {
                               'Cercly',
                               style: TextStyle(
                                 color: Colors.white,
-                                fontSize: 29,
+                                fontSize: 31,
                                 height: .95,
                                 fontWeight: FontWeight.w900,
-                                letterSpacing: -1.1,
+                                letterSpacing: -1.15,
                               ),
                             ),
                             SizedBox(height: 4),
@@ -64,7 +64,7 @@ class CabeceraExplorar extends StatelessWidget {
                               'Tu mundo más cerca',
                               style: TextStyle(
                                 color: Color(0xFFE0EEFF),
-                                fontSize: 10.5,
+                                fontSize: 11,
                                 height: 1,
                                 fontWeight: FontWeight.w500,
                               ),
@@ -74,7 +74,7 @@ class CabeceraExplorar extends StatelessWidget {
                       ),
                       if (onPerfil != null)
                         SizedBox.square(
-                          dimension: 38,
+                          dimension: 40,
                           child: IconButton(
                             key: const Key('perfil-explorar'),
                             tooltip: 'Mi perfil',
@@ -88,20 +88,22 @@ class CabeceraExplorar extends StatelessWidget {
                                 width: 1.4,
                               ),
                             ),
-                            icon: const Icon(Icons.person_outline_rounded,
-                                size: 22),
+                            icon: const Icon(
+                              Icons.person_outline_rounded,
+                              size: 23,
+                            ),
                           ),
                         ),
                     ],
                   ),
-                  const SizedBox(height: 15),
+                  const SizedBox(height: 18),
                   SizedBox(
-                    height: 68,
+                    height: 74,
                     width: double.infinity,
                     child: Stack(
                       children: [
                         const Positioned.fill(
-                          right: 92,
+                          right: 96,
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
@@ -111,21 +113,21 @@ class CabeceraExplorar extends StatelessWidget {
                                 overflow: TextOverflow.ellipsis,
                                 style: TextStyle(
                                   color: Colors.white,
-                                  fontSize: 24,
+                                  fontSize: 25.5,
                                   height: 1.08,
                                   fontWeight: FontWeight.w900,
-                                  letterSpacing: -.45,
+                                  letterSpacing: -.48,
                                 ),
                               ),
-                              SizedBox(height: 6),
+                              SizedBox(height: 7),
                               Text(
                                 'Encuentra comercios y promociones en tu zona.',
                                 maxLines: 2,
                                 overflow: TextOverflow.ellipsis,
                                 style: TextStyle(
                                   color: Color(0xFFD9E9FF),
-                                  fontSize: 12,
-                                  height: 1.25,
+                                  fontSize: 12.5,
+                                  height: 1.3,
                                   fontWeight: FontWeight.w500,
                                 ),
                               ),
@@ -133,14 +135,14 @@ class CabeceraExplorar extends StatelessWidget {
                           ),
                         ),
                         const Positioned(
-                          right: 3,
-                          top: 7,
+                          right: 2,
+                          top: 8,
                           child: _FraseDecorativa(),
                         ),
                       ],
                     ),
                   ),
-                  const SizedBox(height: 9),
+                  const SizedBox(height: 11),
                   buscador,
                 ],
               ),
@@ -167,8 +169,8 @@ class _FraseDecorativa extends StatelessWidget {
             textAlign: TextAlign.center,
             style: TextStyle(
               color: Colors.white,
-              fontSize: 9.5,
-              height: 1.15,
+              fontSize: 10,
+              height: 1.16,
               fontStyle: FontStyle.italic,
               fontWeight: FontWeight.w500,
             ),
@@ -176,8 +178,11 @@ class _FraseDecorativa extends StatelessWidget {
           SizedBox(width: 3),
           Padding(
             padding: EdgeInsets.only(bottom: 2),
-            child: Icon(Icons.auto_awesome_rounded,
-                size: 10, color: Color(0xFFFFC83D)),
+            child: Icon(
+              Icons.auto_awesome_rounded,
+              size: 11,
+              color: Color(0xFFFFC83D),
+            ),
           ),
         ],
       ),
@@ -333,8 +338,16 @@ class _CieloExplorar extends CustomPainter {
       Offset(size.width * .60, size.height * .16),
       Offset(size.width * .87, size.height * .32),
     ]) {
-      canvas.drawLine(punto - const Offset(5, 0), punto + const Offset(5, 0), brillo);
-      canvas.drawLine(punto - const Offset(0, 5), punto + const Offset(0, 5), brillo);
+      canvas.drawLine(
+        punto - const Offset(5, 0),
+        punto + const Offset(5, 0),
+        brillo,
+      );
+      canvas.drawLine(
+        punto - const Offset(0, 5),
+        punto + const Offset(0, 5),
+        brillo,
+      );
       canvas.drawCircle(punto, 1.4, Paint()..color = Colors.white);
     }
   }
