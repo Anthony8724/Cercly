@@ -85,7 +85,6 @@ class FiltrosExplorar extends StatelessWidget {
         ],
         const SizedBox(height: 10),
         Row(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Expanded(
               flex: 3,
@@ -203,7 +202,8 @@ class _CategoriaChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final fondo = seleccionado ? const Color(0xFF1769FF) : const Color(0xFFF3F6FB);
+    final fondo =
+        seleccionado ? const Color(0xFF1769FF) : const Color(0xFFF3F6FB);
     final color = seleccionado ? Colors.white : const Color(0xFF233A5E);
 
     return Material(
