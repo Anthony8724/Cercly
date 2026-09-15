@@ -286,9 +286,9 @@ class _PanelMapa extends StatelessWidget {
             ),
             child: const Icon(Icons.map_rounded, color: Colors.white, size: 22),
           ),
-          title: const Text(
-            'Mapa Cercly',
-            style: TextStyle(
+          title: Text(
+            tieneUbicacion ? 'Mapa Cercly' : 'Mapa sin ubicación',
+            style: const TextStyle(
               color: Color(0xFF102A56),
               fontWeight: FontWeight.w900,
               fontSize: 16,
