@@ -14,90 +14,140 @@ class TarjetaEstablecimientoPublico extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final detalle = establecimiento.descripcion.trim().isNotEmpty
+        ? establecimiento.descripcion.trim()
+        : establecimiento.direccion.trim();
+
     return Card(
+      key: Key('establecimiento-${establecimiento.id}'),
       color: Colors.white,
       elevation: 1,
-      shadowColor: const Color(0x221769FF),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(18),
-        side: const BorderSide(color: Color(0xFFE4EDFA)),
-      ),
-      key: Key('establecimiento-${establecimiento.id}'),
-      margin: const EdgeInsets.only(bottom: 12),
+      shadowColor: const Color(0x241769FF),
+      margin: const EdgeInsets.only(bottom: 9),
       clipBehavior: Clip.antiAlias,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(14),
+        side: const BorderSide(color: Color(0xFFE4ECF7)),
+      ),
       child: InkWell(
         onTap: onTap,
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            Padding(
-              padding: const EdgeInsets.only(left: 8, top: 8, bottom: 8),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(14),
-                child: SizedBox(width: 86, height: 112, child: _Portada(establecimiento)),
-              ),
-            ),
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.all(14),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            establecimiento.nombre,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style: Theme.of(context).textTheme.titleMedium
-                                ?.copyWith(fontWeight: FontWeight.w700),
-                          ),
-                        ),
-                        const Icon(Icons.chevron_right, color: Color(0xFF1769FF)),
-                      ],
-                    ),
-                    const SizedBox(height: 5),
-                    Text(
-                      establecimiento.categoria.nombre,
-                      style: const TextStyle(color: Color(0xFF64748B)),
-                    ),
-                    const SizedBox(height: 5),
-                    Text(
-                      establecimiento.direccion,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
-                    const SizedBox(height: 8),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 6,
-                      children: [
-                        if (establecimiento.estadoHorario != null)
-                          _EstadoHorarioEtiqueta(
-                            estado: establecimiento.estadoHorario!,
-                          ),
-                        if (establecimiento.distanciaFormateada.isNotEmpty)
-                          _Etiqueta(
-                            icono: Icons.near_me,
-                            texto: establecimiento.distanciaFormateada,
-                          ),
-                        if (establecimiento.tienePromociones)
-                          const _Etiqueta(
-                            key: Key('indicador-promocion'),
-                            icono: Icons.local_offer,
-                            texto: 'Promoción',
-                            promocion: true,
-                          ),
-                      ],
-                    ),
-                  ],
+        child: SizedBox(
+          height: 98,
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(7),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(11),
+                  child: SizedBox(
+                    width: 88,
+                    child: _Portada(establecimiento),
+                  ),
                 ),
               ),
-            ),
-          ],
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(5, 9, 5, 8),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              establecimiento.nombre,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                color: Color(0xFF102A56),
+                                fontSize: 14.5,
+                                height: 1.05,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          ),
+                          const Icon(
+                            Icons.chevron_right_rounded,
+                            color: Color(0xFF1769FF),
+                            size: 22,
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          Flexible(
+                            child: Text(
+                              establecimiento.categoria.nombre,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                color: Color(0xFF55729D),
+                                fontSize: 11.5,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                          if (detalle.isNotEmpty) ...[
+                            const Text(
+                              '  •  ',
+                              style: TextStyle(
+                                color: Color(0xFF9AA8BB),
+                                fontSize: 10,
+                              ),
+                            ),
+                            Expanded(
+                              child: Text(
+                                detalle,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  color: Color(0xFF6F819A),
+                                  fontSize: 11,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                      const Spacer(),
+                      Row(
+                        children: [
+                          if (establecimiento.estadoHorario != null)
+                            Flexible(
+                              child: _EstadoHorarioLinea(
+                                estado: establecimiento.estadoHorario!,
+                              ),
+                            ),
+                          if (establecimiento.estadoHorario != null &&
+                              establecimiento.distanciaFormateada.isNotEmpty)
+                            const SizedBox(width: 10),
+                          if (establecimiento.distanciaFormateada.isNotEmpty)
+                            _DatoLinea(
+                              icono: Icons.location_on_rounded,
+                              texto: establecimiento.distanciaFormateada,
+                              color: const Color(0xFF54749F),
+                            ),
+                        ],
+                      ),
+                      if (establecimiento.tienePromociones) ...[
+                        const SizedBox(height: 3),
+                        const _DatoLinea(
+                          key: Key('indicador-promocion'),
+                          icono: Icons.local_offer_rounded,
+                          texto: 'Promoción activa',
+                          color: Color(0xFFE85D22),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(width: 7),
+            ],
+          ),
         ),
       ),
     );
@@ -113,10 +163,20 @@ class _Portada extends StatelessWidget {
   Widget build(BuildContext context) {
     final url = establecimiento.urlFotoPortada;
     if (url == null || url.isEmpty) {
-      return const ColoredBox(
-        color: Color(0xFFDBEAFE),
+      return const DecoratedBox(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Color(0xFFDDEBFF), Color(0xFFCFE2FF)],
+          ),
+        ),
         child: Center(
-          child: Icon(Icons.storefront, size: 42, color: Color(0xFF2563EB)),
+          child: Icon(
+            Icons.storefront_rounded,
+            size: 38,
+            color: Color(0xFF1769FF),
+          ),
         ),
       );
     }
@@ -124,17 +184,23 @@ class _Portada extends StatelessWidget {
     return Image.network(
       url,
       fit: BoxFit.cover,
-      cacheWidth: 336,
+      cacheWidth: 360,
       errorBuilder: (_, _, _) => const ColoredBox(
         color: Color(0xFFDBEAFE),
-        child: Center(child: Icon(Icons.storefront, size: 42)),
+        child: Center(
+          child: Icon(
+            Icons.storefront_rounded,
+            size: 38,
+            color: Color(0xFF1769FF),
+          ),
+        ),
       ),
     );
   }
 }
 
-class _EstadoHorarioEtiqueta extends StatelessWidget {
-  const _EstadoHorarioEtiqueta({required this.estado});
+class _EstadoHorarioLinea extends StatelessWidget {
+  const _EstadoHorarioLinea({required this.estado});
 
   final String estado;
 
@@ -146,75 +212,57 @@ class _EstadoHorarioEtiqueta extends StatelessWidget {
     final texto = abierto
         ? 'Abierto'
         : cerrado
-        ? 'Cerrado'
-        : 'Horario no disponible';
-
-    final icono = abierto
-        ? Icons.check_circle
-        : cerrado
-        ? Icons.cancel
-        : Icons.schedule;
+            ? 'Cerrado'
+            : 'Horario no disponible';
 
     final color = abierto
-        ? const Color(0xFF15803D)
+        ? const Color(0xFF138A4B)
         : cerrado
-        ? const Color(0xFFB91C1C)
-        : const Color(0xFF64748B);
+            ? const Color(0xFFC84646)
+            : const Color(0xFF73839A);
 
-    final fondo = abierto
-        ? const Color(0xFFF0FDF4)
-        : cerrado
-        ? const Color(0xFFFEF2F2)
-        : const Color(0xFFF8FAFC);
-
-    return Container(
+    return _DatoLinea(
       key: Key('estado-horario-$estado'),
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-      decoration: BoxDecoration(
-        color: fondo,
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icono, size: 15, color: color),
-          const SizedBox(width: 4),
-          Text(texto, style: TextStyle(color: color, fontSize: 12)),
-        ],
-      ),
+      icono: Icons.schedule_rounded,
+      texto: texto,
+      color: color,
     );
   }
 }
 
-class _Etiqueta extends StatelessWidget {
-  const _Etiqueta({
+class _DatoLinea extends StatelessWidget {
+  const _DatoLinea({
     required this.icono,
     required this.texto,
-    this.promocion = false,
+    required this.color,
     super.key,
   });
 
   final IconData icono;
   final String texto;
-  final bool promocion;
+  final Color color;
 
   @override
   Widget build(BuildContext context) {
-    final color = promocion ? const Color(0xFFEA580C) : const Color(0xFF475569);
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-      decoration: BoxDecoration(
-        color: promocion ? const Color(0xFFFFF7ED) : const Color(0xFFF1F5F9),
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icono, size: 15, color: color),
-          const SizedBox(width: 4),
-          Text(texto, style: TextStyle(color: color, fontSize: 12)),
-        ],
-      ),
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icono, size: 13, color: color),
+        const SizedBox(width: 3),
+        Flexible(
+          child: Text(
+            texto,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: color,
+              fontSize: 10.5,
+              height: 1,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
