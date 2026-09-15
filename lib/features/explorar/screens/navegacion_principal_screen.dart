@@ -58,7 +58,10 @@ class _NavegacionPrincipalScreenState extends State<NavegacionPrincipalScreen> {
       body: IndexedStack(
         index: _indice,
         children: [
-          ExplorarScreen(controller: _controller),
+          ExplorarScreen(
+            controller: _controller,
+            onPerfil: () => setState(() => _indice = 2),
+          ),
           MapaEstablecimientosScreen(
             controller: _controller,
             mostrarTiles: widget.mostrarTilesMapa,

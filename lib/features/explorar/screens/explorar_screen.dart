@@ -1,78 +1,76 @@
 import 'package:flutter/material.dart';
 
+import '../../establecimientos/models/establecimiento_publico_model.dart';
 import '../controllers/explorar_controller.dart';
 import '../models/ubicacion_usuario.dart';
+import '../widgets/cabecera_explorar.dart';
 import '../widgets/estado_ubicacion_card.dart';
 import '../widgets/filtros_explorar.dart';
+import '../widgets/promociones_explorar.dart';
 import '../widgets/tarjeta_establecimiento_publico.dart';
 import 'detalle_establecimiento_screen.dart';
 
 class ExplorarScreen extends StatelessWidget {
-  const ExplorarScreen({required this.controller, super.key});
+  const ExplorarScreen({
+    required this.controller,
+    this.onPerfil,
+    this.cargarPromociones,
+    super.key,
+  });
 
   final ExplorarController controller;
+  final VoidCallback? onPerfil;
+  final CargarPromocionesExplorar? cargarPromociones;
+
+  void _abrirDetalle(BuildContext context, EstablecimientoPublicoModel establecimiento) {
+    Navigator.of(context).push(MaterialPageRoute<void>(
+      builder: (_) => DetalleEstablecimientoScreen(establecimiento: establecimiento),
+    ));
+  }
 
   @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
       animation: controller,
       builder: (context, _) {
-        return SafeArea(
+        return ColoredBox(
+          color: const Color(0xFFF5F8FE),
+          child: SafeArea(
           child: RefreshIndicator(
             onRefresh: controller.buscar,
             child: CustomScrollView(
               physics: const AlwaysScrollableScrollPhysics(),
               slivers: [
+                SliverToBoxAdapter(
+                  child: CabeceraExplorar(
+                    onPerfil: onPerfil,
+                    buscador: _BuscadorEstablecimientos(controller: controller),
+                  ),
+                ),
                 SliverPadding(
                   padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
                   sliver: SliverToBoxAdapter(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(9),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFF2563EB),
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: const Icon(
-                                Icons.radar,
-                                color: Colors.white,
-                              ),
-                            ),
-                            const SizedBox(width: 10),
-                            Text(
-                              'Cercly',
-                              style: Theme.of(context).textTheme.headlineSmall
-                                  ?.copyWith(
-                                    color: const Color(0xFF1D4ED8),
-                                    fontWeight: FontWeight.w900,
-                                  ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 22),
-                        Text(
-                          'Descubre cerca de ti',
-                          style: Theme.of(context).textTheme.headlineMedium
-                              ?.copyWith(fontWeight: FontWeight.w900),
-                        ),
-                        const SizedBox(height: 6),
-                        const Text(
-                          'Encuentra comercios y promociones en tu zona.',
-                          style: TextStyle(color: Color(0xFF64748B)),
-                        ),
-                        const SizedBox(height: 16),
-                        _BuscadorEstablecimientos(controller: controller),
-                        const SizedBox(height: 16),
-                        EstadoUbicacionCard(controller: controller),
-                        const SizedBox(height: 16),
+                        if (controller.estadoUbicacion != EstadoUbicacion.disponible) ...[
+                          EstadoUbicacionCard(controller: controller),
+                          const SizedBox(height: 16),
+                        ],
                         FiltrosExplorar(controller: controller),
+                        if (controller.estadoUbicacion == EstadoUbicacion.disponible &&
+                            !controller.cargandoResultados && controller.errorResultados == null)
+                          PromocionesExplorar(
+                            establecimientos: controller.establecimientos,
+                            cargarPromociones: cargarPromociones,
+                            onEstablecimiento: (e) => _abrirDetalle(context, e),
+                            onVerTodas: () => controller.cambiarSoloPromociones(true),
+                          ),
                         const SizedBox(height: 22),
                         Row(
                           children: [
+                            const Icon(Icons.location_on, color: Color(0xFF1769FF)),
+                            const SizedBox(width: 6),
                             Expanded(
                               child: Text(
                                 controller.busqueda.trim().isEmpty
@@ -84,9 +82,12 @@ class ExplorarScreen extends StatelessWidget {
                             ),
                             if (!controller.cargandoResultados &&
                                 controller.ubicacion != null)
-                              Text(
-                                '${controller.establecimientos.length} lugares mostrados',
-                                style: Theme.of(context).textTheme.bodySmall,
+                              Flexible(
+                                child: Text(
+                                  '${controller.establecimientos.length} lugares mostrados',
+                                  textAlign: TextAlign.right,
+                                  style: Theme.of(context).textTheme.bodySmall,
+                                ),
                               ),
                           ],
                         ),
@@ -97,6 +98,7 @@ class ExplorarScreen extends StatelessWidget {
                 ..._contenido(context),
               ],
             ),
+          ),
           ),
         );
       },
@@ -191,20 +193,9 @@ class ExplorarScreen extends StatelessWidget {
               );
             }
             final establecimiento = controller.establecimientos[index];
-            return SizedBox(
-              height: 158,
-              child: TarjetaEstablecimientoPublico(
+            return TarjetaEstablecimientoPublico(
                 establecimiento: establecimiento,
-                onTap: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute<void>(
-                      builder: (_) => DetalleEstablecimientoScreen(
-                        establecimiento: establecimiento,
-                      ),
-                    ),
-                  );
-                },
-              ),
+                onTap: () => _abrirDetalle(context, establecimiento),
             );
           },
         ),
@@ -270,6 +261,7 @@ class _BuscadorEstablecimientosState
           },
         ),
         filled: true,
+        fillColor: Colors.white,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),
           borderSide: BorderSide.none,

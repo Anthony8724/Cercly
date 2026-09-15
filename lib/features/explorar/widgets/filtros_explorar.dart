@@ -9,11 +9,24 @@ class FiltrosExplorar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
+    return ChipTheme(
+      data: ChipTheme.of(context).copyWith(
+        backgroundColor: const Color(0xFFEFF4FC),
+        selectedColor: const Color(0xFF1769FF),
+        checkmarkColor: Colors.white,
+        side: BorderSide.none,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        labelStyle: WidgetStateTextStyle.resolveWith((states) => TextStyle(
+          color: states.contains(WidgetState.selected)
+              ? Colors.white : const Color(0xFF0A2A66),
+          fontWeight: FontWeight.w600,
+        )),
+      ),
+      child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         SizedBox(
-          height: 42,
+          height: 34 + MediaQuery.textScalerOf(context).scale(20),
           child: ListView(
             scrollDirection: Axis.horizontal,
             children: [
@@ -43,7 +56,7 @@ class FiltrosExplorar extends StatelessWidget {
         if (controller.categoriaId != null) ...[
           const SizedBox(height: 10),
           SizedBox(
-            height: 38,
+            height: 30 + MediaQuery.textScalerOf(context).scale(20),
             child: controller.cargandoTaxonomia
                 ? const Align(
                     alignment: Alignment.centerLeft,
@@ -89,6 +102,8 @@ class FiltrosExplorar extends StatelessWidget {
                 key: const Key('filtro-radio'),
                 initialValue: controller.radioMetros,
                 decoration: const InputDecoration(
+                  filled: true,
+                  fillColor: Colors.white,
                   labelText: 'Radio de búsqueda',
                   prefixIcon: Icon(Icons.radar),
                   contentPadding: EdgeInsets.symmetric(horizontal: 12),
@@ -117,6 +132,7 @@ class FiltrosExplorar extends StatelessWidget {
           ],
         ),
       ],
+      ),
     );
   }
 

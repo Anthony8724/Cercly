@@ -15,15 +15,28 @@ class TarjetaEstablecimientoPublico extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Card(
+      color: Colors.white,
+      elevation: 1,
+      shadowColor: const Color(0x221769FF),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(18),
+        side: const BorderSide(color: Color(0xFFE4EDFA)),
+      ),
       key: Key('establecimiento-${establecimiento.id}'),
       margin: const EdgeInsets.only(bottom: 12),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: onTap,
         child: Row(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            SizedBox(width: 112, child: _Portada(establecimiento)),
+            Padding(
+              padding: const EdgeInsets.only(left: 8, top: 8, bottom: 8),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(14),
+                child: SizedBox(width: 86, height: 112, child: _Portada(establecimiento)),
+              ),
+            ),
             Expanded(
               child: Padding(
                 padding: const EdgeInsets.all(14),
@@ -42,7 +55,7 @@ class TarjetaEstablecimientoPublico extends StatelessWidget {
                                 ?.copyWith(fontWeight: FontWeight.w700),
                           ),
                         ),
-                        const Icon(Icons.chevron_right),
+                        const Icon(Icons.chevron_right, color: Color(0xFF1769FF)),
                       ],
                     ),
                     const SizedBox(height: 5),
@@ -111,6 +124,7 @@ class _Portada extends StatelessWidget {
     return Image.network(
       url,
       fit: BoxFit.cover,
+      cacheWidth: 336,
       errorBuilder: (_, _, _) => const ColoredBox(
         color: Color(0xFFDBEAFE),
         child: Center(child: Icon(Icons.storefront, size: 42)),
