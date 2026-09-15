@@ -6,14 +6,15 @@ import '../../promociones/services/promocion_publica_service.dart';
 
 typedef CargarPromocionesExplorar = Future<List<PromocionDestacadaModel>> Function();
 
-/// Usa los establecimientos de la página actual, en el orden del RPC.
-/// No calcula distancias ni sustituye los filtros de PostGIS.
 class PromocionesExplorar extends StatefulWidget {
   const PromocionesExplorar({
     required this.establecimientos,
     required this.onEstablecimiento,
     required this.onVerTodas,
     this.cargarPromociones,
+    this.latitudUsuario,
+    this.longitudUsuario,
+    this.radioMaximoMetros,
     super.key,
   });
 
@@ -21,6 +22,9 @@ class PromocionesExplorar extends StatefulWidget {
   final ValueChanged<EstablecimientoPublicoModel> onEstablecimiento;
   final VoidCallback onVerTodas;
   final CargarPromocionesExplorar? cargarPromociones;
+  final double? latitudUsuario;
+  final double? longitudUsuario;
+  final double? radioMaximoMetros;
 
   @override
   State<PromocionesExplorar> createState() => _PromocionesExplorarState();
@@ -42,7 +46,10 @@ class _PromocionesExplorarState extends State<PromocionesExplorar> {
   void didUpdateWidget(covariant PromocionesExplorar oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (!identical(oldWidget.establecimientos, widget.establecimientos) ||
-        oldWidget.cargarPromociones != widget.cargarPromociones) {
+        oldWidget.cargarPromociones != widget.cargarPromociones ||
+        oldWidget.latitudUsuario != widget.latitudUsuario ||
+        oldWidget.longitudUsuario != widget.longitudUsuario ||
+        oldWidget.radioMaximoMetros != widget.radioMaximoMetros) {
       _cargar();
     }
   }
@@ -51,14 +58,43 @@ class _PromocionesExplorarState extends State<PromocionesExplorar> {
     final version = ++_version;
     _promociones = const [];
     _error = false;
-    if (!widget.establecimientos.any((e) => e.tienePromociones)) {
+
+    final cargaInyectada = widget.cargarPromociones;
+    final tieneUbicacion =
+        widget.latitudUsuario != null && widget.longitudUsuario != null;
+
+    // Mantiene el comportamiento de las pruebas/inyectores: si el RPC de
+    // establecimientos no marca candidatos, no hace una consulta innecesaria.
+    if (cargaInyectada != null &&
+        !widget.establecimientos.any((e) => e.tienePromociones)) {
       _cargando = false;
       return;
     }
-    _cargando = true;
+
+    // En producción se permiten promociones cercanas aunque el negocio no haya
+    // entrado todavía en la primera página del listado de establecimientos.
+    if (cargaInyectada == null &&
+        !tieneUbicacion &&
+        !widget.establecimientos.any((e) => e.tienePromociones)) {
+      _cargando = false;
+      return;
+    }
+
+    if (mounted) {
+      setState(() => _cargando = true);
+    } else {
+      _cargando = true;
+    }
+
     try {
-      final promociones = await (widget.cargarPromociones?.call() ??
-          PromocionPublicaService().listarVigentes());
+      final promociones = cargaInyectada != null
+          ? await cargaInyectada()
+          : await PromocionPublicaService().listarVigentes(
+              latitudUsuario: widget.latitudUsuario,
+              longitudUsuario: widget.longitudUsuario,
+              radioMaximoMetros: widget.radioMaximoMetros,
+            );
+
       if (!mounted || version != _version) return;
       setState(() {
         _promociones = promociones;
@@ -73,6 +109,13 @@ class _PromocionesExplorarState extends State<PromocionesExplorar> {
     }
   }
 
+  EstablecimientoPublicoModel? _establecimientoCargado(String id) {
+    for (final establecimiento in widget.establecimientos) {
+      if (establecimiento.id == id) return establecimiento;
+    }
+    return null;
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_cargando) {
@@ -81,12 +124,13 @@ class _PromocionesExplorarState extends State<PromocionesExplorar> {
         child: LinearProgressIndicator(key: Key('promociones-loading')),
       );
     }
+
     if (_error) {
       return Align(
         alignment: Alignment.centerLeft,
         child: TextButton.icon(
           key: const Key('promociones-reintentar'),
-          onPressed: () => setState(_cargar),
+          onPressed: _cargar,
           icon: const Icon(Icons.refresh_rounded),
           label: const Text('No pudimos cargar promociones. Reintentar'),
         ),
@@ -94,16 +138,12 @@ class _PromocionesExplorarState extends State<PromocionesExplorar> {
     }
 
     final ahora = DateTime.now();
-    final items = [
-      for (final establecimiento in widget.establecimientos)
-        for (final promocion in _promociones)
-          if (promocion.establecimientoId == establecimiento.id &&
-              promocion.activa &&
-              promocion.estaVigenteEn(ahora))
-            (establecimiento, promocion),
-    ];
+    final promociones = _promociones
+        .where((promocion) =>
+            promocion.activa && promocion.estaVigenteEn(ahora))
+        .toList(growable: false);
 
-    if (items.isEmpty) return const SizedBox.shrink();
+    if (promociones.isEmpty) return const SizedBox.shrink();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -158,15 +198,20 @@ class _PromocionesExplorarState extends State<PromocionesExplorar> {
             scrollDirection: Axis.horizontal,
             physics: const BouncingScrollPhysics(),
             padding: EdgeInsets.zero,
-            itemCount: items.length,
+            itemCount: promociones.length,
             separatorBuilder: (_, _) => const SizedBox(width: 10),
             itemBuilder: (context, index) {
-              final (establecimiento, promocion) = items[index];
+              final promocion = promociones[index];
+              final establecimiento =
+                  _establecimientoCargado(promocion.establecimientoId);
+
               return _TarjetaPromocion(
                 key: Key('promocion-${promocion.id}'),
                 establecimiento: establecimiento,
                 promocion: promocion,
-                onTap: () => widget.onEstablecimiento(establecimiento),
+                onTap: establecimiento == null
+                    ? null
+                    : () => widget.onEstablecimiento(establecimiento),
               );
             },
           ),
@@ -184,12 +229,18 @@ class _TarjetaPromocion extends StatelessWidget {
     super.key,
   });
 
-  final EstablecimientoPublicoModel establecimiento;
+  final EstablecimientoPublicoModel? establecimiento;
   final PromocionDestacadaModel promocion;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
+    final nombreEstablecimiento =
+        establecimiento?.nombre ?? promocion.establecimientoNombre;
+    final distancia = establecimiento?.distanciaFormateada.isNotEmpty == true
+        ? establecimiento!.distanciaFormateada
+        : promocion.distanciaFormateada;
+
     return SizedBox(
       width: 148,
       child: Material(
@@ -265,7 +316,7 @@ class _TarjetaPromocion extends StatelessWidget {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        establecimiento.nombre,
+                        nombreEstablecimiento,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
@@ -275,7 +326,7 @@ class _TarjetaPromocion extends StatelessWidget {
                         ),
                       ),
                       const Spacer(),
-                      if (establecimiento.distanciaFormateada.isNotEmpty)
+                      if (distancia.isNotEmpty)
                         Row(
                           children: [
                             const Icon(
@@ -285,7 +336,7 @@ class _TarjetaPromocion extends StatelessWidget {
                             ),
                             const SizedBox(width: 2),
                             Text(
-                              'a ${establecimiento.distanciaFormateada}',
+                              'a $distancia',
                               style: const TextStyle(
                                 color: Color(0xFF5E6F89),
                                 fontSize: 10.5,
@@ -310,8 +361,11 @@ class _TarjetaPromocion extends StatelessWidget {
     final porcentaje = RegExp(r'\b\d{1,2}\s*%').firstMatch(contenido)?.group(0);
     if (porcentaje != null) return porcentaje.replaceAll(' ', '');
 
-    final dosPorUno = RegExp(r'\b2\s*[xX]\s*1\b').firstMatch(contenido)?.group(0);
-    if (dosPorUno != null) return dosPorUno.replaceAll(' ', '').toLowerCase();
+    final dosPorUno =
+        RegExp(r'\b2\s*[xX]\s*1\b').firstMatch(contenido)?.group(0);
+    if (dosPorUno != null) {
+      return dosPorUno.replaceAll(' ', '').toLowerCase();
+    }
 
     return 'Promo';
   }
@@ -333,7 +387,7 @@ class _ImagenPromocion extends StatelessWidget {
   });
 
   final PromocionDestacadaModel promocion;
-  final EstablecimientoPublicoModel establecimiento;
+  final EstablecimientoPublicoModel? establecimiento;
 
   @override
   Widget build(BuildContext context) {
@@ -343,7 +397,8 @@ class _ImagenPromocion extends StatelessWidget {
         urlPromocion,
         fit: BoxFit.cover,
         cacheWidth: 420,
-        errorBuilder: (_, _, _) => _FallbackImagen(establecimiento: establecimiento),
+        errorBuilder: (_, _, _) =>
+            _FallbackImagen(establecimiento: establecimiento),
       );
     }
     return _FallbackImagen(establecimiento: establecimiento);
@@ -353,11 +408,11 @@ class _ImagenPromocion extends StatelessWidget {
 class _FallbackImagen extends StatelessWidget {
   const _FallbackImagen({required this.establecimiento});
 
-  final EstablecimientoPublicoModel establecimiento;
+  final EstablecimientoPublicoModel? establecimiento;
 
   @override
   Widget build(BuildContext context) {
-    final url = establecimiento.urlFotoPortada;
+    final url = establecimiento?.urlFotoPortada;
     if (url != null && url.isNotEmpty) {
       return Image.network(
         url,
