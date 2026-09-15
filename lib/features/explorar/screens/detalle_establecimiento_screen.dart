@@ -150,7 +150,7 @@ class _DetalleEstablecimientoScreenState
       appBar: AppBar(
         foregroundColor: Colors.white,
         title: const Text(
-          'Cercly',
+          'Detalle del establecimiento',
           style: TextStyle(fontWeight: FontWeight.w900),
         ),
         centerTitle: false,
