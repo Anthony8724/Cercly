@@ -307,6 +307,9 @@ void main() {
 
       expect(find.text('Café Carchi'), findsOneWidget);
       expect(find.text('350 m'), findsOneWidget);
+      await tester.ensureVisible(
+        find.byKey(const Key('establecimiento-establecimiento-1')),
+      );
       await tester.tap(
         find.byKey(const Key('establecimiento-establecimiento-1')),
       );
@@ -325,9 +328,13 @@ void main() {
 
       await tester.pumpWidget(
         MaterialApp(
-          home: Scaffold(body: ExplorarScreen(controller: controller)),
+          home: Scaffold(body: ExplorarScreen(
+            controller: controller,
+            cargarPromociones: () async => [],
+          )),
         ),
       );
+      await tester.pump();
 
       expect(find.byKey(const Key('indicador-promocion')), findsOneWidget);
     });

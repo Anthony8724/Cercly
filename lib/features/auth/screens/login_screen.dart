@@ -113,87 +113,258 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Iniciar sesión')),
+      backgroundColor: const Color(0xFFF6F9FE),
+      appBar: AppBar(
+        foregroundColor: Colors.white,
+        title: const Text(
+          'Iniciar sesión',
+          style: TextStyle(fontWeight: FontWeight.w800),
+        ),
+        elevation: 0,
+        flexibleSpace: const DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [Color(0xFF02142F), Color(0xFF0B5DD8)],
+            ),
+          ),
+        ),
+      ),
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
+          padding: const EdgeInsets.fromLTRB(18, 18, 18, 28),
           child: Form(
             key: _formKey,
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const Icon(Icons.storefront, size: 80),
-                const SizedBox(height: 24),
-                TextFormField(
-                  controller: _emailController,
-                  keyboardType: TextInputType.emailAddress,
-                  autofillHints: const [AutofillHints.email],
-                  decoration: const InputDecoration(
-                    labelText: 'Correo electrónico',
-                    border: OutlineInputBorder(),
-                  ),
-                  validator: (value) {
-                    final email = value?.trim() ?? '';
-
-                    if (email.isEmpty) {
-                      return 'Ingresa tu correo electrónico';
-                    }
-
-                    if (!email.contains('@')) {
-                      return 'Ingresa un correo válido';
-                    }
-
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 16),
-                TextFormField(
-                  controller: _passwordController,
-                  obscureText: _hidePassword,
-                  autofillHints: const [AutofillHints.password],
-                  decoration: InputDecoration(
-                    labelText: 'Contraseña',
-                    border: const OutlineInputBorder(),
-                    suffixIcon: IconButton(
-                      onPressed: () {
-                        setState(() {
-                          _hidePassword = !_hidePassword;
-                        });
-                      },
-                      icon: Icon(
-                        _hidePassword ? Icons.visibility : Icons.visibility_off,
+                const _LoginHero(),
+                const SizedBox(height: 18),
+                Container(
+                  padding: const EdgeInsets.all(18),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(22),
+                    boxShadow: const [
+                      BoxShadow(
+                        color: Color(0x180B4EA9),
+                        blurRadius: 18,
+                        offset: Offset(0, 6),
                       ),
-                    ),
+                    ],
                   ),
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Ingresa tu contraseña';
-                    }
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      const Text(
+                        '¡Hola de nuevo!',
+                        style: TextStyle(
+                          color: Color(0xFF102A56),
+                          fontSize: 23,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                      const SizedBox(height: 5),
+                      const Text(
+                        'Inicia sesión para continuar en Cercly.',
+                        style: TextStyle(
+                          color: Color(0xFF65758C),
+                          fontSize: 13,
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                      TextFormField(
+                        controller: _emailController,
+                        keyboardType: TextInputType.emailAddress,
+                        autofillHints: const [AutofillHints.email],
+                        decoration: _inputDecoration(
+                          label: 'Correo electrónico',
+                          icono: Icons.mail_outline_rounded,
+                        ),
+                        validator: (value) {
+                          final email = value?.trim() ?? '';
 
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 24),
-                SizedBox(
-                  width: double.infinity,
-                  child: FilledButton(
-                    onPressed: _isLoading ? null : _signIn,
-                    child: _isLoading
-                        ? const SizedBox(
-                            width: 24,
-                            height: 24,
-                            child: CircularProgressIndicator(),
-                          )
-                        : const Text('Iniciar sesión'),
+                          if (email.isEmpty) {
+                            return 'Ingresa tu correo electrónico';
+                          }
+
+                          if (!email.contains('@')) {
+                            return 'Ingresa un correo válido';
+                          }
+
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 14),
+                      TextFormField(
+                        controller: _passwordController,
+                        obscureText: _hidePassword,
+                        autofillHints: const [AutofillHints.password],
+                        decoration: _inputDecoration(
+                          label: 'Contraseña',
+                          icono: Icons.lock_outline_rounded,
+                        ).copyWith(
+                          suffixIcon: IconButton(
+                            onPressed: () {
+                              setState(() {
+                                _hidePassword = !_hidePassword;
+                              });
+                            },
+                            icon: Icon(
+                              _hidePassword
+                                  ? Icons.visibility_outlined
+                                  : Icons.visibility_off_outlined,
+                              color: const Color(0xFF65758C),
+                            ),
+                          ),
+                        ),
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Ingresa tu contraseña';
+                          }
+
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 22),
+                      SizedBox(
+                        height: 52,
+                        child: FilledButton(
+                          onPressed: _isLoading ? null : _signIn,
+                          style: FilledButton.styleFrom(
+                            backgroundColor: const Color(0xFF1769FF),
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(15),
+                            ),
+                          ),
+                          child: _isLoading
+                              ? const SizedBox(
+                                  width: 23,
+                                  height: 23,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2.5,
+                                    color: Colors.white,
+                                  ),
+                                )
+                              : const Text(
+                                  'Iniciar sesión',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w800,
+                                    fontSize: 15,
+                                  ),
+                                ),
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      TextButton(
+                        onPressed: _isLoading ? null : _openRegister,
+                        style: TextButton.styleFrom(
+                          foregroundColor: const Color(0xFF1769FF),
+                        ),
+                        child: const Text(
+                          '¿No tienes una cuenta? Crear cuenta',
+                          style: TextStyle(fontWeight: FontWeight.w700),
+                        ),
+                      ),
+                    ],
                   ),
-                ),
-                TextButton(
-                  onPressed: _isLoading ? null : _openRegister,
-                  child: const Text('Crear una cuenta'),
                 ),
               ],
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  InputDecoration _inputDecoration({
+    required String label,
+    required IconData icono,
+  }) {
+    return InputDecoration(
+      labelText: label,
+      prefixIcon: Icon(icono, color: const Color(0xFF1769FF)),
+      filled: true,
+      fillColor: const Color(0xFFF8FAFE),
+      labelStyle: const TextStyle(color: Color(0xFF65758C)),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(14),
+        borderSide: const BorderSide(color: Color(0xFFDCE5F2)),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(14),
+        borderSide: const BorderSide(color: Color(0xFF1769FF), width: 1.5),
+      ),
+      errorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(14),
+        borderSide: const BorderSide(color: Color(0xFFDC2626)),
+      ),
+      focusedErrorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(14),
+        borderSide: const BorderSide(color: Color(0xFFDC2626), width: 1.5),
+      ),
+    );
+  }
+}
+
+class _LoginHero extends StatelessWidget {
+  const _LoginHero();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF031633), Color(0xFF0B5DD8)],
+        ),
+        borderRadius: BorderRadius.circular(22),
+      ),
+      child: const Row(
+        children: [
+          CircleAvatar(
+            radius: 30,
+            backgroundColor: Color(0x22FFFFFF),
+            child: Icon(
+              Icons.location_on_rounded,
+              color: Colors.white,
+              size: 34,
+            ),
+          ),
+          SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Cercly',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 28,
+                    height: 1,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                SizedBox(height: 5),
+                Text(
+                  'Tu mundo más cerca',
+                  style: TextStyle(
+                    color: Color(0xFFDCEBFF),
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Icon(
+            Icons.auto_awesome_rounded,
+            color: Color(0xFF8CCBFF),
+          ),
+        ],
       ),
     );
   }

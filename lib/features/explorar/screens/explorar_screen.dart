@@ -1,101 +1,104 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
+import '../../establecimientos/models/establecimiento_publico_model.dart';
 import '../controllers/explorar_controller.dart';
 import '../models/ubicacion_usuario.dart';
+import '../widgets/cabecera_explorar.dart';
 import '../widgets/estado_ubicacion_card.dart';
 import '../widgets/filtros_explorar.dart';
+import '../widgets/promociones_explorar.dart';
 import '../widgets/tarjeta_establecimiento_publico.dart';
 import 'detalle_establecimiento_screen.dart';
 
 class ExplorarScreen extends StatelessWidget {
-  const ExplorarScreen({required this.controller, super.key});
+  const ExplorarScreen({
+    required this.controller,
+    this.onPerfil,
+    this.cargarPromociones,
+    super.key,
+  });
 
   final ExplorarController controller;
+  final VoidCallback? onPerfil;
+  final CargarPromocionesExplorar? cargarPromociones;
+
+  void _abrirDetalle(
+    BuildContext context,
+    EstablecimientoPublicoModel establecimiento,
+  ) {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) =>
+            DetalleEstablecimientoScreen(establecimiento: establecimiento),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
       animation: controller,
       builder: (context, _) {
-        return SafeArea(
-          child: RefreshIndicator(
-            onRefresh: controller.buscar,
-            child: CustomScrollView(
-              physics: const AlwaysScrollableScrollPhysics(),
-              slivers: [
-                SliverPadding(
-                  padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
-                  sliver: SliverToBoxAdapter(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(9),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFF2563EB),
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: const Icon(
-                                Icons.radar,
-                                color: Colors.white,
-                              ),
-                            ),
-                            const SizedBox(width: 10),
-                            Text(
-                              'Cercly',
-                              style: Theme.of(context).textTheme.headlineSmall
-                                  ?.copyWith(
-                                    color: const Color(0xFF1D4ED8),
-                                    fontWeight: FontWeight.w900,
-                                  ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 22),
-                        Text(
-                          'Descubre cerca de ti',
-                          style: Theme.of(context).textTheme.headlineMedium
-                              ?.copyWith(fontWeight: FontWeight.w900),
-                        ),
-                        const SizedBox(height: 6),
-                        const Text(
-                          'Encuentra comercios y promociones en tu zona.',
-                          style: TextStyle(color: Color(0xFF64748B)),
-                        ),
-                        const SizedBox(height: 16),
-                        _BuscadorEstablecimientos(controller: controller),
-                        const SizedBox(height: 16),
-                        EstadoUbicacionCard(controller: controller),
-                        const SizedBox(height: 16),
-                        FiltrosExplorar(controller: controller),
-                        const SizedBox(height: 22),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: Text(
-                                controller.busqueda.trim().isEmpty
-                                    ? 'Cerca de ti'
-                                    : 'Resultados de búsqueda',
-                                style: Theme.of(context).textTheme.titleLarge
-                                    ?.copyWith(fontWeight: FontWeight.w800),
-                              ),
-                            ),
-                            if (!controller.cargandoResultados &&
-                                controller.ubicacion != null)
-                              Text(
-                                '${controller.establecimientos.length} lugares mostrados',
-                                style: Theme.of(context).textTheme.bodySmall,
-                              ),
-                          ],
-                        ),
-                      ],
+        final ubicacion = controller.ubicacion;
+
+        return AnnotatedRegion<SystemUiOverlayStyle>(
+          value: SystemUiOverlayStyle.light.copyWith(
+            statusBarColor: const Color(0xFF02142F),
+            systemNavigationBarColor: Colors.white,
+            systemNavigationBarIconBrightness: Brightness.dark,
+          ),
+          child: ColoredBox(
+            color: const Color(0xFFF8FAFE),
+            child: RefreshIndicator(
+              onRefresh: controller.buscar,
+              child: CustomScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                slivers: [
+                  SliverToBoxAdapter(
+                    child: CabeceraExplorar(
+                      onPerfil: onPerfil,
+                      buscador:
+                          _BuscadorEstablecimientos(controller: controller),
                     ),
                   ),
-                ),
-                ..._contenido(context),
-              ],
+                  SliverPadding(
+                    padding: const EdgeInsets.fromLTRB(14, 12, 14, 8),
+                    sliver: SliverToBoxAdapter(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          if (controller.estadoUbicacion !=
+                              EstadoUbicacion.disponible) ...[
+                            EstadoUbicacionCard(controller: controller),
+                            const SizedBox(height: 12),
+                          ],
+                          FiltrosExplorar(controller: controller),
+                          if (controller.estadoUbicacion ==
+                                  EstadoUbicacion.disponible &&
+                              !controller.cargandoResultados &&
+                              controller.errorResultados == null)
+                            PromocionesExplorar(
+                              establecimientos: controller.establecimientos,
+                              cargarPromociones: cargarPromociones,
+                              latitudUsuario: ubicacion?.latitud,
+                              longitudUsuario: ubicacion?.longitud,
+                              radioMaximoMetros:
+                                  controller.radioMetros.toDouble(),
+                              onEstablecimiento: (establecimiento) =>
+                                  _abrirDetalle(context, establecimiento),
+                              onVerTodas: () =>
+                                  controller.cambiarSoloPromociones(true),
+                            ),
+                          const SizedBox(height: 14),
+                          _EncabezadoResultados(controller: controller),
+                        ],
+                      ),
+                    ),
+                  ),
+                  ..._contenido(context),
+                ],
+              ),
             ),
           ),
         );
@@ -171,10 +174,9 @@ class ExplorarScreen extends StatelessWidget {
 
     return [
       SliverPadding(
-        padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+        padding: const EdgeInsets.fromLTRB(14, 0, 14, 20),
         sliver: SliverList.builder(
-          itemCount:
-              controller.establecimientos.length +
+          itemCount: controller.establecimientos.length +
               (controller.hayMasResultados ? 1 : 0),
           itemBuilder: (context, index) {
             if (index == controller.establecimientos.length) {
@@ -190,26 +192,91 @@ class ExplorarScreen extends StatelessWidget {
                 ),
               );
             }
+
             final establecimiento = controller.establecimientos[index];
-            return SizedBox(
-              height: 158,
-              child: TarjetaEstablecimientoPublico(
-                establecimiento: establecimiento,
-                onTap: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute<void>(
-                      builder: (_) => DetalleEstablecimientoScreen(
-                        establecimiento: establecimiento,
-                      ),
-                    ),
-                  );
-                },
-              ),
+            return TarjetaEstablecimientoPublico(
+              establecimiento: establecimiento,
+              onTap: () => _abrirDetalle(context, establecimiento),
             );
           },
         ),
       ),
     ];
+  }
+}
+
+class _EncabezadoResultados extends StatelessWidget {
+  const _EncabezadoResultados({required this.controller});
+
+  final ExplorarController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    final titulo = controller.busqueda.trim().isEmpty
+        ? 'Cerca de ti'
+        : 'Resultados de búsqueda';
+
+    return Row(
+      children: [
+        const Icon(
+          Icons.location_on_rounded,
+          color: Color(0xFF1769FF),
+          size: 23,
+        ),
+        const SizedBox(width: 5),
+        Expanded(
+          child: Text(
+            titulo,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: Color(0xFF102A56),
+              fontSize: 19,
+              height: 1,
+              fontWeight: FontWeight.w900,
+              letterSpacing: -.3,
+            ),
+          ),
+        ),
+        if (!controller.cargandoResultados && controller.ubicacion != null)
+          Flexible(
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerRight,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    '${controller.establecimientos.length} lugares mostrados',
+                    style: const TextStyle(
+                      color: Color(0xFF6F819A),
+                      fontSize: 9.5,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  if (controller.busqueda.trim().isEmpty) ...[
+                    const SizedBox(width: 10),
+                    const Icon(
+                      Icons.tune_rounded,
+                      size: 15,
+                      color: Color(0xFF526B91),
+                    ),
+                    const SizedBox(width: 3),
+                    const Text(
+                      'Más cercanos',
+                      style: TextStyle(
+                        color: Color(0xFF526B91),
+                        fontSize: 9.5,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+      ],
+    );
   }
 }
 
@@ -246,33 +313,62 @@ class _BuscadorEstablecimientosState
 
   @override
   Widget build(BuildContext context) {
-    return TextField(
-      key: const Key('buscador-establecimientos'),
-      controller: _textoController,
-      textInputAction: TextInputAction.search,
-      onChanged: widget.controller.cambiarBusqueda,
-      onSubmitted: (_) => widget.controller.buscar(),
-      decoration: InputDecoration(
-        hintText: 'Buscar lugares cerca de ti',
-        prefixIcon: const Icon(Icons.search),
-        suffixIcon: ValueListenableBuilder<TextEditingValue>(
-          valueListenable: _textoController,
-          builder: (context, valor, _) {
-            if (valor.text.isEmpty) {
-              return const SizedBox.shrink();
-            }
-            return IconButton(
-              key: const Key('limpiar-busqueda'),
-              tooltip: 'Limpiar búsqueda',
-              onPressed: _limpiar,
-              icon: const Icon(Icons.close),
-            );
-          },
+    return SizedBox(
+      height: 51,
+      child: TextField(
+        key: const Key('buscador-establecimientos'),
+        controller: _textoController,
+        textInputAction: TextInputAction.search,
+        onChanged: widget.controller.cambiarBusqueda,
+        onSubmitted: (_) => widget.controller.buscar(),
+        style: const TextStyle(
+          color: Color(0xFF24364F),
+          fontSize: 14,
+          fontWeight: FontWeight.w500,
         ),
-        filled: true,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: BorderSide.none,
+        decoration: InputDecoration(
+          hintText: 'Buscar lugares cerca de ti',
+          hintStyle: const TextStyle(
+            color: Color(0xFF7A8AA1),
+            fontSize: 13.5,
+          ),
+          prefixIcon: const Icon(
+            Icons.search_rounded,
+            color: Color(0xFF52647F),
+            size: 23,
+          ),
+          suffixIcon: ValueListenableBuilder<TextEditingValue>(
+            valueListenable: _textoController,
+            builder: (context, valor, _) {
+              if (valor.text.isEmpty) {
+                return const Icon(
+                  Icons.tune_rounded,
+                  color: Color(0xFF24446F),
+                  size: 21,
+                );
+              }
+              return IconButton(
+                key: const Key('limpiar-busqueda'),
+                tooltip: 'Limpiar búsqueda',
+                onPressed: _limpiar,
+                icon: const Icon(Icons.close_rounded),
+              );
+            },
+          ),
+          filled: true,
+          fillColor: Colors.white,
+          contentPadding: const EdgeInsets.symmetric(vertical: 0),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(17),
+            borderSide: const BorderSide(color: Color(0x22FFFFFF)),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(17),
+            borderSide: const BorderSide(
+              color: Color(0xFF8EC7FF),
+              width: 1.4,
+            ),
+          ),
         ),
       ),
     );
@@ -305,7 +401,9 @@ class _MensajeCentral extends StatelessWidget {
           Text(
             titulo,
             textAlign: TextAlign.center,
-            style: Theme.of(context).textTheme.titleLarge
+            style: Theme.of(context)
+                .textTheme
+                .titleLarge
                 ?.copyWith(fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: 8),
@@ -314,7 +412,10 @@ class _MensajeCentral extends StatelessWidget {
             textAlign: TextAlign.center,
             style: const TextStyle(color: Color(0xFF64748B)),
           ),
-          if (accion != null) ...[const SizedBox(height: 18), accion!],
+          if (accion != null) ...[
+            const SizedBox(height: 18),
+            accion!,
+          ],
         ],
       ),
     );
