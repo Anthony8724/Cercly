@@ -119,7 +119,7 @@ class SeleccionTipoCuentaScreen extends StatelessWidget {
               _OpcionCuenta(
                 key: const Key('registro-como-propietario'),
                 icono: Icons.storefront_outlined,
-                titulo: 'Como propietario',
+                titulo: 'Como propietario de un negocio',
                 descripcion:
                     'Registra, reclama y administra la información de tu establecimiento.',
                 etiqueta: 'Para negocios',
