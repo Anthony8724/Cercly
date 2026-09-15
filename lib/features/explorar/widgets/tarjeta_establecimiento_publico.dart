@@ -249,17 +249,15 @@ class _DatoLinea extends StatelessWidget {
       children: [
         Icon(icono, size: 13, color: color),
         const SizedBox(width: 3),
-        Flexible(
-          child: Text(
-            texto,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              color: color,
-              fontSize: 10.5,
-              height: 1,
-              fontWeight: FontWeight.w500,
-            ),
+        Text(
+          texto,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(
+            color: color,
+            fontSize: 10.5,
+            height: 1,
+            fontWeight: FontWeight.w500,
           ),
         ),
       ],
