@@ -469,7 +469,6 @@ class _HorariosEstablecimientoScreenState
             ),
           ],
         ),
-        ),
       ),
     );
   }
@@ -499,21 +498,30 @@ class _VistaError extends StatelessWidget {
         padding: const EdgeInsets.all(24),
         child: CerclySectionCard(
           child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.error_outline, color: Colors.red, size: 48),
-            const SizedBox(height: 12),
-            const Text(
-              'No se pudieron cargar los horarios.',
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 12),
-            OutlinedButton.icon(
-              onPressed: onReintentar,
-              icon: const Icon(Icons.refresh),
-              label: const Text('Reintentar'),
-            ),
-          ],
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(
+                Icons.error_outline_rounded,
+                color: Colors.red,
+                size: 48,
+              ),
+              const SizedBox(height: 12),
+              const Text(
+                'No se pudieron cargar los horarios.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: CerclyColors.text,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              const SizedBox(height: 12),
+              OutlinedButton.icon(
+                onPressed: onReintentar,
+                icon: const Icon(Icons.refresh_rounded),
+                label: const Text('Reintentar'),
+              ),
+            ],
+          ),
         ),
       ),
     );
