@@ -3,6 +3,8 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../../../shared/ui/cercly_ui.dart';
+
 import '../../establecimientos/models/establecimiento_model.dart';
 import '../models/promocion_model.dart';
 import '../services/promocion_service.dart';
@@ -245,171 +247,298 @@ class _RegistroPromocionScreenState extends State<RegistroPromocionScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final tituloPantalla = widget.editando
+        ? 'Editar promoción'
+        : 'Nueva promoción';
+
     return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.editando ? 'Editar promoción' : 'Nueva promoción'),
+      backgroundColor: CerclyColors.background,
+      body: Column(
+        children: [
+          CerclyPageHeader(
+            title: tituloPantalla,
+            subtitle: widget.establecimiento.nombre,
+            icon: Icons.local_offer_rounded,
+            onBack: () => Navigator.of(context).maybePop(),
+          ),
+          Expanded(
+            child: SafeArea(
+              top: false,
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(16, 18, 16, 28),
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      CerclyInfoBanner(
+                        text: widget.editando
+                            ? 'Actualiza los datos de esta promoción.'
+                            : 'Crea una promoción que será visible para los clientes de Cercly.',
+                        icon: Icons.campaign_rounded,
+                      ),
+                      const SizedBox(height: 16),
+                      CerclySectionCard(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            const CerclySectionTitle(
+                              title: 'Información de la promoción',
+                              subtitle: 'Define el mensaje, alcance y vigencia de la promoción.',
+                              icon: Icons.sell_rounded,
+                            ),
+                            const SizedBox(height: 20),
+                            TextFormField(
+                              key: const Key('promocion-titulo'),
+                              controller: _tituloController,
+                              decoration: const InputDecoration(
+                                labelText: 'Título',
+                                hintText: 'Ejemplo: 20 % de descuento',
+                                prefixIcon: Icon(Icons.local_offer_rounded),
+                              ),
+                              maxLength: 120,
+                              validator: (valor) {
+                                final texto = valor?.trim() ?? '';
+                                if (texto.length < 2) {
+                                  return 'Ingresa un título válido';
+                                }
+                                return null;
+                              },
+                            ),
+                            const SizedBox(height: 12),
+                            TextFormField(
+                              key: const Key('promocion-descripcion'),
+                              controller: _descripcionController,
+                              decoration: const InputDecoration(
+                                labelText: 'Descripción',
+                                prefixIcon: Icon(Icons.description_rounded),
+                              ),
+                              maxLength: 1000,
+                              maxLines: 4,
+                            ),
+                            const SizedBox(height: 12),
+                            TextFormField(
+                              key: const Key('promocion-radio'),
+                              controller: _radioController,
+                              decoration: const InputDecoration(
+                                labelText: 'Radio de alerta en metros',
+                                helperText: 'Debe estar entre 10 y 5000 metros',
+                                prefixIcon: Icon(Icons.radar_rounded),
+                              ),
+                              keyboardType: TextInputType.number,
+                              validator: (valor) {
+                                final radio = int.tryParse(valor?.trim() ?? '');
+                                if (radio == null) {
+                                  return 'Ingresa un número válido';
+                                }
+                                if (radio < 10 || radio > 5000) {
+                                  return 'El radio debe estar entre 10 y 5000';
+                                }
+                                return null;
+                              },
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      CerclySectionCard(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            const CerclySectionTitle(
+                              title: 'Vigencia',
+                              subtitle: 'Selecciona desde cuándo y hasta cuándo estará disponible.',
+                              icon: Icons.calendar_month_rounded,
+                            ),
+                            const SizedBox(height: 12),
+                            _FechaPromocionTile(
+                              icono: Icons.play_circle_outline_rounded,
+                              titulo: 'Fecha de inicio',
+                              fecha: _formatearFecha(_fechaInicio),
+                              onTap: _guardando
+                                  ? null
+                                  : _seleccionarFechaInicio,
+                            ),
+                            const SizedBox(height: 10),
+                            _FechaPromocionTile(
+                              icono: Icons.event_available_rounded,
+                              titulo: 'Fecha de finalización',
+                              fecha: _formatearFecha(_fechaFin),
+                              onTap: _guardando ? null : _seleccionarFechaFin,
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      CerclySectionCard(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            const CerclySectionTitle(
+                              title: 'Imagen de la promoción',
+                              subtitle: 'Puedes agregar una imagen para hacer la promoción más atractiva.',
+                              icon: Icons.image_rounded,
+                            ),
+                            const SizedBox(height: 16),
+                            if (_imagenBytes != null) ...[
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(16),
+                                child: Image.memory(
+                                  _imagenBytes!,
+                                  height: 220,
+                                  fit: BoxFit.cover,
+                                ),
+                              ),
+                              const SizedBox(height: 10),
+                              _AccionesImagen(
+                                guardando: _guardando,
+                                onCambiar: _seleccionarImagen,
+                                onQuitar: _quitarImagen,
+                              ),
+                            ] else if (_mostrarImagenActual) ...[
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(16),
+                                child: Image.network(
+                                  widget.urlImagenActual!,
+                                  height: 220,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (_, _, _) => const SizedBox(
+                                    height: 120,
+                                    child: ColoredBox(
+                                      color: CerclyColors.softBlue,
+                                      child: Center(
+                                        child: Icon(
+                                          Icons.broken_image_rounded,
+                                          color: CerclyColors.blue,
+                                          size: 42,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 10),
+                              _AccionesImagen(
+                                guardando: _guardando,
+                                onCambiar: _seleccionarImagen,
+                                onQuitar: _quitarImagen,
+                              ),
+                            ] else
+                              SizedBox(
+                                height: 50,
+                                child: OutlinedButton.icon(
+                                  onPressed: _guardando
+                                      ? null
+                                      : _seleccionarImagen,
+                                  icon: const Icon(
+                                    Icons.add_photo_alternate_rounded,
+                                  ),
+                                  label: const Text('Seleccionar imagen'),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 18),
+                      SizedBox(
+                        height: 54,
+                        child: FilledButton.icon(
+                          key: const Key('guardar-promocion'),
+                          onPressed: _guardando ? null : _guardar,
+                          style: FilledButton.styleFrom(
+                            backgroundColor: CerclyColors.blue,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                          ),
+                          icon: _guardando
+                              ? const SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.white,
+                                  ),
+                                )
+                              : const Icon(Icons.save_rounded),
+                          label: Text(
+                            _guardando
+                                ? 'Guardando...'
+                                : widget.editando
+                                ? 'Guardar cambios'
+                                : 'Crear promoción',
+                            style: const TextStyle(fontWeight: FontWeight.w900),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(20),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Text(
-                  widget.establecimiento.nombre,
-                  style: Theme.of(context).textTheme.headlineSmall
-                      ?.copyWith(fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  widget.editando
-                      ? 'Actualiza los datos de esta promoción.'
-                      : 'Crea una promoción que posteriormente será visible para los clientes de Cercly.',
-                ),
-                const SizedBox(height: 24),
-                TextFormField(
-                  key: const Key('promocion-titulo'),
-                  controller: _tituloController,
-                  decoration: const InputDecoration(
-                    labelText: 'Título',
-                    hintText: 'Ejemplo: 20 % de descuento',
-                    border: OutlineInputBorder(),
-                    prefixIcon: Icon(Icons.local_offer),
-                  ),
-                  maxLength: 120,
-                  validator: (valor) {
-                    final texto = valor?.trim() ?? '';
+    );
+  }
+}
 
-                    if (texto.length < 2) {
-                      return 'Ingresa un título válido';
-                    }
+class _FechaPromocionTile extends StatelessWidget {
+  const _FechaPromocionTile({
+    required this.icono,
+    required this.titulo,
+    required this.fecha,
+    required this.onTap,
+  });
 
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 12),
-                TextFormField(
-                  key: const Key('promocion-descripcion'),
-                  controller: _descripcionController,
-                  decoration: const InputDecoration(
-                    labelText: 'Descripción',
-                    border: OutlineInputBorder(),
-                    prefixIcon: Icon(Icons.description),
-                  ),
-                  maxLength: 1000,
-                  maxLines: 4,
-                ),
-                const SizedBox(height: 12),
-                TextFormField(
-                  key: const Key('promocion-radio'),
-                  controller: _radioController,
-                  decoration: const InputDecoration(
-                    labelText: 'Radio de alerta en metros',
-                    helperText: 'Debe estar entre 10 y 5000 metros',
-                    border: OutlineInputBorder(),
-                    prefixIcon: Icon(Icons.radar),
-                  ),
-                  keyboardType: TextInputType.number,
-                  validator: (valor) {
-                    final radio = int.tryParse(valor?.trim() ?? '');
+  final IconData icono;
+  final String titulo;
+  final String fecha;
+  final VoidCallback? onTap;
 
-                    if (radio == null) {
-                      return 'Ingresa un número válido';
-                    }
-
-                    if (radio < 10 || radio > 5000) {
-                      return 'El radio debe estar entre 10 y 5000';
-                    }
-
-                    return null;
-                  },
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: CerclyColors.softBlue,
+      borderRadius: BorderRadius.circular(15),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(15),
+        child: Padding(
+          padding: const EdgeInsets.all(13),
+          child: Row(
+            children: [
+              Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(13),
                 ),
-                const SizedBox(height: 20),
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: const Icon(Icons.calendar_today),
-                  title: const Text('Fecha de inicio'),
-                  subtitle: Text(_formatearFecha(_fechaInicio)),
-                  trailing: const Icon(Icons.edit),
-                  onTap: _guardando ? null : _seleccionarFechaInicio,
-                ),
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: const Icon(Icons.event_available),
-                  title: const Text('Fecha de finalización'),
-                  subtitle: Text(_formatearFecha(_fechaFin)),
-                  trailing: const Icon(Icons.edit),
-                  onTap: _guardando ? null : _seleccionarFechaFin,
-                ),
-                const SizedBox(height: 20),
-                const Text(
-                  'Imagen de la promoción',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 12),
-                if (_imagenBytes != null) ...[
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(16),
-                    child: Image.memory(
-                      _imagenBytes!,
-                      height: 220,
-                      fit: BoxFit.cover,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  _AccionesImagen(
-                    guardando: _guardando,
-                    onCambiar: _seleccionarImagen,
-                    onQuitar: _quitarImagen,
-                  ),
-                ] else if (_mostrarImagenActual) ...[
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(16),
-                    child: Image.network(
-                      widget.urlImagenActual!,
-                      height: 220,
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, _, _) => const SizedBox(
-                        height: 120,
-                        child: Center(child: Icon(Icons.broken_image, size: 42)),
+                child: Icon(icono, color: CerclyColors.blue, size: 21),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      titulo,
+                      style: const TextStyle(
+                        color: CerclyColors.text,
+                        fontWeight: FontWeight.w800,
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 8),
-                  _AccionesImagen(
-                    guardando: _guardando,
-                    onCambiar: _seleccionarImagen,
-                    onQuitar: _quitarImagen,
-                  ),
-                ] else
-                  OutlinedButton.icon(
-                    onPressed: _guardando ? null : _seleccionarImagen,
-                    icon: const Icon(Icons.add_photo_alternate),
-                    label: const Text('Seleccionar imagen'),
-                  ),
-                const SizedBox(height: 24),
-                FilledButton.icon(
-                  key: const Key('guardar-promocion'),
-                  onPressed: _guardando ? null : _guardar,
-                  icon: _guardando
-                      ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.save),
-                  label: Text(
-                    _guardando
-                        ? 'Guardando...'
-                        : widget.editando
-                        ? 'Guardar cambios'
-                        : 'Crear promoción',
-                  ),
+                    const SizedBox(height: 2),
+                    Text(
+                      fecha,
+                      style: const TextStyle(color: CerclyColors.muted),
+                    ),
+                  ],
                 ),
-              ],
-            ),
+              ),
+              const Icon(Icons.edit_calendar_rounded, color: CerclyColors.blue),
+            ],
           ),
         ),
       ),

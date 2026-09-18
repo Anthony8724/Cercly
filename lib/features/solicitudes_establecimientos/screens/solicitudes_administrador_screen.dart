@@ -274,11 +274,7 @@ class _SolicitudesAdministradorScreenState
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [
-            Color(0xFF3F7FE8),
-            Color(0xFF174FAD),
-            Color(0xFF0A2A66),
-          ],
+          colors: [Color(0xFF3F7FE8), Color(0xFF174FAD), Color(0xFF0A2A66)],
         ),
         borderRadius: BorderRadius.vertical(bottom: Radius.circular(28)),
       ),
@@ -514,7 +510,8 @@ class _SolicitudesAdministradorScreenState
                       return Column(
                         children: solicitudes.map((detalle) {
                           final solicitud = detalle.solicitud;
-                          final procesando = _solicitudProcesando == solicitud.id;
+                          final procesando =
+                              _solicitudProcesando == solicitud.id;
                           final color = _colorEstado(solicitud.estado);
 
                           return Container(
@@ -543,7 +540,9 @@ class _SolicitudesAdministradorScreenState
                                         height: 42,
                                         decoration: BoxDecoration(
                                           color: color.withValues(alpha: 0.10),
-                                          borderRadius: BorderRadius.circular(13),
+                                          borderRadius: BorderRadius.circular(
+                                            13,
+                                          ),
                                         ),
                                         child: Icon(
                                           _iconoEstado(solicitud.estado),
@@ -641,7 +640,9 @@ class _SolicitudesAdministradorScreenState
                                   ),
                                   const SizedBox(height: 16),
                                   if (procesando)
-                                    const Center(child: CircularProgressIndicator())
+                                    const Center(
+                                      child: CircularProgressIndicator(),
+                                    )
                                   else
                                     Wrap(
                                       spacing: 8,
