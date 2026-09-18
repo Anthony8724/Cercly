@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../explorar/models/ubicacion_usuario.dart';
+import '../../explorar/services/ubicacion_service.dart';
 import '../models/establecimiento_model.dart';
 import '../models/turno_horario.dart';
 import '../services/establecimiento_service.dart';
+import 'seleccionar_ubicacion_establecimiento_screen.dart';
 
 class RegistroEstablecimientoScreen extends StatefulWidget {
   const RegistroEstablecimientoScreen({super.key});
@@ -17,18 +20,21 @@ class _RegistroEstablecimientoScreenState
     extends State<RegistroEstablecimientoScreen> {
   final _formKey = GlobalKey<FormState>();
   final _service = EstablecimientoService();
+  final _ubicacionService = GeolocatorUbicacionService();
 
   final _nombreController = TextEditingController();
   final _descripcionController = TextEditingController();
   final _direccionController = TextEditingController();
   final _telefonoController = TextEditingController();
-  final _latitudController = TextEditingController();
-  final _longitudController = TextEditingController();
 
   late Future<List<Map<String, dynamic>>> _categoriasFuture;
 
   String? _categoriaId;
+  double? _latitudSeleccionada;
+  double? _longitudSeleccionada;
+  String? _origenUbicacion;
   bool _guardando = false;
+  bool _obteniendoUbicacion = false;
 
   @override
   void initState() {
@@ -42,8 +48,6 @@ class _RegistroEstablecimientoScreenState
     _descripcionController.dispose();
     _direccionController.dispose();
     _telefonoController.dispose();
-    _latitudController.dispose();
-    _longitudController.dispose();
     super.dispose();
   }
 
@@ -77,32 +81,60 @@ class _RegistroEstablecimientoScreenState
     return null;
   }
 
-  String? _validarLatitud(String? valor) {
-    final numero = double.tryParse(valor?.trim() ?? '');
-
-    if (numero == null) {
-      return 'Ingresa una latitud válida';
-    }
-
-    if (numero < -90 || numero > 90) {
-      return 'La latitud debe estar entre -90 y 90';
-    }
-
-    return null;
+  void _establecerUbicacion(UbicacionUsuario ubicacion, String origen) {
+    setState(() {
+      _latitudSeleccionada = ubicacion.latitud;
+      _longitudSeleccionada = ubicacion.longitud;
+      _origenUbicacion = origen;
+    });
   }
 
-  String? _validarLongitud(String? valor) {
-    final numero = double.tryParse(valor?.trim() ?? '');
+  Future<void> _usarUbicacionActual() async {
+    if (_guardando || _obteniendoUbicacion) return;
 
-    if (numero == null) {
-      return 'Ingresa una longitud válida';
+    setState(() {
+      _obteniendoUbicacion = true;
+    });
+
+    final resultado = await _ubicacionService.obtenerUbicacion();
+
+    if (!mounted) return;
+
+    setState(() {
+      _obteniendoUbicacion = false;
+    });
+
+    final ubicacion = resultado.ubicacion;
+    if (ubicacion == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            resultado.mensaje ??
+                'No pudimos obtener tu ubicación. Puedes seleccionarla en el mapa.',
+          ),
+        ),
+      );
+      return;
     }
 
-    if (numero < -180 || numero > 180) {
-      return 'La longitud debe estar entre -180 y 180';
-    }
+    _establecerUbicacion(ubicacion, 'Ubicación actual');
+  }
 
-    return null;
+  Future<void> _seleccionarEnMapa() async {
+    if (_guardando) return;
+
+    final ubicacion = await Navigator.of(context).push<UbicacionUsuario>(
+      MaterialPageRoute(
+        builder: (_) => SeleccionarUbicacionEstablecimientoScreen(
+          latitudInicial: _latitudSeleccionada,
+          longitudInicial: _longitudSeleccionada,
+        ),
+      ),
+    );
+
+    if (!mounted || ubicacion == null) return;
+
+    _establecerUbicacion(ubicacion, 'Seleccionada en el mapa');
   }
 
   Future<void> _guardar() async {
@@ -113,6 +145,17 @@ class _RegistroEstablecimientoScreenState
     if (_categoriaId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Selecciona una categoría.')),
+      );
+      return;
+    }
+
+    final latitud = _latitudSeleccionada;
+    final longitud = _longitudSeleccionada;
+    if (latitud == null || longitud == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Selecciona la ubicación del establecimiento.'),
+        ),
       );
       return;
     }
@@ -138,8 +181,8 @@ class _RegistroEstablecimientoScreenState
         descripcion: _descripcionController.text,
         categoriaId: _categoriaId!,
         direccion: _direccionController.text,
-        latitud: double.parse(_latitudController.text.trim()),
-        longitud: double.parse(_longitudController.text.trim()),
+        latitud: latitud,
+        longitud: longitud,
         telefonoPublico: _telefonoController.text,
         horario: _crearHorarioInicial(),
         zonaHoraria: 'America/Guayaquil',
@@ -349,45 +392,129 @@ class _RegistroEstablecimientoScreenState
                 ),
                 const SizedBox(height: 16),
                 const Text(
-                  'Ubicación',
+                  'Ubicación del negocio',
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 8),
                 const Text(
-                  'Por ahora ingresa las coordenadas. Posteriormente '
-                  'permitiremos seleccionarlas directamente en el mapa.',
+                  'Indica dónde se encuentra el establecimiento. Puedes usar '
+                  'el GPS si estás en el negocio o marcar el punto directamente '
+                  'en el mapa.',
                 ),
                 const SizedBox(height: 16),
-                TextFormField(
-                  controller: _latitudController,
-                  decoration: const InputDecoration(
-                    labelText: 'Latitud',
-                    hintText: 'Ejemplo: 0.8119',
-                    border: OutlineInputBorder(),
-                    prefixIcon: Icon(Icons.my_location),
+                SizedBox(
+                  height: 52,
+                  child: FilledButton.icon(
+                    onPressed: _guardando || _obteniendoUbicacion
+                        ? null
+                        : _usarUbicacionActual,
+                    style: FilledButton.styleFrom(
+                      backgroundColor: const Color(0xFF1769FF),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                    ),
+                    icon: _obteniendoUbicacion
+                        ? const SizedBox(
+                            width: 19,
+                            height: 19,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
+                        : const Icon(Icons.my_location_rounded),
+                    label: Text(
+                      _obteniendoUbicacion
+                          ? 'Buscando ubicación...'
+                          : 'Usar mi ubicación actual',
+                      style: const TextStyle(fontWeight: FontWeight.w800),
+                    ),
                   ),
-                  keyboardType: const TextInputType.numberWithOptions(
-                    decimal: true,
-                    signed: true,
-                  ),
-                  textInputAction: TextInputAction.next,
-                  validator: _validarLatitud,
                 ),
-                const SizedBox(height: 16),
-                TextFormField(
-                  controller: _longitudController,
-                  decoration: const InputDecoration(
-                    labelText: 'Longitud',
-                    hintText: 'Ejemplo: -77.7173',
-                    border: OutlineInputBorder(),
-                    prefixIcon: Icon(Icons.public),
+                const SizedBox(height: 12),
+                SizedBox(
+                  height: 52,
+                  child: OutlinedButton.icon(
+                    onPressed: _guardando ? null : _seleccionarEnMapa,
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: const Color(0xFF1769FF),
+                      side: const BorderSide(
+                        color: Color(0xFF1769FF),
+                        width: 1.4,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                    ),
+                    icon: const Icon(Icons.map_rounded),
+                    label: Text(
+                      _latitudSeleccionada == null
+                          ? 'Seleccionar en el mapa'
+                          : 'Cambiar ubicación en el mapa',
+                      style: const TextStyle(fontWeight: FontWeight.w800),
+                    ),
                   ),
-                  keyboardType: const TextInputType.numberWithOptions(
-                    decimal: true,
-                    signed: true,
-                  ),
-                  validator: _validarLongitud,
                 ),
+                if (_latitudSeleccionada != null &&
+                    _longitudSeleccionada != null) ...[
+                  const SizedBox(height: 14),
+                  Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFEAF3FF),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: const Color(0xFFBFD8FF)),
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 42,
+                          height: 42,
+                          decoration: const BoxDecoration(
+                            color: Color(0xFF1769FF),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.check_rounded,
+                            color: Colors.white,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'Ubicación seleccionada',
+                                style: TextStyle(
+                                  color: Color(0xFF102A56),
+                                  fontWeight: FontWeight.w900,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                _origenUbicacion ?? 'Lista para guardar',
+                                style: const TextStyle(
+                                  color: Color(0xFF526B91),
+                                  fontSize: 13,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        IconButton(
+                          tooltip: 'Ver o cambiar ubicación',
+                          onPressed: _guardando ? null : _seleccionarEnMapa,
+                          icon: const Icon(
+                            Icons.edit_location_alt_rounded,
+                            color: Color(0xFF1769FF),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 24),
                 FilledButton.icon(
                   onPressed: _guardando ? null : _guardar,
