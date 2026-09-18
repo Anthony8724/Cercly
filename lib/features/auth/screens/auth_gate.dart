@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../../shared/ui/cercly_ui.dart';
+
 import '../../administracion/screens/panel_administrador_screen.dart';
 import '../../establecimientos/screens/panel_establecimiento_screen.dart';
 import '../../explorar/controllers/explorar_controller.dart';
@@ -194,45 +196,90 @@ class _PantallaSegunRolState extends State<_PantallaSegunRol> {
 
         if (snapshot.hasError) {
           return Scaffold(
-            appBar: AppBar(title: const Text('Cercly')),
-            body: Center(
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(
-                      Icons.error_outline,
-                      size: 64,
-                      color: Colors.red,
-                    ),
-                    const SizedBox(height: 16),
-                    const Text(
-                      'No se pudo obtener el rol del usuario.',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
+            backgroundColor: CerclyColors.background,
+            body: Column(
+              children: [
+                const CerclyPageHeader(
+                  title: 'Cercly',
+                  subtitle: 'No pudimos cargar tu cuenta',
+                  icon: Icons.person_rounded,
+                ),
+                Expanded(
+                  child: SafeArea(
+                    top: false,
+                    child: Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(20),
+                        child: CerclySectionCard(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Container(
+                                width: 70,
+                                height: 70,
+                                decoration: const BoxDecoration(
+                                  color: Color(0xFFFFEEEE),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(
+                                  Icons.error_outline_rounded,
+                                  size: 38,
+                                  color: Colors.redAccent,
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+                              const Text(
+                                'No se pudo obtener el rol del usuario.',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  color: CerclyColors.text,
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w900,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                '${snapshot.error}',
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(
+                                  color: CerclyColors.muted,
+                                  height: 1.35,
+                                ),
+                              ),
+                              const SizedBox(height: 22),
+                              SizedBox(
+                                width: double.infinity,
+                                height: 50,
+                                child: FilledButton.icon(
+                                  onPressed: () {
+                                    setState(_cargarRol);
+                                  },
+                                  style: FilledButton.styleFrom(
+                                    backgroundColor: CerclyColors.blue,
+                                  ),
+                                  icon: const Icon(Icons.refresh_rounded),
+                                  label: const Text(
+                                    'Reintentar',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w900,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              TextButton.icon(
+                                onPressed: _cerrarSesion,
+                                icon: const Icon(Icons.logout_rounded),
+                                label: const Text('Cerrar sesión'),
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
                     ),
-                    const SizedBox(height: 8),
-                    Text('${snapshot.error}', textAlign: TextAlign.center),
-                    const SizedBox(height: 24),
-                    FilledButton.icon(
-                      onPressed: () {
-                        setState(_cargarRol);
-                      },
-                      icon: const Icon(Icons.refresh),
-                      label: const Text('Reintentar'),
-                    ),
-                    const SizedBox(height: 8),
-                    TextButton(
-                      onPressed: _cerrarSesion,
-                      child: const Text('Cerrar sesión'),
-                    ),
-                  ],
+                  ),
                 ),
-              ),
+              ],
             ),
           );
         }
@@ -252,6 +299,38 @@ class _PantallaCarga extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    return const Scaffold(
+      backgroundColor: CerclyColors.background,
+      body: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.location_on_rounded,
+              color: CerclyColors.blue,
+              size: 46,
+            ),
+            SizedBox(height: 14),
+            Text(
+              'Cercly',
+              style: TextStyle(
+                color: CerclyColors.text,
+                fontSize: 24,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+            SizedBox(height: 16),
+            SizedBox(
+              width: 26,
+              height: 26,
+              child: CircularProgressIndicator(
+                strokeWidth: 2.5,
+                color: CerclyColors.blue,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
