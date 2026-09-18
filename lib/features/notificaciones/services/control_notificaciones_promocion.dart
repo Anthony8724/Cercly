@@ -7,6 +7,19 @@ class ControlNotificacionesPromocion {
   final Map<String, DateTime> _ultimaNotificacion = {};
   final Set<String> _promocionesDentro = {};
 
+  Map<String, DateTime> get historialUltimasNotificaciones =>
+      Map.unmodifiable(_ultimaNotificacion);
+
+  void cargarHistorial(Map<String, DateTime> historial) {
+    _ultimaNotificacion
+      ..clear()
+      ..addAll(historial);
+  }
+
+  void registrarNotificacion(String promocionId, {required DateTime ahora}) {
+    _ultimaNotificacion[promocionId] = ahora;
+  }
+
   List<PromocionDestacadaModel> evaluar(
     Iterable<PromocionDestacadaModel> promociones, {
     required DateTime ahora,
@@ -33,7 +46,6 @@ class ControlNotificacionesPromocion {
 
       if (acabaDeEntrar && cooldownCumplido) {
         notificables.add(promocion);
-        _ultimaNotificacion[promocion.id] = ahora;
       }
     }
 
