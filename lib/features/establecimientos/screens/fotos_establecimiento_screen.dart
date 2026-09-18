@@ -200,11 +200,8 @@ class _FotosEstablecimientoScreenState
               child: FutureBuilder<List<FotoEstablecimiento>>(
                 future: _fotosFuture,
                 builder: (context, snapshot) {
-                  if (snapshot.connectionState ==
-                      ConnectionState.waiting) {
-                    return const Center(
-                      child: CircularProgressIndicator(),
-                    );
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
                   }
 
                   if (snapshot.hasError) {
@@ -242,18 +239,12 @@ class _FotosEstablecimientoScreenState
                     );
                   }
 
-                  final fotos =
-                      snapshot.data ?? <FotoEstablecimiento>[];
+                  final fotos = snapshot.data ?? <FotoEstablecimiento>[];
 
                   return Stack(
                     children: [
                       ListView(
-                        padding: const EdgeInsets.fromLTRB(
-                          16,
-                          18,
-                          16,
-                          28,
-                        ),
+                        padding: const EdgeInsets.fromLTRB(16, 18, 16, 28),
                         children: [
                           CerclySectionCard(
                             child: Row(
@@ -263,8 +254,7 @@ class _FotosEstablecimientoScreenState
                                   height: 48,
                                   decoration: BoxDecoration(
                                     color: CerclyColors.softBlue,
-                                    borderRadius:
-                                        BorderRadius.circular(15),
+                                    borderRadius: BorderRadius.circular(15),
                                   ),
                                   child: const Icon(
                                     Icons.collections_rounded,
@@ -301,8 +291,7 @@ class _FotosEstablecimientoScreenState
                           if (fotos.isEmpty)
                             const CerclySectionCard(
                               child: Padding(
-                                padding:
-                                    EdgeInsets.symmetric(vertical: 20),
+                                padding: EdgeInsets.symmetric(vertical: 20),
                                 child: Column(
                                   children: [
                                     Icon(
@@ -334,8 +323,7 @@ class _FotosEstablecimientoScreenState
                           else
                             GridView.builder(
                               shrinkWrap: true,
-                              physics:
-                                  const NeverScrollableScrollPhysics(),
+                              physics: const NeverScrollableScrollPhysics(),
                               itemCount: fotos.length,
                               gridDelegate:
                                   const SliverGridDelegateWithFixedCrossAxisCount(
@@ -351,8 +339,7 @@ class _FotosEstablecimientoScreenState
                                   clipBehavior: Clip.antiAlias,
                                   decoration: BoxDecoration(
                                     color: Colors.white,
-                                    borderRadius:
-                                        BorderRadius.circular(18),
+                                    borderRadius: BorderRadius.circular(18),
                                     border: Border.all(
                                       color: CerclyColors.border,
                                     ),
@@ -374,22 +361,16 @@ class _FotosEstablecimientoScreenState
                                               foto.urlTemporal,
                                               fit: BoxFit.cover,
                                               errorBuilder:
-                                                  (
-                                                    context,
-                                                    error,
-                                                    stackTrace,
-                                                  ) {
+                                                  (context, error, stackTrace) {
                                                     return const ColoredBox(
                                                       color:
-                                                          CerclyColors
-                                                              .softBlue,
+                                                          CerclyColors.softBlue,
                                                       child: Center(
                                                         child: Icon(
                                                           Icons
                                                               .broken_image_rounded,
                                                           color:
-                                                              CerclyColors
-                                                                  .blue,
+                                                              CerclyColors.blue,
                                                           size: 40,
                                                         ),
                                                       ),
@@ -402,22 +383,17 @@ class _FotosEstablecimientoScreenState
                                                 left: 8,
                                                 child: Container(
                                                   padding:
-                                                      const EdgeInsets
-                                                          .symmetric(
-                                                            horizontal:
-                                                                9,
-                                                            vertical: 6,
-                                                          ),
-                                                  decoration:
-                                                      BoxDecoration(
-                                                        color:
-                                                            Colors.white,
-                                                        borderRadius:
-                                                            BorderRadius
-                                                                .circular(
-                                                                  999,
-                                                                ),
+                                                      const EdgeInsets.symmetric(
+                                                        horizontal: 9,
+                                                        vertical: 6,
                                                       ),
+                                                  decoration: BoxDecoration(
+                                                    color: Colors.white,
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                          999,
+                                                        ),
+                                                  ),
                                                   child: const Row(
                                                     mainAxisSize:
                                                         MainAxisSize.min,
@@ -425,8 +401,7 @@ class _FotosEstablecimientoScreenState
                                                       Icon(
                                                         Icons.star_rounded,
                                                         size: 15,
-                                                        color:
-                                                            Colors.amber,
+                                                        color: Colors.amber,
                                                       ),
                                                       SizedBox(width: 4),
                                                       Text(
@@ -434,8 +409,7 @@ class _FotosEstablecimientoScreenState
                                                         style: TextStyle(
                                                           fontSize: 11,
                                                           fontWeight:
-                                                              FontWeight
-                                                                  .w800,
+                                                              FontWeight.w800,
                                                         ),
                                                       ),
                                                     ],
@@ -452,27 +426,19 @@ class _FotosEstablecimientoScreenState
                                           IconButton(
                                             onPressed: _procesando
                                                 ? null
-                                                : () =>
-                                                      _hacerPortada(
-                                                        foto,
-                                                      ),
-                                            tooltip:
-                                                'Usar como portada',
+                                                : () => _hacerPortada(foto),
+                                            tooltip: 'Usar como portada',
                                             icon: Icon(
                                               foto.esPortada
                                                   ? Icons.star_rounded
-                                                  : Icons
-                                                        .star_border_rounded,
-                                              color:
-                                                  CerclyColors.blue,
+                                                  : Icons.star_border_rounded,
+                                              color: CerclyColors.blue,
                                             ),
                                           ),
                                           IconButton(
                                             onPressed: _procesando
                                                 ? null
-                                                : () => _eliminar(
-                                                    foto,
-                                                  ),
+                                                : () => _eliminar(foto),
                                             tooltip: 'Eliminar',
                                             icon: const Icon(
                                               Icons.delete_outline_rounded,
@@ -496,8 +462,7 @@ class _FotosEstablecimientoScreenState
                               style: FilledButton.styleFrom(
                                 backgroundColor: CerclyColors.blue,
                                 shape: RoundedRectangleBorder(
-                                  borderRadius:
-                                      BorderRadius.circular(15),
+                                  borderRadius: BorderRadius.circular(15),
                                 ),
                               ),
                               icon: const Icon(
@@ -505,9 +470,7 @@ class _FotosEstablecimientoScreenState
                               ),
                               label: const Text(
                                 'Seleccionar fotografías',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.w900,
-                                ),
+                                style: TextStyle(fontWeight: FontWeight.w900),
                               ),
                             ),
                           ),
@@ -517,9 +480,7 @@ class _FotosEstablecimientoScreenState
                         const Positioned.fill(
                           child: ColoredBox(
                             color: Color(0x33031A3A),
-                            child: Center(
-                              child: CircularProgressIndicator(),
-                            ),
+                            child: Center(child: CircularProgressIndicator()),
                           ),
                         ),
                     ],

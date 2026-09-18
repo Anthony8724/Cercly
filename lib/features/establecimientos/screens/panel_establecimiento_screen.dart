@@ -59,7 +59,8 @@ class _PanelEstablecimientoScreenState
 
   Future<void> _abrirInformacionEstablecimiento() async {
     try {
-      final establecimientos = await _service.listarEstablecimientosDelUsuario();
+      final establecimientos = await _service
+          .listarEstablecimientosDelUsuario();
 
       if (!mounted) {
         return;
@@ -130,9 +131,7 @@ class _PanelEstablecimientoScreenState
       }
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('No se pudo abrir la información: $error'),
-        ),
+        SnackBar(content: Text('No se pudo abrir la información: $error')),
       );
     }
   }
@@ -217,8 +216,7 @@ class _PanelEstablecimientoScreenState
                   children: [
                     const CerclySectionTitle(
                       title: 'Mis establecimientos',
-                      subtitle:
-                          'Administra la información, horarios, fotografías y promociones de tus negocios.',
+                      subtitle: 'Administra la información, horarios, fotografías y promociones de tus negocios.',
                       icon: Icons.business_rounded,
                     ),
                     const SizedBox(height: 14),
@@ -230,9 +228,7 @@ class _PanelEstablecimientoScreenState
                           return const CerclySectionCard(
                             child: Padding(
                               padding: EdgeInsets.symmetric(vertical: 22),
-                              child: Center(
-                                child: CircularProgressIndicator(),
-                              ),
+                              child: Center(child: CircularProgressIndicator()),
                             ),
                           );
                         }
@@ -302,9 +298,7 @@ class _PanelEstablecimientoScreenState
                                 const Text(
                                   'Registra tu negocio para enviarlo a revisión.',
                                   textAlign: TextAlign.center,
-                                  style: TextStyle(
-                                    color: CerclyColors.muted,
-                                  ),
+                                  style: TextStyle(color: CerclyColors.muted),
                                 ),
                                 const SizedBox(height: 16),
                                 FilledButton.icon(
@@ -312,8 +306,7 @@ class _PanelEstablecimientoScreenState
                                   style: FilledButton.styleFrom(
                                     backgroundColor: CerclyColors.blue,
                                   ),
-                                  icon:
-                                      const Icon(Icons.add_business_rounded),
+                                  icon: const Icon(Icons.add_business_rounded),
                                   label: const Text(
                                     'Registrar establecimiento',
                                   ),
@@ -328,10 +321,12 @@ class _PanelEstablecimientoScreenState
                             for (final establecimiento in establecimientos)
                               _TarjetaEstablecimiento(
                                 establecimiento: establecimiento,
-                                colorEstado:
-                                    _colorEstado(establecimiento.estado),
-                                textoEstado:
-                                    _textoEstado(establecimiento.estado),
+                                colorEstado: _colorEstado(
+                                  establecimiento.estado,
+                                ),
+                                textoEstado: _textoEstado(
+                                  establecimiento.estado,
+                                ),
                                 onFotografias: () =>
                                     _abrirFotografias(establecimiento),
                                 onHorarios: () =>
@@ -344,8 +339,7 @@ class _PanelEstablecimientoScreenState
                               width: double.infinity,
                               child: OutlinedButton.icon(
                                 onPressed: _abrirRegistro,
-                                icon:
-                                    const Icon(Icons.add_business_rounded),
+                                icon: const Icon(Icons.add_business_rounded),
                                 label: const Text(
                                   'Registrar otro establecimiento',
                                 ),
@@ -358,8 +352,7 @@ class _PanelEstablecimientoScreenState
                     const SizedBox(height: 24),
                     const CerclySectionTitle(
                       title: 'Administración general',
-                      subtitle:
-                          'Gestiona información general y solicitudes relacionadas con tus negocios.',
+                      subtitle: 'Gestiona información general y solicitudes relacionadas con tus negocios.',
                       icon: Icons.settings_rounded,
                     ),
                     const SizedBox(height: 14),
@@ -374,8 +367,7 @@ class _PanelEstablecimientoScreenState
                     _OpcionPanel(
                       icono: Icons.assignment_rounded,
                       titulo: 'Mis solicitudes',
-                      descripcion:
-                          'Envía solicitudes y consulta la respuesta del administrador.',
+                      descripcion: 'Envía solicitudes y consulta la respuesta del administrador.',
                       onTap: () {
                         Navigator.of(context).push(
                           MaterialPageRoute<void>(
@@ -394,6 +386,7 @@ class _PanelEstablecimientoScreenState
     );
   }
 }
+
 class _TarjetaEstablecimiento extends StatelessWidget {
   const _TarjetaEstablecimiento({
     required this.establecimiento,
@@ -493,9 +486,7 @@ class _TarjetaEstablecimiento extends StatelessWidget {
               decoration: BoxDecoration(
                 color: colorEstado.withValues(alpha: 0.10),
                 borderRadius: BorderRadius.circular(999),
-                border: Border.all(
-                  color: colorEstado.withValues(alpha: 0.28),
-                ),
+                border: Border.all(color: colorEstado.withValues(alpha: 0.28)),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,

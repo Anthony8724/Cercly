@@ -36,36 +36,16 @@ class CerclyPageHeader extends StatelessWidget {
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [
-            Color(0xFF3F7FE8),
-            Color(0xFF174FAD),
-            CerclyColors.navy,
-          ],
+          colors: [Color(0xFF3F7FE8), Color(0xFF174FAD), CerclyColors.navy],
         ),
         borderRadius: BorderRadius.vertical(bottom: Radius.circular(28)),
       ),
       child: Stack(
         children: [
-          const Positioned(
-            top: 18,
-            right: 34,
-            child: _Star(size: 5),
-          ),
-          const Positioned(
-            top: 52,
-            right: 88,
-            child: _Star(size: 3),
-          ),
-          const Positioned(
-            bottom: 26,
-            right: 18,
-            child: _Star(size: 4),
-          ),
-          const Positioned(
-            bottom: 18,
-            left: 92,
-            child: _Star(size: 3),
-          ),
+          const Positioned(top: 18, right: 34, child: _Star(size: 5)),
+          const Positioned(top: 52, right: 88, child: _Star(size: 3)),
+          const Positioned(bottom: 26, right: 18, child: _Star(size: 4)),
+          const Positioned(bottom: 18, left: 92, child: _Star(size: 3)),
           SafeArea(
             bottom: false,
             child: Padding(
@@ -111,7 +91,8 @@ class CerclyPageHeader extends StatelessWidget {
                             letterSpacing: -0.4,
                           ),
                         ),
-                        if (subtitle != null && subtitle!.trim().isNotEmpty) ...[
+                        if (subtitle != null &&
+                            subtitle!.trim().isNotEmpty) ...[
                           const SizedBox(height: 5),
                           Text(
                             subtitle!,
@@ -156,11 +137,7 @@ class CerclyHeaderAction extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return _HeaderButton(
-      icon: icon,
-      tooltip: tooltip,
-      onPressed: onPressed,
-    );
+    return _HeaderButton(icon: icon, tooltip: tooltip, onPressed: onPressed);
   }
 }
 

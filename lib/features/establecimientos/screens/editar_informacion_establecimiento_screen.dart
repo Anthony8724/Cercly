@@ -120,9 +120,8 @@ class _EditarInformacionEstablecimientoScreenState
           ? 'Información actualizada y enviada nuevamente a revisión.'
           : 'Información actualizada correctamente.';
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(mensaje)),
-      );
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(mensaje)));
       Navigator.of(context).pop(true);
     } on PostgrestException catch (error) {
       if (!mounted) {
@@ -135,16 +134,14 @@ class _EditarInformacionEstablecimientoScreenState
       if (!mounted) {
         return;
       }
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error.message)),
-      );
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(error.message)));
     } on ArgumentError catch (error) {
       if (!mounted) {
         return;
       }
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error.message.toString())),
-      );
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(error.message.toString())));
     } finally {
       if (mounted) {
         setState(() {
@@ -180,8 +177,7 @@ class _EditarInformacionEstablecimientoScreenState
                     children: [
                       if (requiereRevision) ...[
                         const CerclyInfoBanner(
-                          text:
-                              'Al guardar cambios en un establecimiento aprobado, volverá a estado pendiente para revisión.',
+                          text: 'Al guardar cambios en un establecimiento aprobado, volverá a estado pendiente para revisión.',
                           icon: Icons.info_outline_rounded,
                         ),
                         const SizedBox(height: 16),
@@ -192,20 +188,16 @@ class _EditarInformacionEstablecimientoScreenState
                           children: [
                             const CerclySectionTitle(
                               title: 'Datos públicos',
-                              subtitle:
-                                  'Actualiza la información que se mostrará a los usuarios de Cercly.',
+                              subtitle: 'Actualiza la información que se mostrará a los usuarios de Cercly.',
                               icon: Icons.badge_rounded,
                             ),
                             const SizedBox(height: 20),
                             TextFormField(
-                              key: const Key(
-                                'editar-establecimiento-nombre',
-                              ),
+                              key: const Key('editar-establecimiento-nombre'),
                               controller: _nombreController,
                               decoration: const InputDecoration(
                                 labelText: 'Nombre',
-                                prefixIcon:
-                                    Icon(Icons.storefront_rounded),
+                                prefixIcon: Icon(Icons.storefront_rounded),
                               ),
                               maxLength: 120,
                               textInputAction: TextInputAction.next,
@@ -219,8 +211,7 @@ class _EditarInformacionEstablecimientoScreenState
                               controller: _descripcionController,
                               decoration: const InputDecoration(
                                 labelText: 'Descripción',
-                                prefixIcon:
-                                    Icon(Icons.description_rounded),
+                                prefixIcon: Icon(Icons.description_rounded),
                               ),
                               maxLength: 1000,
                               maxLines: 4,
@@ -233,8 +224,7 @@ class _EditarInformacionEstablecimientoScreenState
                               controller: _direccionController,
                               decoration: const InputDecoration(
                                 labelText: 'Dirección',
-                                prefixIcon:
-                                    Icon(Icons.location_on_rounded),
+                                prefixIcon: Icon(Icons.location_on_rounded),
                               ),
                               maxLength: 250,
                               textInputAction: TextInputAction.next,
@@ -242,9 +232,7 @@ class _EditarInformacionEstablecimientoScreenState
                             ),
                             const SizedBox(height: 12),
                             TextFormField(
-                              key: const Key(
-                                'editar-establecimiento-telefono',
-                              ),
+                              key: const Key('editar-establecimiento-telefono'),
                               controller: _telefonoController,
                               decoration: const InputDecoration(
                                 labelText: 'Teléfono público (opcional)',
@@ -258,17 +246,14 @@ class _EditarInformacionEstablecimientoScreenState
                       ),
                       const SizedBox(height: 16),
                       const CerclyInfoBanner(
-                        text:
-                            'La categoría, ubicación y horarios se administran desde sus secciones correspondientes.',
+                        text: 'La categoría, ubicación y horarios se administran desde sus secciones correspondientes.',
                         icon: Icons.tune_rounded,
                       ),
                       const SizedBox(height: 18),
                       SizedBox(
                         height: 54,
                         child: FilledButton.icon(
-                          key: const Key(
-                            'guardar-informacion-establecimiento',
-                          ),
+                          key: const Key('guardar-informacion-establecimiento'),
                           onPressed: _guardando ? null : _guardar,
                           style: FilledButton.styleFrom(
                             backgroundColor: CerclyColors.blue,
@@ -287,12 +272,8 @@ class _EditarInformacionEstablecimientoScreenState
                                 )
                               : const Icon(Icons.save_rounded),
                           label: Text(
-                            _guardando
-                                ? 'Guardando...'
-                                : 'Guardar cambios',
-                            style: const TextStyle(
-                              fontWeight: FontWeight.w900,
-                            ),
+                            _guardando ? 'Guardando...' : 'Guardar cambios',
+                            style: const TextStyle(fontWeight: FontWeight.w900),
                           ),
                         ),
                       ),

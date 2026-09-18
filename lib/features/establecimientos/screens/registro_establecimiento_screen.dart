@@ -276,8 +276,7 @@ class _RegistroEstablecimientoScreenState
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       const CerclyInfoBanner(
-                        text:
-                            'El establecimiento será revisado antes de aparecer públicamente en Cercly.',
+                        text: 'El establecimiento será revisado antes de aparecer públicamente en Cercly.',
                         icon: Icons.verified_user_outlined,
                       ),
                       const SizedBox(height: 16),
@@ -287,8 +286,7 @@ class _RegistroEstablecimientoScreenState
                           children: [
                             const CerclySectionTitle(
                               title: 'Información del establecimiento',
-                              subtitle:
-                                  'Completa los datos que verán tus futuros clientes.',
+                              subtitle: 'Completa los datos que verán tus futuros clientes.',
                               icon: Icons.storefront_rounded,
                             ),
                             const SizedBox(height: 20),
@@ -366,8 +364,7 @@ class _RegistroEstablecimientoScreenState
                                 }
 
                                 final categorias =
-                                    snapshot.data ??
-                                    <Map<String, dynamic>>[];
+                                    snapshot.data ?? <Map<String, dynamic>>[];
 
                                 if (categorias.isEmpty) {
                                   return const Text(
@@ -380,8 +377,7 @@ class _RegistroEstablecimientoScreenState
                                   initialValue: _categoriaId,
                                   decoration: const InputDecoration(
                                     labelText: 'Categoría',
-                                    prefixIcon:
-                                        Icon(Icons.category_rounded),
+                                    prefixIcon: Icon(Icons.category_rounded),
                                   ),
                                   items: categorias.map((categoria) {
                                     return DropdownMenuItem<String>(
@@ -412,8 +408,7 @@ class _RegistroEstablecimientoScreenState
                               controller: _direccionController,
                               decoration: const InputDecoration(
                                 labelText: 'Dirección',
-                                prefixIcon:
-                                    Icon(Icons.location_on_rounded),
+                                prefixIcon: Icon(Icons.location_on_rounded),
                               ),
                               maxLength: 250,
                               textInputAction: TextInputAction.next,
@@ -440,16 +435,14 @@ class _RegistroEstablecimientoScreenState
                           children: [
                             const CerclySectionTitle(
                               title: 'Ubicación del negocio',
-                              subtitle:
-                                  'Usa el GPS si estás en el establecimiento o marca el punto exacto en el mapa.',
+                              subtitle: 'Usa el GPS si estás en el establecimiento o marca el punto exacto en el mapa.',
                               icon: Icons.location_on_rounded,
                             ),
                             const SizedBox(height: 18),
                             SizedBox(
                               height: 52,
                               child: FilledButton.icon(
-                                onPressed:
-                                    _guardando || _obteniendoUbicacion
+                                onPressed: _guardando || _obteniendoUbicacion
                                     ? null
                                     : _usarUbicacionActual,
                                 style: FilledButton.styleFrom(
@@ -467,9 +460,7 @@ class _RegistroEstablecimientoScreenState
                                           color: Colors.white,
                                         ),
                                       )
-                                    : const Icon(
-                                        Icons.my_location_rounded,
-                                      ),
+                                    : const Icon(Icons.my_location_rounded),
                                 label: Text(
                                   _obteniendoUbicacion
                                       ? 'Buscando ubicación...'
@@ -484,8 +475,9 @@ class _RegistroEstablecimientoScreenState
                             SizedBox(
                               height: 52,
                               child: OutlinedButton.icon(
-                                onPressed:
-                                    _guardando ? null : _seleccionarEnMapa,
+                                onPressed: _guardando
+                                    ? null
+                                    : _seleccionarEnMapa,
                                 style: OutlinedButton.styleFrom(
                                   foregroundColor: CerclyColors.blue,
                                   side: const BorderSide(
@@ -600,9 +592,7 @@ class _RegistroEstablecimientoScreenState
                             _guardando
                                 ? 'Guardando...'
                                 : 'Enviar para revisión',
-                            style: const TextStyle(
-                              fontWeight: FontWeight.w900,
-                            ),
+                            style: const TextStyle(fontWeight: FontWeight.w900),
                           ),
                         ),
                       ),

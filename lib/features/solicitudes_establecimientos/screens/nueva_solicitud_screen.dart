@@ -156,23 +156,18 @@ class _NuevaSolicitudScreenState extends State<NuevaSolicitudScreen> {
         children: [
           CerclyPageHeader(
             title: 'Nueva solicitud',
-            subtitle:
-                'Solicita acceso, reclama un establecimiento o informa una corrección',
+            subtitle: 'Solicita acceso, reclama un establecimiento o informa una corrección',
             icon: Icons.assignment_rounded,
             onBack: () => Navigator.of(context).maybePop(),
           ),
           Expanded(
             child: SafeArea(
               top: false,
-              child: FutureBuilder<
-                  List<EstablecimientoSolicitudOpcion>>(
+              child: FutureBuilder<List<EstablecimientoSolicitudOpcion>>(
                 future: _establecimientosFuture,
                 builder: (context, snapshot) {
-                  if (snapshot.connectionState ==
-                      ConnectionState.waiting) {
-                    return const Center(
-                      child: CircularProgressIndicator(),
-                    );
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
                   }
 
                   if (snapshot.hasError) {
@@ -208,9 +203,7 @@ class _NuevaSolicitudScreenState extends State<NuevaSolicitudScreen> {
                               const SizedBox(height: 16),
                               OutlinedButton.icon(
                                 onPressed: _recargar,
-                                icon: const Icon(
-                                  Icons.refresh_rounded,
-                                ),
+                                icon: const Icon(Icons.refresh_rounded),
                                 label: const Text('Reintentar'),
                               ),
                             ],
@@ -221,11 +214,9 @@ class _NuevaSolicitudScreenState extends State<NuevaSolicitudScreen> {
                   }
 
                   final establecimientos =
-                      snapshot.data ??
-                      <EstablecimientoSolicitudOpcion>[];
+                      snapshot.data ?? <EstablecimientoSolicitudOpcion>[];
 
-                  if (establecimientos.isEmpty &&
-                      widget.bloquearTipo) {
+                  if (establecimientos.isEmpty && widget.bloquearTipo) {
                     return Center(
                       child: Padding(
                         padding: const EdgeInsets.all(20),
@@ -264,119 +255,94 @@ class _NuevaSolicitudScreenState extends State<NuevaSolicitudScreen> {
                   }
 
                   return SingleChildScrollView(
-                    padding: const EdgeInsets.fromLTRB(
-                      16,
-                      18,
-                      16,
-                      28,
-                    ),
+                    padding: const EdgeInsets.fromLTRB(16, 18, 16, 28),
                     child: Form(
                       key: _formKey,
                       child: Column(
-                        crossAxisAlignment:
-                            CrossAxisAlignment.stretch,
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
                           const CerclyInfoBanner(
-                            text:
-                                'Selecciona el establecimiento y explica claramente lo que necesitas para que pueda revisarse.',
+                            text: 'Selecciona el establecimiento y explica claramente lo que necesitas para que pueda revisarse.',
                             icon: Icons.info_outline_rounded,
                           ),
                           const SizedBox(height: 16),
                           CerclySectionCard(
                             child: Column(
-                              crossAxisAlignment:
-                                  CrossAxisAlignment.stretch,
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
                               children: [
                                 const CerclySectionTitle(
                                   title: 'Datos de la solicitud',
-                                  subtitle:
-                                      'Elige el establecimiento y el tipo de solicitud.',
+                                  subtitle: 'Elige el establecimiento y el tipo de solicitud.',
                                   icon: Icons.assignment_rounded,
                                 ),
                                 const SizedBox(height: 20),
                                 if (establecimientos.isEmpty) ...[
                                   CerclyInfoBanner(
                                     text: _mensajeSinResultados,
-                                    icon: Icons
-                                        .storefront_outlined,
+                                    icon: Icons.storefront_outlined,
                                   ),
                                   const SizedBox(height: 14),
                                 ],
                                 DropdownButtonFormField<String>(
                                   initialValue:
                                       establecimientos.any(
-                                        (item) =>
-                                            item.id ==
-                                            _establecimientoId,
+                                        (item) => item.id == _establecimientoId,
                                       )
                                       ? _establecimientoId
                                       : null,
-                                  decoration:
-                                      const InputDecoration(
+                                  decoration: const InputDecoration(
                                     labelText: 'Establecimiento',
-                                    prefixIcon: Icon(
-                                      Icons.storefront_rounded,
-                                    ),
+                                    prefixIcon: Icon(Icons.storefront_rounded),
                                   ),
-                                  items: establecimientos
-                                      .map((establecimiento) {
+                                  items: establecimientos.map((
+                                    establecimiento,
+                                  ) {
                                     return DropdownMenuItem<String>(
                                       value: establecimiento.id,
                                       child: Text(
                                         establecimiento.nombre,
-                                        overflow:
-                                            TextOverflow.ellipsis,
+                                        overflow: TextOverflow.ellipsis,
                                       ),
                                     );
                                   }).toList(),
                                   onChanged:
-                                      _guardando ||
-                                              establecimientos.isEmpty
-                                          ? null
-                                          : (valor) {
-                                              setState(() {
-                                                _establecimientoId =
-                                                    valor;
-                                              });
-                                            },
+                                      _guardando || establecimientos.isEmpty
+                                      ? null
+                                      : (valor) {
+                                          setState(() {
+                                            _establecimientoId = valor;
+                                          });
+                                        },
                                   validator: (valor) {
-                                    if (valor == null ||
-                                        valor.isEmpty) {
+                                    if (valor == null || valor.isEmpty) {
                                       return 'Selecciona un establecimiento.';
                                     }
                                     return null;
                                   },
                                 ),
-                                if (_establecimientoId !=
-                                    null) ...[
+                                if (_establecimientoId != null) ...[
                                   const SizedBox(height: 8),
                                   Row(
                                     crossAxisAlignment:
                                         CrossAxisAlignment.start,
                                     children: [
                                       const Icon(
-                                        Icons
-                                            .location_on_rounded,
+                                        Icons.location_on_rounded,
                                         size: 17,
-                                        color:
-                                            CerclyColors.blue,
+                                        color: CerclyColors.blue,
                                       ),
                                       const SizedBox(width: 5),
                                       Expanded(
                                         child: Text(
                                           establecimientos
                                               .firstWhere(
-                                                (
-                                                  establecimiento,
-                                                ) =>
-                                                    establecimiento
-                                                        .id ==
+                                                (establecimiento) =>
+                                                    establecimiento.id ==
                                                     _establecimientoId,
                                               )
                                               .direccion,
                                           style: const TextStyle(
-                                            color:
-                                                CerclyColors.muted,
+                                            color: CerclyColors.muted,
                                             fontSize: 12.5,
                                           ),
                                         ),
@@ -387,39 +353,32 @@ class _NuevaSolicitudScreenState extends State<NuevaSolicitudScreen> {
                                 const SizedBox(height: 18),
                                 DropdownButtonFormField<String>(
                                   initialValue: _tipo,
-                                  decoration:
-                                      const InputDecoration(
+                                  decoration: const InputDecoration(
                                     labelText: 'Tipo de solicitud',
-                                    prefixIcon: Icon(
-                                      Icons.category_rounded,
-                                    ),
+                                    prefixIcon: Icon(Icons.category_rounded),
                                   ),
-                                  items:
-                                      SolicitudEstablecimientoModel
-                                          .tiposPermitidos
-                                          .map((tipo) {
-                                    return DropdownMenuItem<String>(
-                                      value: tipo,
-                                      child:
-                                          Text(_etiquetaTipo(tipo)),
-                                    );
-                                  }).toList(),
-                                  onChanged:
-                                      _guardando ||
-                                              widget.bloquearTipo
-                                          ? null
-                                          : (valor) {
-                                              if (valor == null) {
-                                                return;
-                                              }
-                                              _cambiarTipo(valor);
-                                            },
+                                  items: SolicitudEstablecimientoModel
+                                      .tiposPermitidos
+                                      .map((tipo) {
+                                        return DropdownMenuItem<String>(
+                                          value: tipo,
+                                          child: Text(_etiquetaTipo(tipo)),
+                                        );
+                                      })
+                                      .toList(),
+                                  onChanged: _guardando || widget.bloquearTipo
+                                      ? null
+                                      : (valor) {
+                                          if (valor == null) {
+                                            return;
+                                          }
+                                          _cambiarTipo(valor);
+                                        },
                                 ),
                                 const SizedBox(height: 12),
                                 CerclyInfoBanner(
                                   text: _descripcionTipo(_tipo),
-                                  icon: Icons
-                                      .lightbulb_outline_rounded,
+                                  icon: Icons.lightbulb_outline_rounded,
                                 ),
                               ],
                             ),
@@ -427,38 +386,28 @@ class _NuevaSolicitudScreenState extends State<NuevaSolicitudScreen> {
                           const SizedBox(height: 16),
                           CerclySectionCard(
                             child: Column(
-                              crossAxisAlignment:
-                                  CrossAxisAlignment.stretch,
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
                               children: [
                                 const CerclySectionTitle(
                                   title: 'Explicación',
-                                  subtitle:
-                                      'Describe el motivo con suficiente detalle para facilitar la revisión.',
-                                  icon: Icons
-                                      .chat_bubble_outline_rounded,
+                                  subtitle: 'Describe el motivo con suficiente detalle para facilitar la revisión.',
+                                  icon: Icons.chat_bubble_outline_rounded,
                                 ),
                                 const SizedBox(height: 18),
                                 TextFormField(
-                                  controller:
-                                      _mensajeController,
+                                  controller: _mensajeController,
                                   enabled: !_guardando,
                                   minLines: 4,
                                   maxLines: 7,
                                   maxLength: 1000,
-                                  decoration:
-                                      const InputDecoration(
-                                    labelText:
-                                        'Explicación de la solicitud',
-                                    hintText:
-                                        'Describe el motivo y proporciona información que permita verificarlo.',
+                                  decoration: const InputDecoration(
+                                    labelText: 'Explicación de la solicitud',
+                                    hintText: 'Describe el motivo y proporciona información que permita verificarlo.',
                                     alignLabelWithHint: true,
-                                    prefixIcon: Icon(
-                                      Icons.edit_note_rounded,
-                                    ),
+                                    prefixIcon: Icon(Icons.edit_note_rounded),
                                   ),
                                   validator: (valor) {
-                                    final texto =
-                                        valor?.trim() ?? '';
+                                    final texto = valor?.trim() ?? '';
                                     if (texto.isEmpty) {
                                       return 'Escribe una explicación.';
                                     }
@@ -475,33 +424,25 @@ class _NuevaSolicitudScreenState extends State<NuevaSolicitudScreen> {
                           SizedBox(
                             height: 54,
                             child: FilledButton.icon(
-                              onPressed:
-                                  _guardando ? null : _enviar,
+                              onPressed: _guardando ? null : _enviar,
                               style: FilledButton.styleFrom(
-                                backgroundColor:
-                                    CerclyColors.blue,
+                                backgroundColor: CerclyColors.blue,
                                 shape: RoundedRectangleBorder(
-                                  borderRadius:
-                                      BorderRadius.circular(16),
+                                  borderRadius: BorderRadius.circular(16),
                                 ),
                               ),
                               icon: _guardando
                                   ? const SizedBox(
                                       width: 18,
                                       height: 18,
-                                      child:
-                                          CircularProgressIndicator(
+                                      child: CircularProgressIndicator(
                                         strokeWidth: 2,
                                         color: Colors.white,
                                       ),
                                     )
-                                  : const Icon(
-                                      Icons.send_rounded,
-                                    ),
+                                  : const Icon(Icons.send_rounded),
                               label: Text(
-                                _guardando
-                                    ? 'Enviando...'
-                                    : 'Enviar solicitud',
+                                _guardando ? 'Enviando...' : 'Enviar solicitud',
                                 style: const TextStyle(
                                   fontWeight: FontWeight.w900,
                                 ),

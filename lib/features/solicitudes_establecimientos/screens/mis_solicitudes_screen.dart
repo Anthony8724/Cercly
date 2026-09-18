@@ -199,23 +199,14 @@ class _MisSolicitudesScreenState extends State<MisSolicitudesScreen> {
                 child: FutureBuilder<List<SolicitudEstablecimientoDetalle>>(
                   future: _solicitudesFuture,
                   builder: (context, snapshot) {
-                    if (snapshot.connectionState ==
-                        ConnectionState.waiting) {
-                      return const Center(
-                        child: CircularProgressIndicator(),
-                      );
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const Center(child: CircularProgressIndicator());
                     }
 
                     if (snapshot.hasError) {
                       return ListView(
-                        physics:
-                            const AlwaysScrollableScrollPhysics(),
-                        padding: const EdgeInsets.fromLTRB(
-                          16,
-                          24,
-                          16,
-                          28,
-                        ),
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        padding: const EdgeInsets.fromLTRB(16, 24, 16, 28),
                         children: [
                           CerclySectionCard(
                             child: Column(
@@ -245,8 +236,7 @@ class _MisSolicitudesScreenState extends State<MisSolicitudesScreen> {
                                 const SizedBox(height: 16),
                                 OutlinedButton.icon(
                                   onPressed: _recargar,
-                                  icon:
-                                      const Icon(Icons.refresh_rounded),
+                                  icon: const Icon(Icons.refresh_rounded),
                                   label: const Text('Reintentar'),
                                 ),
                               ],
@@ -257,25 +247,16 @@ class _MisSolicitudesScreenState extends State<MisSolicitudesScreen> {
                     }
 
                     final solicitudes =
-                        snapshot.data ??
-                        <SolicitudEstablecimientoDetalle>[];
+                        snapshot.data ?? <SolicitudEstablecimientoDetalle>[];
 
                     if (solicitudes.isEmpty) {
                       return ListView(
-                        physics:
-                            const AlwaysScrollableScrollPhysics(),
-                        padding: const EdgeInsets.fromLTRB(
-                          16,
-                          24,
-                          16,
-                          28,
-                        ),
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        padding: const EdgeInsets.fromLTRB(16, 24, 16, 28),
                         children: [
                           CerclySectionCard(
                             child: Padding(
-                              padding: const EdgeInsets.symmetric(
-                                vertical: 18,
-                              ),
+                              padding: const EdgeInsets.symmetric(vertical: 18),
                               child: Column(
                                 children: [
                                   Container(
@@ -314,13 +295,10 @@ class _MisSolicitudesScreenState extends State<MisSolicitudesScreen> {
                                   FilledButton.icon(
                                     onPressed: _abrirNuevaSolicitud,
                                     style: FilledButton.styleFrom(
-                                      backgroundColor:
-                                          CerclyColors.blue,
+                                      backgroundColor: CerclyColors.blue,
                                     ),
-                                    icon:
-                                        const Icon(Icons.add_rounded),
-                                    label:
-                                        const Text('Nueva solicitud'),
+                                    icon: const Icon(Icons.add_rounded),
+                                    label: const Text('Nueva solicitud'),
                                   ),
                                 ],
                               ),
@@ -331,28 +309,19 @@ class _MisSolicitudesScreenState extends State<MisSolicitudesScreen> {
                     }
 
                     return ListView(
-                      physics:
-                          const AlwaysScrollableScrollPhysics(),
-                      padding: const EdgeInsets.fromLTRB(
-                        16,
-                        18,
-                        16,
-                        28,
-                      ),
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      padding: const EdgeInsets.fromLTRB(16, 18, 16, 28),
                       children: [
                         const CerclySectionTitle(
                           title: 'Historial de solicitudes',
-                          subtitle:
-                              'Revisa cada solicitud enviada y la respuesta recibida.',
+                          subtitle: 'Revisa cada solicitud enviada y la respuesta recibida.',
                           icon: Icons.history_rounded,
                         ),
                         const SizedBox(height: 14),
                         for (final detalle in solicitudes)
                           _SolicitudCard(
                             detalle: detalle,
-                            eliminando:
-                                _eliminandoId ==
-                                detalle.solicitud.id,
+                            eliminando: _eliminandoId == detalle.solicitud.id,
                             nombreTipo: _nombreTipo,
                             nombreEstado: _nombreEstado,
                             colorEstado: _colorEstado,
@@ -368,16 +337,13 @@ class _MisSolicitudesScreenState extends State<MisSolicitudesScreen> {
                             style: FilledButton.styleFrom(
                               backgroundColor: CerclyColors.blue,
                               shape: RoundedRectangleBorder(
-                                borderRadius:
-                                    BorderRadius.circular(15),
+                                borderRadius: BorderRadius.circular(15),
                               ),
                             ),
                             icon: const Icon(Icons.add_rounded),
                             label: const Text(
                               'Nueva solicitud',
-                              style: TextStyle(
-                                fontWeight: FontWeight.w900,
-                              ),
+                              style: TextStyle(fontWeight: FontWeight.w900),
                             ),
                           ),
                         ),
@@ -393,6 +359,7 @@ class _MisSolicitudesScreenState extends State<MisSolicitudesScreen> {
     );
   }
 }
+
 class _SolicitudCard extends StatelessWidget {
   const _SolicitudCard({
     required this.detalle,
@@ -443,8 +410,7 @@ class _SolicitudCard extends StatelessWidget {
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
-                  crossAxisAlignment:
-                      CrossAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       detalle.nombreEstablecimiento,
@@ -467,10 +433,7 @@ class _SolicitudCard extends StatelessWidget {
               ),
               const SizedBox(width: 8),
               Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 9,
-                  vertical: 6,
-                ),
+                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
                 decoration: BoxDecoration(
                   color: color.withValues(alpha: 0.10),
                   borderRadius: BorderRadius.circular(999),
@@ -489,10 +452,7 @@ class _SolicitudCard extends StatelessWidget {
           const SizedBox(height: 13),
           Text(
             solicitud.mensaje,
-            style: const TextStyle(
-              color: CerclyColors.muted,
-              height: 1.4,
-            ),
+            style: const TextStyle(color: CerclyColors.muted, height: 1.4),
           ),
           const SizedBox(height: 10),
           Row(
@@ -505,10 +465,7 @@ class _SolicitudCard extends StatelessWidget {
               const SizedBox(width: 5),
               Text(
                 'Enviada: ${formatearFecha(solicitud.creadoEn)}',
-                style: const TextStyle(
-                  color: CerclyColors.muted,
-                  fontSize: 12,
-                ),
+                style: const TextStyle(color: CerclyColors.muted, fontSize: 12),
               ),
             ],
           ),
@@ -520,13 +477,10 @@ class _SolicitudCard extends StatelessWidget {
               decoration: BoxDecoration(
                 color: CerclyColors.softBlue,
                 borderRadius: BorderRadius.circular(15),
-                border: Border.all(
-                  color: const Color(0xFFCEE0FB),
-                ),
+                border: Border.all(color: const Color(0xFFCEE0FB)),
               ),
               child: Column(
-                crossAxisAlignment:
-                    CrossAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text(
                     'Respuesta del administrador',
@@ -555,15 +509,11 @@ class _SolicitudCard extends StatelessWidget {
                   ? const SizedBox(
                       width: 24,
                       height: 24,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                      ),
+                      child: CircularProgressIndicator(strokeWidth: 2),
                     )
                   : TextButton.icon(
                       onPressed: onEliminar,
-                      icon: const Icon(
-                        Icons.delete_outline_rounded,
-                      ),
+                      icon: const Icon(Icons.delete_outline_rounded),
                       label: const Text('Eliminar'),
                       style: TextButton.styleFrom(
                         foregroundColor: Colors.redAccent,
@@ -576,4 +526,3 @@ class _SolicitudCard extends StatelessWidget {
     );
   }
 }
-

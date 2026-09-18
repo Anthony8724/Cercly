@@ -247,8 +247,9 @@ class _RegistroPromocionScreenState extends State<RegistroPromocionScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final tituloPantalla =
-        widget.editando ? 'Editar promoción' : 'Nueva promoción';
+    final tituloPantalla = widget.editando
+        ? 'Editar promoción'
+        : 'Nueva promoción';
 
     return Scaffold(
       backgroundColor: CerclyColors.background,
@@ -283,8 +284,7 @@ class _RegistroPromocionScreenState extends State<RegistroPromocionScreen> {
                           children: [
                             const CerclySectionTitle(
                               title: 'Información de la promoción',
-                              subtitle:
-                                  'Define el mensaje, alcance y vigencia de la promoción.',
+                              subtitle: 'Define el mensaje, alcance y vigencia de la promoción.',
                               icon: Icons.sell_rounded,
                             ),
                             const SizedBox(height: 20),
@@ -294,8 +294,7 @@ class _RegistroPromocionScreenState extends State<RegistroPromocionScreen> {
                               decoration: const InputDecoration(
                                 labelText: 'Título',
                                 hintText: 'Ejemplo: 20 % de descuento',
-                                prefixIcon:
-                                    Icon(Icons.local_offer_rounded),
+                                prefixIcon: Icon(Icons.local_offer_rounded),
                               ),
                               maxLength: 120,
                               validator: (valor) {
@@ -312,8 +311,7 @@ class _RegistroPromocionScreenState extends State<RegistroPromocionScreen> {
                               controller: _descripcionController,
                               decoration: const InputDecoration(
                                 labelText: 'Descripción',
-                                prefixIcon:
-                                    Icon(Icons.description_rounded),
+                                prefixIcon: Icon(Icons.description_rounded),
                               ),
                               maxLength: 1000,
                               maxLines: 4,
@@ -324,14 +322,12 @@ class _RegistroPromocionScreenState extends State<RegistroPromocionScreen> {
                               controller: _radioController,
                               decoration: const InputDecoration(
                                 labelText: 'Radio de alerta en metros',
-                                helperText:
-                                    'Debe estar entre 10 y 5000 metros',
+                                helperText: 'Debe estar entre 10 y 5000 metros',
                                 prefixIcon: Icon(Icons.radar_rounded),
                               ),
                               keyboardType: TextInputType.number,
                               validator: (valor) {
-                                final radio =
-                                    int.tryParse(valor?.trim() ?? '');
+                                final radio = int.tryParse(valor?.trim() ?? '');
                                 if (radio == null) {
                                   return 'Ingresa un número válido';
                                 }
@@ -351,8 +347,7 @@ class _RegistroPromocionScreenState extends State<RegistroPromocionScreen> {
                           children: [
                             const CerclySectionTitle(
                               title: 'Vigencia',
-                              subtitle:
-                                  'Selecciona desde cuándo y hasta cuándo estará disponible.',
+                              subtitle: 'Selecciona desde cuándo y hasta cuándo estará disponible.',
                               icon: Icons.calendar_month_rounded,
                             ),
                             const SizedBox(height: 12),
@@ -369,8 +364,7 @@ class _RegistroPromocionScreenState extends State<RegistroPromocionScreen> {
                               icono: Icons.event_available_rounded,
                               titulo: 'Fecha de finalización',
                               fecha: _formatearFecha(_fechaFin),
-                              onTap:
-                                  _guardando ? null : _seleccionarFechaFin,
+                              onTap: _guardando ? null : _seleccionarFechaFin,
                             ),
                           ],
                         ),
@@ -382,8 +376,7 @@ class _RegistroPromocionScreenState extends State<RegistroPromocionScreen> {
                           children: [
                             const CerclySectionTitle(
                               title: 'Imagen de la promoción',
-                              subtitle:
-                                  'Puedes agregar una imagen para hacer la promoción más atractiva.',
+                              subtitle: 'Puedes agregar una imagen para hacer la promoción más atractiva.',
                               icon: Icons.image_rounded,
                             ),
                             const SizedBox(height: 16),
@@ -409,8 +402,7 @@ class _RegistroPromocionScreenState extends State<RegistroPromocionScreen> {
                                   widget.urlImagenActual!,
                                   height: 220,
                                   fit: BoxFit.cover,
-                                  errorBuilder: (_, _, _) =>
-                                      const SizedBox(
+                                  errorBuilder: (_, _, _) => const SizedBox(
                                     height: 120,
                                     child: ColoredBox(
                                       color: CerclyColors.softBlue,
@@ -441,8 +433,7 @@ class _RegistroPromocionScreenState extends State<RegistroPromocionScreen> {
                                   icon: const Icon(
                                     Icons.add_photo_alternate_rounded,
                                   ),
-                                  label:
-                                      const Text('Seleccionar imagen'),
+                                  label: const Text('Seleccionar imagen'),
                                 ),
                               ),
                           ],
@@ -474,11 +465,9 @@ class _RegistroPromocionScreenState extends State<RegistroPromocionScreen> {
                             _guardando
                                 ? 'Guardando...'
                                 : widget.editando
-                                    ? 'Guardar cambios'
-                                    : 'Crear promoción',
-                            style: const TextStyle(
-                              fontWeight: FontWeight.w900,
-                            ),
+                                ? 'Guardar cambios'
+                                : 'Crear promoción',
+                            style: const TextStyle(fontWeight: FontWeight.w900),
                           ),
                         ),
                       ),
@@ -493,6 +482,7 @@ class _RegistroPromocionScreenState extends State<RegistroPromocionScreen> {
     );
   }
 }
+
 class _FechaPromocionTile extends StatelessWidget {
   const _FechaPromocionTile({
     required this.icono,
@@ -525,11 +515,7 @@ class _FechaPromocionTile extends StatelessWidget {
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(13),
                 ),
-                child: Icon(
-                  icono,
-                  color: CerclyColors.blue,
-                  size: 21,
-                ),
+                child: Icon(icono, color: CerclyColors.blue, size: 21),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -546,17 +532,12 @@ class _FechaPromocionTile extends StatelessWidget {
                     const SizedBox(height: 2),
                     Text(
                       fecha,
-                      style: const TextStyle(
-                        color: CerclyColors.muted,
-                      ),
+                      style: const TextStyle(color: CerclyColors.muted),
                     ),
                   ],
                 ),
               ),
-              const Icon(
-                Icons.edit_calendar_rounded,
-                color: CerclyColors.blue,
-              ),
+              const Icon(Icons.edit_calendar_rounded, color: CerclyColors.blue),
             ],
           ),
         ),
@@ -564,7 +545,6 @@ class _FechaPromocionTile extends StatelessWidget {
     );
   }
 }
-
 
 class _AccionesImagen extends StatelessWidget {
   const _AccionesImagen({

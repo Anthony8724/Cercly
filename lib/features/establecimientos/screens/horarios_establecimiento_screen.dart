@@ -229,43 +229,30 @@ class _HorariosEstablecimientoScreenState
                   : Stack(
                       children: [
                         ListView(
-                          padding: const EdgeInsets.fromLTRB(
-                            16,
-                            18,
-                            16,
-                            28,
-                          ),
+                          padding: const EdgeInsets.fromLTRB(16, 18, 16, 28),
                           children: [
                             const CerclyInfoBanner(
-                              text:
-                                  'Activa los días de atención y configura uno o varios turnos para cada día.',
+                              text: 'Activa los días de atención y configura uno o varios turnos para cada día.',
                               icon: Icons.access_time_rounded,
                             ),
                             const SizedBox(height: 16),
-                            for (final dia
-                                in EstablecimientoModel.diasSemana)
+                            for (final dia in EstablecimientoModel.diasSemana)
                               _construirDia(dia),
                             const SizedBox(height: 8),
                             SizedBox(
                               height: 54,
                               child: FilledButton.icon(
-                                onPressed:
-                                    _guardando ? null : _guardar,
+                                onPressed: _guardando ? null : _guardar,
                                 style: FilledButton.styleFrom(
-                                  backgroundColor:
-                                      CerclyColors.blue,
+                                  backgroundColor: CerclyColors.blue,
                                   shape: RoundedRectangleBorder(
-                                    borderRadius:
-                                        BorderRadius.circular(16),
+                                    borderRadius: BorderRadius.circular(16),
                                   ),
                                 ),
-                                icon:
-                                    const Icon(Icons.save_rounded),
+                                icon: const Icon(Icons.save_rounded),
                                 label: const Text(
                                   'Guardar horarios',
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.w900,
-                                  ),
+                                  style: TextStyle(fontWeight: FontWeight.w900),
                                 ),
                               ),
                             ),
@@ -275,9 +262,7 @@ class _HorariosEstablecimientoScreenState
                           const Positioned.fill(
                             child: ColoredBox(
                               color: Color(0x33031A3A),
-                              child: Center(
-                                child: CircularProgressIndicator(),
-                              ),
+                              child: Center(child: CircularProgressIndicator()),
                             ),
                           ),
                       ],
@@ -297,30 +282,21 @@ class _HorariosEstablecimientoScreenState
       margin: const EdgeInsets.only(bottom: 12),
       padding: EdgeInsets.zero,
       child: Theme(
-        data: Theme.of(context).copyWith(
-          dividerColor: Colors.transparent,
-        ),
+        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
         child: ExpansionTile(
           initiallyExpanded: abierto,
-          tilePadding:
-              const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+          tilePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
           childrenPadding: const EdgeInsets.only(bottom: 8),
           leading: Container(
             width: 42,
             height: 42,
             decoration: BoxDecoration(
-              color: abierto
-                  ? CerclyColors.softBlue
-                  : const Color(0xFFF1F4F8),
+              color: abierto ? CerclyColors.softBlue : const Color(0xFFF1F4F8),
               borderRadius: BorderRadius.circular(13),
             ),
             child: Icon(
-              abierto
-                  ? Icons.schedule_rounded
-                  : Icons.event_busy_rounded,
-              color: abierto
-                  ? CerclyColors.blue
-                  : CerclyColors.muted,
+              abierto ? Icons.schedule_rounded : Icons.event_busy_rounded,
+              color: abierto ? CerclyColors.blue : CerclyColors.muted,
             ),
           ),
           title: Text(
@@ -336,8 +312,7 @@ class _HorariosEstablecimientoScreenState
           ),
           trailing: Switch(
             value: abierto,
-            activeTrackColor:
-                CerclyColors.blue.withValues(alpha: 0.45),
+            activeTrackColor: CerclyColors.blue.withValues(alpha: 0.45),
             activeThumbColor: CerclyColors.blue,
             onChanged: _guardando
                 ? null
@@ -347,9 +322,7 @@ class _HorariosEstablecimientoScreenState
           ),
           children: [
             if (abierto) ...[
-              for (var indice = 0;
-                  indice < turnos.length;
-                  indice++)
+              for (var indice = 0; indice < turnos.length; indice++)
                 _construirTurno(
                   dia: dia,
                   indice: indice,
@@ -360,9 +333,7 @@ class _HorariosEstablecimientoScreenState
                 child: SizedBox(
                   width: double.infinity,
                   child: OutlinedButton.icon(
-                    onPressed: _guardando
-                        ? null
-                        : () => _agregarTurno(dia),
+                    onPressed: _guardando ? null : () => _agregarTurno(dia),
                     icon: const Icon(Icons.add_rounded),
                     label: const Text('Agregar otro turno'),
                   ),
@@ -387,9 +358,7 @@ class _HorariosEstablecimientoScreenState
         decoration: BoxDecoration(
           color: CerclyColors.softBlue,
           borderRadius: BorderRadius.circular(15),
-          border: Border.all(
-            color: const Color(0xFFCEE0FB),
-          ),
+          border: Border.all(color: const Color(0xFFCEE0FB)),
         ),
         child: Column(
           children: [
@@ -404,13 +373,8 @@ class _HorariosEstablecimientoScreenState
                             indice: indice,
                             esApertura: true,
                           ),
-                    icon: const Icon(
-                      Icons.login_rounded,
-                      size: 18,
-                    ),
-                    label: Text(
-                      'Abre: ${_formatearHora(turno.apertura)}',
-                    ),
+                    icon: const Icon(Icons.login_rounded, size: 18),
+                    label: Text('Abre: ${_formatearHora(turno.apertura)}'),
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -423,13 +387,8 @@ class _HorariosEstablecimientoScreenState
                             indice: indice,
                             esApertura: false,
                           ),
-                    icon: const Icon(
-                      Icons.logout_rounded,
-                      size: 18,
-                    ),
-                    label: Text(
-                      'Cierra: ${_formatearHora(turno.cierre)}',
-                    ),
+                    icon: const Icon(Icons.logout_rounded, size: 18),
+                    label: Text('Cierra: ${_formatearHora(turno.cierre)}'),
                   ),
                 ),
                 const SizedBox(width: 4),

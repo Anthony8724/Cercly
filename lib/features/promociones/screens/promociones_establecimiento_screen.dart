@@ -211,23 +211,14 @@ class _PromocionesEstablecimientoScreenState
                 child: FutureBuilder<List<_PromocionVista>>(
                   future: _promocionesFuture,
                   builder: (context, snapshot) {
-                    if (snapshot.connectionState ==
-                        ConnectionState.waiting) {
-                      return const Center(
-                        child: CircularProgressIndicator(),
-                      );
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const Center(child: CircularProgressIndicator());
                     }
 
                     if (snapshot.hasError) {
                       return ListView(
-                        physics:
-                            const AlwaysScrollableScrollPhysics(),
-                        padding: const EdgeInsets.fromLTRB(
-                          16,
-                          24,
-                          16,
-                          28,
-                        ),
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        padding: const EdgeInsets.fromLTRB(16, 24, 16, 28),
                         children: [
                           CerclySectionCard(
                             child: Column(
@@ -251,8 +242,7 @@ class _PromocionesEstablecimientoScreenState
                                   onPressed: () {
                                     setState(_cargar);
                                   },
-                                  icon:
-                                      const Icon(Icons.refresh_rounded),
+                                  icon: const Icon(Icons.refresh_rounded),
                                   label: const Text('Reintentar'),
                                 ),
                               ],
@@ -262,25 +252,16 @@ class _PromocionesEstablecimientoScreenState
                       );
                     }
 
-                    final promociones =
-                        snapshot.data ?? <_PromocionVista>[];
+                    final promociones = snapshot.data ?? <_PromocionVista>[];
 
                     if (promociones.isEmpty) {
                       return ListView(
-                        physics:
-                            const AlwaysScrollableScrollPhysics(),
-                        padding: const EdgeInsets.fromLTRB(
-                          16,
-                          24,
-                          16,
-                          28,
-                        ),
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        padding: const EdgeInsets.fromLTRB(16, 24, 16, 28),
                         children: [
                           CerclySectionCard(
                             child: Padding(
-                              padding: const EdgeInsets.symmetric(
-                                vertical: 18,
-                              ),
+                              padding: const EdgeInsets.symmetric(vertical: 18),
                               child: Column(
                                 children: [
                                   Container(
@@ -319,12 +300,9 @@ class _PromocionesEstablecimientoScreenState
                                   FilledButton.icon(
                                     onPressed: _abrirRegistro,
                                     style: FilledButton.styleFrom(
-                                      backgroundColor:
-                                          CerclyColors.blue,
+                                      backgroundColor: CerclyColors.blue,
                                     ),
-                                    icon: const Icon(
-                                      Icons.add_rounded,
-                                    ),
+                                    icon: const Icon(Icons.add_rounded),
                                     label: const Text(
                                       'Crear primera promoción',
                                     ),
@@ -340,19 +318,12 @@ class _PromocionesEstablecimientoScreenState
                     return Stack(
                       children: [
                         ListView(
-                          physics:
-                              const AlwaysScrollableScrollPhysics(),
-                          padding: const EdgeInsets.fromLTRB(
-                            16,
-                            18,
-                            16,
-                            28,
-                          ),
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          padding: const EdgeInsets.fromLTRB(16, 18, 16, 28),
                           children: [
                             const CerclySectionTitle(
                               title: 'Promociones del negocio',
-                              subtitle:
-                                  'Activa, edita o elimina las promociones publicadas.',
+                              subtitle: 'Activa, edita o elimina las promociones publicadas.',
                               icon: Icons.campaign_rounded,
                             ),
                             const SizedBox(height: 14),
@@ -362,35 +333,25 @@ class _PromocionesEstablecimientoScreenState
                                 procesando: _procesando,
                                 formatearFecha: _formatearFecha,
                                 onEditar: () => _abrirEdicion(vista),
-                                onEliminar: () =>
-                                    _eliminar(vista.promocion),
+                                onEliminar: () => _eliminar(vista.promocion),
                                 onCambiarEstado: (valor) =>
-                                    _cambiarEstado(
-                                      vista.promocion,
-                                      valor,
-                                    ),
+                                    _cambiarEstado(vista.promocion, valor),
                               ),
                             const SizedBox(height: 4),
                             SizedBox(
                               height: 52,
                               child: FilledButton.icon(
-                                onPressed:
-                                    _procesando ? null : _abrirRegistro,
+                                onPressed: _procesando ? null : _abrirRegistro,
                                 style: FilledButton.styleFrom(
-                                  backgroundColor:
-                                      CerclyColors.blue,
+                                  backgroundColor: CerclyColors.blue,
                                   shape: RoundedRectangleBorder(
-                                    borderRadius:
-                                        BorderRadius.circular(15),
+                                    borderRadius: BorderRadius.circular(15),
                                   ),
                                 ),
-                                icon:
-                                    const Icon(Icons.add_rounded),
+                                icon: const Icon(Icons.add_rounded),
                                 label: const Text(
                                   'Nueva promoción',
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.w900,
-                                  ),
+                                  style: TextStyle(fontWeight: FontWeight.w900),
                                 ),
                               ),
                             ),
@@ -400,9 +361,7 @@ class _PromocionesEstablecimientoScreenState
                           const Positioned.fill(
                             child: ColoredBox(
                               color: Color(0x33031A3A),
-                              child: Center(
-                                child: CircularProgressIndicator(),
-                              ),
+                              child: Center(child: CircularProgressIndicator()),
                             ),
                           ),
                       ],
@@ -417,6 +376,7 @@ class _PromocionesEstablecimientoScreenState
     );
   }
 }
+
 class _TarjetaPromocion extends StatelessWidget {
   const _TarjetaPromocion({
     required this.vista,
@@ -603,14 +563,11 @@ class _TarjetaPromocion extends StatelessWidget {
                           ),
                         ),
                         value: promocion.activa,
-                        onChanged:
-                            procesando ? null : onCambiarEstado,
+                        onChanged: procesando ? null : onCambiarEstado,
                       ),
                     ),
                     IconButton(
-                      key: Key(
-                        'editar-promocion-${promocion.id}',
-                      ),
+                      key: Key('editar-promocion-${promocion.id}'),
                       onPressed: procesando ? null : onEditar,
                       tooltip: 'Editar',
                       icon: const Icon(
@@ -636,7 +593,6 @@ class _TarjetaPromocion extends StatelessWidget {
     );
   }
 }
-
 
 class _PromocionVista {
   const _PromocionVista({required this.promocion, required this.urlImagen});
