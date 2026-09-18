@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../../shared/ui/cercly_ui.dart';
+
 import '../../explorar/models/ubicacion_usuario.dart';
 import '../../explorar/services/ubicacion_service.dart';
 import '../models/establecimiento_model.dart';
@@ -254,284 +256,363 @@ class _RegistroEstablecimientoScreenState
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Registrar establecimiento')),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(20),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                const Text(
-                  'Información del establecimiento',
-                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 8),
-                const Text(
-                  'El establecimiento será revisado antes de aparecer '
-                  'públicamente en Cercly.',
-                ),
-                const SizedBox(height: 24),
-                TextFormField(
-                  controller: _nombreController,
-                  decoration: const InputDecoration(
-                    labelText: 'Nombre',
-                    border: OutlineInputBorder(),
-                    prefixIcon: Icon(Icons.store),
-                  ),
-                  textInputAction: TextInputAction.next,
-                  validator: _validarNombre,
-                ),
-                const SizedBox(height: 16),
-                TextFormField(
-                  controller: _descripcionController,
-                  decoration: const InputDecoration(
-                    labelText: 'Descripción',
-                    border: OutlineInputBorder(),
-                    prefixIcon: Icon(Icons.description),
-                  ),
-                  maxLength: 1000,
-                  maxLines: 4,
-                ),
-                const SizedBox(height: 16),
-                FutureBuilder<List<Map<String, dynamic>>>(
-                  future: _categoriasFuture,
-                  builder: (context, snapshot) {
-                    if (snapshot.connectionState == ConnectionState.waiting) {
-                      return const Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text('Cargando categorías...'),
-                          SizedBox(height: 8),
-                          LinearProgressIndicator(),
-                        ],
-                      );
-                    }
-
-                    if (snapshot.hasError) {
-                      return Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          const Text(
-                            'No se pudieron cargar las categorías.',
-                            style: TextStyle(color: Colors.red),
-                          ),
-                          TextButton(
-                            onPressed: _reintentarCategorias,
-                            child: const Text('Reintentar'),
-                          ),
-                        ],
-                      );
-                    }
-
-                    final categorias =
-                        snapshot.data ?? <Map<String, dynamic>>[];
-
-                    if (categorias.isEmpty) {
-                      return const Text(
-                        'No existen categorías disponibles.',
-                        style: TextStyle(color: Colors.red),
-                      );
-                    }
-
-                    return DropdownButtonFormField<String>(
-                      initialValue: _categoriaId,
-                      decoration: const InputDecoration(
-                        labelText: 'Categoría',
-                        border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.category),
+      backgroundColor: CerclyColors.background,
+      body: Column(
+        children: [
+          CerclyPageHeader(
+            title: 'Registrar establecimiento',
+            subtitle: 'Agrega tu negocio a Cercly y envíalo para revisión',
+            icon: Icons.add_business_rounded,
+            onBack: () => Navigator.of(context).maybePop(),
+          ),
+          Expanded(
+            child: SafeArea(
+              top: false,
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(16, 18, 16, 28),
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      const CerclyInfoBanner(
+                        text:
+                            'El establecimiento será revisado antes de aparecer públicamente en Cercly.',
+                        icon: Icons.verified_user_outlined,
                       ),
-                      items: categorias.map((categoria) {
-                        return DropdownMenuItem<String>(
-                          value: categoria['id'] as String,
-                          child: Text(categoria['nombre'] as String),
-                        );
-                      }).toList(),
-                      onChanged: _guardando
-                          ? null
-                          : (valor) {
-                              setState(() {
-                                _categoriaId = valor;
-                              });
-                            },
-                      validator: (valor) {
-                        if (valor == null || valor.isEmpty) {
-                          return 'Selecciona una categoría';
-                        }
-
-                        return null;
-                      },
-                    );
-                  },
-                ),
-                const SizedBox(height: 16),
-                TextFormField(
-                  controller: _direccionController,
-                  decoration: const InputDecoration(
-                    labelText: 'Dirección',
-                    border: OutlineInputBorder(),
-                    prefixIcon: Icon(Icons.location_on),
-                  ),
-                  maxLength: 250,
-                  textInputAction: TextInputAction.next,
-                  validator: _validarObligatorio,
-                ),
-                const SizedBox(height: 16),
-                TextFormField(
-                  controller: _telefonoController,
-                  decoration: const InputDecoration(
-                    labelText: 'Teléfono público (opcional)',
-                    border: OutlineInputBorder(),
-                    prefixIcon: Icon(Icons.phone),
-                  ),
-                  maxLength: 20,
-                  keyboardType: TextInputType.phone,
-                  textInputAction: TextInputAction.next,
-                ),
-                const SizedBox(height: 16),
-                const Text(
-                  'Ubicación del negocio',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 8),
-                const Text(
-                  'Indica dónde se encuentra el establecimiento. Puedes usar '
-                  'el GPS si estás en el negocio o marcar el punto directamente '
-                  'en el mapa.',
-                ),
-                const SizedBox(height: 16),
-                SizedBox(
-                  height: 52,
-                  child: FilledButton.icon(
-                    onPressed: _guardando || _obteniendoUbicacion
-                        ? null
-                        : _usarUbicacionActual,
-                    style: FilledButton.styleFrom(
-                      backgroundColor: const Color(0xFF1769FF),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                    ),
-                    icon: _obteniendoUbicacion
-                        ? const SizedBox(
-                            width: 19,
-                            height: 19,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: Colors.white,
+                      const SizedBox(height: 16),
+                      CerclySectionCard(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            const CerclySectionTitle(
+                              title: 'Información del establecimiento',
+                              subtitle:
+                                  'Completa los datos que verán tus futuros clientes.',
+                              icon: Icons.storefront_rounded,
                             ),
-                          )
-                        : const Icon(Icons.my_location_rounded),
-                    label: Text(
-                      _obteniendoUbicacion
-                          ? 'Buscando ubicación...'
-                          : 'Usar mi ubicación actual',
-                      style: const TextStyle(fontWeight: FontWeight.w800),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                SizedBox(
-                  height: 52,
-                  child: OutlinedButton.icon(
-                    onPressed: _guardando ? null : _seleccionarEnMapa,
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: const Color(0xFF1769FF),
-                      side: const BorderSide(
-                        color: Color(0xFF1769FF),
-                        width: 1.4,
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                    ),
-                    icon: const Icon(Icons.map_rounded),
-                    label: Text(
-                      _latitudSeleccionada == null
-                          ? 'Seleccionar en el mapa'
-                          : 'Cambiar ubicación en el mapa',
-                      style: const TextStyle(fontWeight: FontWeight.w800),
-                    ),
-                  ),
-                ),
-                if (_latitudSeleccionada != null &&
-                    _longitudSeleccionada != null) ...[
-                  const SizedBox(height: 14),
-                  Container(
-                    padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFEAF3FF),
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: const Color(0xFFBFD8FF)),
-                    ),
-                    child: Row(
-                      children: [
-                        Container(
-                          width: 42,
-                          height: 42,
-                          decoration: const BoxDecoration(
-                            color: Color(0xFF1769FF),
-                            shape: BoxShape.circle,
-                          ),
-                          child: const Icon(
-                            Icons.check_rounded,
-                            color: Colors.white,
-                          ),
+                            const SizedBox(height: 20),
+                            TextFormField(
+                              controller: _nombreController,
+                              decoration: const InputDecoration(
+                                labelText: 'Nombre',
+                                prefixIcon: Icon(Icons.store_rounded),
+                              ),
+                              textInputAction: TextInputAction.next,
+                              validator: _validarNombre,
+                            ),
+                            const SizedBox(height: 16),
+                            TextFormField(
+                              controller: _descripcionController,
+                              decoration: const InputDecoration(
+                                labelText: 'Descripción',
+                                prefixIcon: Icon(Icons.description_rounded),
+                              ),
+                              maxLength: 1000,
+                              maxLines: 4,
+                            ),
+                            const SizedBox(height: 16),
+                            FutureBuilder<List<Map<String, dynamic>>>(
+                              future: _categoriasFuture,
+                              builder: (context, snapshot) {
+                                if (snapshot.connectionState ==
+                                    ConnectionState.waiting) {
+                                  return const Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'Cargando categorías...',
+                                        style: TextStyle(
+                                          color: CerclyColors.muted,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                      SizedBox(height: 8),
+                                      LinearProgressIndicator(),
+                                    ],
+                                  );
+                                }
+
+                                if (snapshot.hasError) {
+                                  return Container(
+                                    padding: const EdgeInsets.all(14),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFFFF3F2),
+                                      borderRadius: BorderRadius.circular(14),
+                                      border: Border.all(
+                                        color: const Color(0xFFFFD5D0),
+                                      ),
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        const Icon(
+                                          Icons.error_outline_rounded,
+                                          color: Colors.red,
+                                        ),
+                                        const SizedBox(width: 10),
+                                        const Expanded(
+                                          child: Text(
+                                            'No se pudieron cargar las categorías.',
+                                          ),
+                                        ),
+                                        TextButton(
+                                          onPressed: _reintentarCategorias,
+                                          child: const Text('Reintentar'),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                }
+
+                                final categorias =
+                                    snapshot.data ??
+                                    <Map<String, dynamic>>[];
+
+                                if (categorias.isEmpty) {
+                                  return const Text(
+                                    'No existen categorías disponibles.',
+                                    style: TextStyle(color: Colors.red),
+                                  );
+                                }
+
+                                return DropdownButtonFormField<String>(
+                                  initialValue: _categoriaId,
+                                  decoration: const InputDecoration(
+                                    labelText: 'Categoría',
+                                    prefixIcon:
+                                        Icon(Icons.category_rounded),
+                                  ),
+                                  items: categorias.map((categoria) {
+                                    return DropdownMenuItem<String>(
+                                      value: categoria['id'] as String,
+                                      child: Text(
+                                        categoria['nombre'] as String,
+                                      ),
+                                    );
+                                  }).toList(),
+                                  onChanged: _guardando
+                                      ? null
+                                      : (valor) {
+                                          setState(() {
+                                            _categoriaId = valor;
+                                          });
+                                        },
+                                  validator: (valor) {
+                                    if (valor == null || valor.isEmpty) {
+                                      return 'Selecciona una categoría';
+                                    }
+                                    return null;
+                                  },
+                                );
+                              },
+                            ),
+                            const SizedBox(height: 16),
+                            TextFormField(
+                              controller: _direccionController,
+                              decoration: const InputDecoration(
+                                labelText: 'Dirección',
+                                prefixIcon:
+                                    Icon(Icons.location_on_rounded),
+                              ),
+                              maxLength: 250,
+                              textInputAction: TextInputAction.next,
+                              validator: _validarObligatorio,
+                            ),
+                            const SizedBox(height: 16),
+                            TextFormField(
+                              controller: _telefonoController,
+                              decoration: const InputDecoration(
+                                labelText: 'Teléfono público (opcional)',
+                                prefixIcon: Icon(Icons.phone_rounded),
+                              ),
+                              maxLength: 20,
+                              keyboardType: TextInputType.phone,
+                              textInputAction: TextInputAction.next,
+                            ),
+                          ],
                         ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text(
-                                'Ubicación seleccionada',
-                                style: TextStyle(
-                                  color: Color(0xFF102A56),
-                                  fontWeight: FontWeight.w900,
+                      ),
+                      const SizedBox(height: 16),
+                      CerclySectionCard(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            const CerclySectionTitle(
+                              title: 'Ubicación del negocio',
+                              subtitle:
+                                  'Usa el GPS si estás en el establecimiento o marca el punto exacto en el mapa.',
+                              icon: Icons.location_on_rounded,
+                            ),
+                            const SizedBox(height: 18),
+                            SizedBox(
+                              height: 52,
+                              child: FilledButton.icon(
+                                onPressed:
+                                    _guardando || _obteniendoUbicacion
+                                    ? null
+                                    : _usarUbicacionActual,
+                                style: FilledButton.styleFrom(
+                                  backgroundColor: CerclyColors.blue,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(14),
+                                  ),
+                                ),
+                                icon: _obteniendoUbicacion
+                                    ? const SizedBox(
+                                        width: 19,
+                                        height: 19,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          color: Colors.white,
+                                        ),
+                                      )
+                                    : const Icon(
+                                        Icons.my_location_rounded,
+                                      ),
+                                label: Text(
+                                  _obteniendoUbicacion
+                                      ? 'Buscando ubicación...'
+                                      : 'Usar mi ubicación actual',
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w800,
+                                  ),
                                 ),
                               ),
-                              const SizedBox(height: 2),
-                              Text(
-                                _origenUbicacion ?? 'Lista para guardar',
-                                style: const TextStyle(
-                                  color: Color(0xFF526B91),
-                                  fontSize: 13,
+                            ),
+                            const SizedBox(height: 12),
+                            SizedBox(
+                              height: 52,
+                              child: OutlinedButton.icon(
+                                onPressed:
+                                    _guardando ? null : _seleccionarEnMapa,
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: CerclyColors.blue,
+                                  side: const BorderSide(
+                                    color: CerclyColors.blue,
+                                    width: 1.4,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(14),
+                                  ),
+                                ),
+                                icon: const Icon(Icons.map_rounded),
+                                label: Text(
+                                  _latitudSeleccionada == null
+                                      ? 'Seleccionar en el mapa'
+                                      : 'Cambiar ubicación en el mapa',
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            if (_latitudSeleccionada != null &&
+                                _longitudSeleccionada != null) ...[
+                              const SizedBox(height: 14),
+                              Container(
+                                padding: const EdgeInsets.all(14),
+                                decoration: BoxDecoration(
+                                  color: CerclyColors.softBlue,
+                                  borderRadius: BorderRadius.circular(16),
+                                  border: Border.all(
+                                    color: const Color(0xFFBFD8FF),
+                                  ),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Container(
+                                      width: 42,
+                                      height: 42,
+                                      decoration: const BoxDecoration(
+                                        color: CerclyColors.blue,
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: const Icon(
+                                        Icons.check_rounded,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          const Text(
+                                            'Ubicación seleccionada',
+                                            style: TextStyle(
+                                              color: CerclyColors.text,
+                                              fontWeight: FontWeight.w900,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 2),
+                                          Text(
+                                            _origenUbicacion ??
+                                                'Lista para guardar',
+                                            style: const TextStyle(
+                                              color: CerclyColors.muted,
+                                              fontSize: 13,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    IconButton(
+                                      tooltip: 'Ver o cambiar ubicación',
+                                      onPressed: _guardando
+                                          ? null
+                                          : _seleccionarEnMapa,
+                                      icon: const Icon(
+                                        Icons.edit_location_alt_rounded,
+                                        color: CerclyColors.blue,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
                             ],
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 18),
+                      SizedBox(
+                        height: 54,
+                        child: FilledButton.icon(
+                          onPressed: _guardando ? null : _guardar,
+                          style: FilledButton.styleFrom(
+                            backgroundColor: CerclyColors.blue,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                          ),
+                          icon: _guardando
+                              ? const SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.white,
+                                  ),
+                                )
+                              : const Icon(Icons.send_rounded),
+                          label: Text(
+                            _guardando
+                                ? 'Guardando...'
+                                : 'Enviar para revisión',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w900,
+                            ),
                           ),
                         ),
-                        IconButton(
-                          tooltip: 'Ver o cambiar ubicación',
-                          onPressed: _guardando ? null : _seleccionarEnMapa,
-                          icon: const Icon(
-                            Icons.edit_location_alt_rounded,
-                            color: Color(0xFF1769FF),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-                const SizedBox(height: 24),
-                FilledButton.icon(
-                  onPressed: _guardando ? null : _guardar,
-                  icon: _guardando
-                      ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.send),
-                  label: Text(
-                    _guardando ? 'Guardando...' : 'Enviar para revisión',
+                      ),
+                    ],
                   ),
                 ),
-              ],
+              ),
             ),
           ),
-        ),
+        ],
       ),
     );
   }
