@@ -67,8 +67,7 @@ class _SeleccionarUbicacionEstablecimientoScreenState
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            resultado.mensaje ??
-                'No pudimos obtener tu ubicación. Selecciona el punto en el mapa.',
+            resultado.mensaje ?? 'No pudimos obtener tu ubicación. Selecciona el punto en el mapa.',
           ),
         ),
       );
@@ -170,10 +169,7 @@ class _SeleccionarUbicacionEstablecimientoScreenState
                   ),
                   child: const Row(
                     children: [
-                      Icon(
-                        Icons.touch_app_rounded,
-                        color: Color(0xFF1769FF),
-                      ),
+                      Icon(Icons.touch_app_rounded, color: Color(0xFF1769FF)),
                       SizedBox(width: 10),
                       Expanded(
                         child: Text(
@@ -213,8 +209,9 @@ class _SeleccionarUbicacionEstablecimientoScreenState
                     SizedBox(
                       width: double.infinity,
                       child: OutlinedButton.icon(
-                        onPressed:
-                            _buscandoUbicacion ? null : _usarUbicacionActual,
+                        onPressed: _buscandoUbicacion
+                            ? null
+                            : _usarUbicacionActual,
                         icon: _buscandoUbicacion
                             ? const SizedBox(
                                 width: 18,
@@ -282,11 +279,7 @@ class _MarcadorNegocio extends StatelessWidget {
         ),
         Positioned(
           top: 11,
-          child: Icon(
-            Icons.storefront_rounded,
-            size: 18,
-            color: Colors.white,
-          ),
+          child: Icon(Icons.storefront_rounded, size: 18, color: Colors.white),
         ),
       ],
     );

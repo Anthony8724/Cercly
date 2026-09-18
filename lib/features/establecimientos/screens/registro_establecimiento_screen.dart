@@ -109,8 +109,7 @@ class _RegistroEstablecimientoScreenState
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            resultado.mensaje ??
-                'No pudimos obtener tu ubicación. Puedes seleccionarla en el mapa.',
+            resultado.mensaje ?? 'No pudimos obtener tu ubicación. Puedes seleccionarla en el mapa.',
           ),
         ),
       );
