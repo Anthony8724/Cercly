@@ -14,7 +14,10 @@ distancia y aplica `radio_alerta_metros`.
 Una promoción se notifica al entrar en su radio. Permanecer dentro no genera
 repeticiones. Para volver a notificar es necesario salir del radio, volver a
 entrar y que hayan transcurrido al menos dos horas desde el aviso anterior.
-Este estado se conserva en memoria durante la ejecución actual de la app.
+
+El momento de la última notificación se guarda localmente en el dispositivo.
+Por eso, cerrar y volver a abrir Cercly ya no reinicia el cooldown ni provoca
+que la misma promoción se muestre otra vez inmediatamente.
 
 ## Prueba manual en Android Emulator
 
@@ -49,9 +52,9 @@ Este estado se conserva en memoria durante la ejecución actual de la app.
 6. Verificar el aviso `Promoción cerca de ti`, la vibración y que no vuelva a
    aparecer en cada comprobación mientras el usuario permanezca dentro.
 
-7. Para ensayar una nueva entrada durante desarrollo, cerrar completamente y
-   volver a abrir la app, o esperar el cooldown y mover el emulador fuera y
-   después dentro del radio.
+7. Para ensayar una nueva entrada con la misma promoción, espera el cooldown y
+   mueve el emulador fuera y después dentro del radio. Reiniciar la aplicación
+   ya no borra el cooldown guardado localmente.
 
 No se requieren cambios de base de datos, `service_role` ni credenciales
 adicionales.
