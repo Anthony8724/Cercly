@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 
+import '../../../shared/ui/cercly_ui.dart';
+
 import '../../explorar/models/ubicacion_usuario.dart';
 import '../../explorar/services/ubicacion_service.dart';
 
@@ -99,15 +101,20 @@ class _SeleccionarUbicacionEstablecimientoScreenState
     final centroInicial = _seleccion ?? _centroTulcan;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F8FE),
-      appBar: AppBar(
-        title: const Text('Seleccionar ubicación'),
-        backgroundColor: const Color(0xFFF5F8FE),
-        surfaceTintColor: Colors.transparent,
-      ),
-      body: SafeArea(
-        child: Stack(
-          children: [
+      backgroundColor: CerclyColors.background,
+      body: Column(
+        children: [
+          CerclyPageHeader(
+            title: 'Seleccionar ubicación',
+            subtitle: 'Marca el punto exacto donde se encuentra tu negocio',
+            icon: Icons.map_rounded,
+            onBack: () => Navigator.of(context).maybePop(),
+          ),
+          Expanded(
+            child: SafeArea(
+              top: false,
+              child: Stack(
+                children: [
             Positioned.fill(
               child: FlutterMap(
                 mapController: _mapController,
@@ -235,7 +242,7 @@ class _SeleccionarUbicacionEstablecimientoScreenState
                       child: FilledButton.icon(
                         onPressed: _seleccion == null ? null : _confirmar,
                         style: FilledButton.styleFrom(
-                          backgroundColor: const Color(0xFF1769FF),
+                          backgroundColor: CerclyColors.blue,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(14),
                           ),
@@ -253,8 +260,11 @@ class _SeleccionarUbicacionEstablecimientoScreenState
                 ),
               ),
             ),
-          ],
-        ),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
