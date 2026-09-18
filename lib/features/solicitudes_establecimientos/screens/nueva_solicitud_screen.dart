@@ -158,7 +158,7 @@ class _NuevaSolicitudScreenState extends State<NuevaSolicitudScreen> {
             title: 'Nueva solicitud',
             subtitle:
                 'Solicita acceso, reclama un establecimiento o informa una corrección',
-            icon: Icons.assignment_add_rounded,
+            icon: Icons.assignment_rounded,
             onBack: () => Navigator.of(context).maybePop(),
           ),
           Expanded(
