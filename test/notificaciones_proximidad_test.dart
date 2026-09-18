@@ -2,6 +2,7 @@ import 'package:cercly/features/explorar/models/ubicacion_usuario.dart';
 import 'package:cercly/features/explorar/services/ubicacion_service.dart';
 import 'package:cercly/features/notificaciones/controllers/monitor_proximidad_controller.dart';
 import 'package:cercly/features/notificaciones/services/control_notificaciones_promocion.dart';
+import 'package:cercly/features/notificaciones/services/historial_notificaciones_promocion.dart';
 import 'package:cercly/features/notificaciones/services/notificacion_local_service.dart';
 import 'package:cercly/features/promociones/models/promocion_destacada_model.dart';
 import 'package:cercly/features/promociones/services/promocion_publica_service.dart';
@@ -66,6 +67,9 @@ class _PromocionesFalsas implements PromocionesCercanasRepository {
 }
 
 class _NotificacionesFalsas implements NotificacionPromocionGateway {
+  _NotificacionesFalsas({this.permitir = true});
+
+  final bool permitir;
   final mostradas = <PromocionDestacadaModel>[];
 
   @override
@@ -73,8 +77,33 @@ class _NotificacionesFalsas implements NotificacionPromocionGateway {
 
   @override
   Future<bool> mostrarPromocion(PromocionDestacadaModel promocion) async {
+    if (!permitir) {
+      return false;
+    }
+
     mostradas.add(promocion);
     return true;
+  }
+}
+
+class _HistorialFalso implements HistorialNotificacionesPromocion {
+  _HistorialFalso([Map<String, DateTime>? inicial])
+    : _datos = Map<String, DateTime>.from(inicial ?? const {});
+
+  Map<String, DateTime> _datos;
+  int guardados = 0;
+
+  Map<String, DateTime> get datos => Map.unmodifiable(_datos);
+
+  @override
+  Future<Map<String, DateTime>> cargar() async {
+    return Map<String, DateTime>.from(_datos);
+  }
+
+  @override
+  Future<void> guardar(Map<String, DateTime> historial) async {
+    guardados++;
+    _datos = Map<String, DateTime>.from(historial);
   }
 }
 
@@ -123,6 +152,8 @@ void main() {
 
     test('permanecer dentro no repite durante el cooldown', () {
       expect(control.evaluar([promocion()], ahora: instanteBase), hasLength(1));
+      control.registrarNotificacion('promo-1', ahora: instanteBase);
+
       expect(
         control.evaluar([
           promocion(),
@@ -133,6 +164,8 @@ void main() {
 
     test('salir y volver antes del cooldown todavía no repite', () {
       expect(control.evaluar([promocion()], ahora: instanteBase), hasLength(1));
+      control.registrarNotificacion('promo-1', ahora: instanteBase);
+
       control.evaluar([
         promocion(distancia: 500),
       ], ahora: instanteBase.add(const Duration(minutes: 15)));
@@ -153,6 +186,8 @@ void main() {
         control.evaluar([promocionVigente], ahora: instanteBase),
         hasLength(1),
       );
+      control.registrarNotificacion('promo-1', ahora: instanteBase);
+
       control.evaluar([
         promocion(
           distancia: 500,
@@ -175,6 +210,19 @@ void main() {
 
       expect(resultado, hasLength(2));
     });
+
+    test('historial previo mantiene el cooldown tras reiniciar', () {
+      final nuevoControl = ControlNotificacionesPromocion(
+        cooldown: const Duration(hours: 2),
+      );
+      nuevoControl.cargarHistorial({'promo-1': instanteBase});
+
+      final resultado = nuevoControl.evaluar([
+        promocion(),
+      ], ahora: instanteBase.add(const Duration(minutes: 30)));
+
+      expect(resultado, isEmpty);
+    });
   });
 
   group('MonitorProximidadController', () {
@@ -191,6 +239,7 @@ void main() {
         promocionesService: promociones,
         notificaciones: notificaciones,
         control: ControlNotificacionesPromocion(),
+        historial: _HistorialFalso(),
         ahora: () => instanteBase,
       );
 
@@ -205,13 +254,12 @@ void main() {
       final notificaciones = _NotificacionesFalsas();
       final controller = MonitorProximidadController(
         ubicacionService: _UbicacionFalsa(
-          const ResultadoUbicacion(
-            estado: EstadoUbicacion.permisoDenegado,
-          ),
+          const ResultadoUbicacion(estado: EstadoUbicacion.permisoDenegado),
         ),
         promocionesService: promociones,
         notificaciones: notificaciones,
         control: ControlNotificacionesPromocion(),
+        historial: _HistorialFalso(),
         ahora: () => instanteBase,
       );
 
@@ -219,6 +267,75 @@ void main() {
 
       expect(promociones.consultas, 0);
       expect(notificaciones.mostradas, isEmpty);
+    });
+
+    test('notificación exitosa guarda el cooldown local', () async {
+      final historial = _HistorialFalso();
+      final controller = MonitorProximidadController(
+        ubicacionService: _UbicacionFalsa(
+          const ResultadoUbicacion(
+            estado: EstadoUbicacion.disponible,
+            ubicacion: UbicacionUsuario(latitud: 0.8116, longitud: -77.7172),
+          ),
+        ),
+        promocionesService: _PromocionesFalsas([promocion()]),
+        notificaciones: _NotificacionesFalsas(),
+        control: ControlNotificacionesPromocion(),
+        historial: historial,
+        ahora: () => instanteBase,
+      );
+
+      await controller.verificarAhora();
+
+      expect(historial.guardados, 1);
+      expect(historial.datos['promo-1'], instanteBase);
+    });
+
+    test('notificación no mostrada no consume el cooldown', () async {
+      final historial = _HistorialFalso();
+      final controller = MonitorProximidadController(
+        ubicacionService: _UbicacionFalsa(
+          const ResultadoUbicacion(
+            estado: EstadoUbicacion.disponible,
+            ubicacion: UbicacionUsuario(latitud: 0.8116, longitud: -77.7172),
+          ),
+        ),
+        promocionesService: _PromocionesFalsas([promocion()]),
+        notificaciones: _NotificacionesFalsas(permitir: false),
+        control: ControlNotificacionesPromocion(),
+        historial: historial,
+        ahora: () => instanteBase,
+      );
+
+      await controller.verificarAhora();
+
+      expect(historial.guardados, 0);
+      expect(historial.datos, isEmpty);
+    });
+
+    test('historial cargado evita repetir después de reiniciar', () async {
+      final historial = _HistorialFalso({'promo-1': instanteBase});
+      final notificaciones = _NotificacionesFalsas();
+      final controller = MonitorProximidadController(
+        ubicacionService: _UbicacionFalsa(
+          const ResultadoUbicacion(
+            estado: EstadoUbicacion.disponible,
+            ubicacion: UbicacionUsuario(latitud: 0.8116, longitud: -77.7172),
+          ),
+        ),
+        promocionesService: _PromocionesFalsas([promocion()]),
+        notificaciones: notificaciones,
+        control: ControlNotificacionesPromocion(
+          cooldown: const Duration(hours: 2),
+        ),
+        historial: historial,
+        ahora: () => instanteBase.add(const Duration(minutes: 30)),
+      );
+
+      await controller.verificarAhora();
+
+      expect(notificaciones.mostradas, isEmpty);
+      expect(historial.guardados, 0);
     });
   });
 }
