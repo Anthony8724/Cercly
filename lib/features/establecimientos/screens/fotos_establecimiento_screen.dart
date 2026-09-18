@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../../../shared/ui/cercly_ui.dart';
+
 import '../models/establecimiento_model.dart';
 import '../services/foto_establecimiento_service.dart';
 
@@ -183,177 +185,350 @@ class _FotosEstablecimientoScreenState
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Fotografías')),
-      body: FutureBuilder<List<FotoEstablecimiento>>(
-        future: _fotosFuture,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
+      backgroundColor: CerclyColors.background,
+      body: Column(
+        children: [
+          CerclyPageHeader(
+            title: 'Fotografías',
+            subtitle: widget.establecimiento.nombre,
+            icon: Icons.photo_library_rounded,
+            onBack: () => Navigator.of(context).maybePop(),
+          ),
+          Expanded(
+            child: SafeArea(
+              top: false,
+              child: FutureBuilder<List<FotoEstablecimiento>>(
+                future: _fotosFuture,
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState ==
+                      ConnectionState.waiting) {
+                    return const Center(
+                      child: CircularProgressIndicator(),
+                    );
+                  }
 
-          if (snapshot.hasError) {
-            return Center(
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(
-                      Icons.error_outline,
-                      color: Colors.red,
-                      size: 48,
-                    ),
-                    const SizedBox(height: 12),
-                    const Text(
-                      'No se pudieron cargar las fotografías.',
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 12),
-                    OutlinedButton.icon(
-                      onPressed: _recargar,
-                      icon: const Icon(Icons.refresh),
-                      label: const Text('Reintentar'),
-                    ),
-                  ],
-                ),
-              ),
-            );
-          }
-
-          final fotos = snapshot.data ?? <FotoEstablecimiento>[];
-
-          return Stack(
-            children: [
-              ListView(
-                padding: const EdgeInsets.all(20),
-                children: [
-                  Text(
-                    widget.establecimiento.nombre,
-                    style: Theme.of(context).textTheme.headlineSmall
-                        ?.copyWith(fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    '${fotos.length} de '
-                    '${FotoEstablecimientoService.maximoFotos} fotografías',
-                  ),
-                  const SizedBox(height: 20),
-                  if (fotos.isEmpty)
-                    const Card(
+                  if (snapshot.hasError) {
+                    return Center(
                       child: Padding(
-                        padding: EdgeInsets.all(32),
-                        child: Column(
-                          children: [
-                            Icon(Icons.add_photo_alternate_outlined, size: 60),
-                            SizedBox(height: 12),
-                            Text(
-                              'Todavía no existen fotografías.',
-                              textAlign: TextAlign.center,
-                            ),
-                          ],
-                        ),
-                      ),
-                    )
-                  else
-                    GridView.builder(
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      itemCount: fotos.length,
-                      gridDelegate:
-                          const SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: 2,
-                            crossAxisSpacing: 12,
-                            mainAxisSpacing: 12,
-                            childAspectRatio: 0.8,
-                          ),
-                      itemBuilder: (context, index) {
-                        final foto = fotos[index];
-
-                        return Card(
-                          clipBehavior: Clip.antiAlias,
+                        padding: const EdgeInsets.all(24),
+                        child: CerclySectionCard(
                           child: Column(
+                            mainAxisSize: MainAxisSize.min,
                             children: [
-                              Expanded(
-                                child: Stack(
-                                  fit: StackFit.expand,
-                                  children: [
-                                    Image.network(
-                                      foto.urlTemporal,
-                                      fit: BoxFit.cover,
-                                      errorBuilder:
-                                          (context, error, stackTrace) {
-                                            return const Center(
-                                              child: Icon(
-                                                Icons.broken_image,
-                                                size: 40,
-                                              ),
-                                            );
-                                          },
-                                    ),
-                                    if (foto.esPortada)
-                                      Positioned(
-                                        top: 8,
-                                        left: 8,
-                                        child: Chip(
-                                          avatar: const Icon(
-                                            Icons.star,
-                                            size: 16,
-                                          ),
-                                          label: const Text('Portada'),
-                                          backgroundColor:
-                                              Colors.amber.shade100,
-                                        ),
-                                      ),
-                                  ],
+                              const Icon(
+                                Icons.error_outline_rounded,
+                                color: Colors.red,
+                                size: 48,
+                              ),
+                              const SizedBox(height: 12),
+                              const Text(
+                                'No se pudieron cargar las fotografías.',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  color: CerclyColors.text,
+                                  fontWeight: FontWeight.w800,
                                 ),
                               ),
-                              Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceAround,
-                                children: [
-                                  IconButton(
-                                    onPressed: _procesando
-                                        ? null
-                                        : () => _hacerPortada(foto),
-                                    tooltip: 'Usar como portada',
-                                    icon: Icon(
-                                      foto.esPortada
-                                          ? Icons.star
-                                          : Icons.star_border,
-                                    ),
-                                  ),
-                                  IconButton(
-                                    onPressed: _procesando
-                                        ? null
-                                        : () => _eliminar(foto),
-                                    tooltip: 'Eliminar',
-                                    icon: const Icon(Icons.delete_outline),
-                                  ),
-                                ],
+                              const SizedBox(height: 12),
+                              OutlinedButton.icon(
+                                onPressed: _recargar,
+                                icon: const Icon(Icons.refresh_rounded),
+                                label: const Text('Reintentar'),
                               ),
                             ],
                           ),
-                        );
-                      },
-                    ),
-                  const SizedBox(height: 20),
-                  FilledButton.icon(
-                    onPressed: _procesando
-                        ? null
-                        : () => _seleccionarFotos(fotos),
-                    icon: const Icon(Icons.add_photo_alternate),
-                    label: const Text('Seleccionar fotografías'),
-                  ),
-                ],
+                        ),
+                      ),
+                    );
+                  }
+
+                  final fotos =
+                      snapshot.data ?? <FotoEstablecimiento>[];
+
+                  return Stack(
+                    children: [
+                      ListView(
+                        padding: const EdgeInsets.fromLTRB(
+                          16,
+                          18,
+                          16,
+                          28,
+                        ),
+                        children: [
+                          CerclySectionCard(
+                            child: Row(
+                              children: [
+                                Container(
+                                  width: 48,
+                                  height: 48,
+                                  decoration: BoxDecoration(
+                                    color: CerclyColors.softBlue,
+                                    borderRadius:
+                                        BorderRadius.circular(15),
+                                  ),
+                                  child: const Icon(
+                                    Icons.collections_rounded,
+                                    color: CerclyColors.blue,
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      const Text(
+                                        'Galería del establecimiento',
+                                        style: TextStyle(
+                                          color: CerclyColors.text,
+                                          fontWeight: FontWeight.w900,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 3),
+                                      Text(
+                                        '${fotos.length} de ${FotoEstablecimientoService.maximoFotos} fotografías',
+                                        style: const TextStyle(
+                                          color: CerclyColors.muted,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          if (fotos.isEmpty)
+                            const CerclySectionCard(
+                              child: Padding(
+                                padding:
+                                    EdgeInsets.symmetric(vertical: 20),
+                                child: Column(
+                                  children: [
+                                    Icon(
+                                      Icons.add_photo_alternate_outlined,
+                                      size: 58,
+                                      color: CerclyColors.blue,
+                                    ),
+                                    SizedBox(height: 12),
+                                    Text(
+                                      'Todavía no existen fotografías.',
+                                      textAlign: TextAlign.center,
+                                      style: TextStyle(
+                                        color: CerclyColors.text,
+                                        fontWeight: FontWeight.w800,
+                                      ),
+                                    ),
+                                    SizedBox(height: 6),
+                                    Text(
+                                      'Agrega imágenes para que los usuarios conozcan mejor tu negocio.',
+                                      textAlign: TextAlign.center,
+                                      style: TextStyle(
+                                        color: CerclyColors.muted,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            )
+                          else
+                            GridView.builder(
+                              shrinkWrap: true,
+                              physics:
+                                  const NeverScrollableScrollPhysics(),
+                              itemCount: fotos.length,
+                              gridDelegate:
+                                  const SliverGridDelegateWithFixedCrossAxisCount(
+                                    crossAxisCount: 2,
+                                    crossAxisSpacing: 12,
+                                    mainAxisSpacing: 12,
+                                    childAspectRatio: 0.80,
+                                  ),
+                              itemBuilder: (context, index) {
+                                final foto = fotos[index];
+
+                                return Container(
+                                  clipBehavior: Clip.antiAlias,
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius:
+                                        BorderRadius.circular(18),
+                                    border: Border.all(
+                                      color: CerclyColors.border,
+                                    ),
+                                    boxShadow: const [
+                                      BoxShadow(
+                                        color: Color(0x12031A3A),
+                                        blurRadius: 14,
+                                        offset: Offset(0, 5),
+                                      ),
+                                    ],
+                                  ),
+                                  child: Column(
+                                    children: [
+                                      Expanded(
+                                        child: Stack(
+                                          fit: StackFit.expand,
+                                          children: [
+                                            Image.network(
+                                              foto.urlTemporal,
+                                              fit: BoxFit.cover,
+                                              errorBuilder:
+                                                  (
+                                                    context,
+                                                    error,
+                                                    stackTrace,
+                                                  ) {
+                                                    return const ColoredBox(
+                                                      color:
+                                                          CerclyColors
+                                                              .softBlue,
+                                                      child: Center(
+                                                        child: Icon(
+                                                          Icons
+                                                              .broken_image_rounded,
+                                                          color:
+                                                              CerclyColors
+                                                                  .blue,
+                                                          size: 40,
+                                                        ),
+                                                      ),
+                                                    );
+                                                  },
+                                            ),
+                                            if (foto.esPortada)
+                                              Positioned(
+                                                top: 8,
+                                                left: 8,
+                                                child: Container(
+                                                  padding:
+                                                      const EdgeInsets
+                                                          .symmetric(
+                                                            horizontal:
+                                                                9,
+                                                            vertical: 6,
+                                                          ),
+                                                  decoration:
+                                                      BoxDecoration(
+                                                        color:
+                                                            Colors.white,
+                                                        borderRadius:
+                                                            BorderRadius
+                                                                .circular(
+                                                                  999,
+                                                                ),
+                                                      ),
+                                                  child: const Row(
+                                                    mainAxisSize:
+                                                        MainAxisSize.min,
+                                                    children: [
+                                                      Icon(
+                                                        Icons.star_rounded,
+                                                        size: 15,
+                                                        color:
+                                                            Colors.amber,
+                                                      ),
+                                                      SizedBox(width: 4),
+                                                      Text(
+                                                        'Portada',
+                                                        style: TextStyle(
+                                                          fontSize: 11,
+                                                          fontWeight:
+                                                              FontWeight
+                                                                  .w800,
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ),
+                                              ),
+                                          ],
+                                        ),
+                                      ),
+                                      Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.spaceAround,
+                                        children: [
+                                          IconButton(
+                                            onPressed: _procesando
+                                                ? null
+                                                : () =>
+                                                      _hacerPortada(
+                                                        foto,
+                                                      ),
+                                            tooltip:
+                                                'Usar como portada',
+                                            icon: Icon(
+                                              foto.esPortada
+                                                  ? Icons.star_rounded
+                                                  : Icons
+                                                        .star_border_rounded,
+                                              color:
+                                                  CerclyColors.blue,
+                                            ),
+                                          ),
+                                          IconButton(
+                                            onPressed: _procesando
+                                                ? null
+                                                : () => _eliminar(
+                                                    foto,
+                                                  ),
+                                            tooltip: 'Eliminar',
+                                            icon: const Icon(
+                                              Icons.delete_outline_rounded,
+                                              color: Colors.redAccent,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              },
+                            ),
+                          const SizedBox(height: 18),
+                          SizedBox(
+                            height: 52,
+                            child: FilledButton.icon(
+                              onPressed: _procesando
+                                  ? null
+                                  : () => _seleccionarFotos(fotos),
+                              style: FilledButton.styleFrom(
+                                backgroundColor: CerclyColors.blue,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius:
+                                      BorderRadius.circular(15),
+                                ),
+                              ),
+                              icon: const Icon(
+                                Icons.add_photo_alternate_rounded,
+                              ),
+                              label: const Text(
+                                'Seleccionar fotografías',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w900,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      if (_procesando)
+                        const Positioned.fill(
+                          child: ColoredBox(
+                            color: Color(0x33031A3A),
+                            child: Center(
+                              child: CircularProgressIndicator(),
+                            ),
+                          ),
+                        ),
+                    ],
+                  );
+                },
               ),
-              if (_procesando)
-                const ColoredBox(
-                  color: Color(0x55000000),
-                  child: Center(child: CircularProgressIndicator()),
-                ),
-            ],
-          );
-        },
+            ),
+          ),
+        ],
       ),
     );
   }
