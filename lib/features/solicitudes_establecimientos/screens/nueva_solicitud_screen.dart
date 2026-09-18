@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../../shared/ui/cercly_ui.dart';
+
 import '../models/solicitud_establecimiento_model.dart';
 import '../services/solicitud_establecimiento_service.dart';
 
@@ -149,236 +151,372 @@ class _NuevaSolicitudScreenState extends State<NuevaSolicitudScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Nueva solicitud')),
-      body: SafeArea(
-        child: FutureBuilder<List<EstablecimientoSolicitudOpcion>>(
-          future: _establecimientosFuture,
-          builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) {
-              return const Center(child: CircularProgressIndicator());
-            }
+      backgroundColor: CerclyColors.background,
+      body: Column(
+        children: [
+          CerclyPageHeader(
+            title: 'Nueva solicitud',
+            subtitle:
+                'Solicita acceso, reclama un establecimiento o informa una corrección',
+            icon: Icons.assignment_add_rounded,
+            onBack: () => Navigator.of(context).maybePop(),
+          ),
+          Expanded(
+            child: SafeArea(
+              top: false,
+              child: FutureBuilder<
+                  List<EstablecimientoSolicitudOpcion>>(
+                future: _establecimientosFuture,
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState ==
+                      ConnectionState.waiting) {
+                    return const Center(
+                      child: CircularProgressIndicator(),
+                    );
+                  }
 
-            if (snapshot.hasError) {
-              return Center(
-                child: Padding(
-                  padding: const EdgeInsets.all(24),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(
-                        Icons.error_outline,
-                        color: Colors.red,
-                        size: 56,
-                      ),
-                      const SizedBox(height: 12),
-                      const Text(
-                        'No se pudieron cargar los establecimientos.',
-                        textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(height: 8),
-                      Text('${snapshot.error}', textAlign: TextAlign.center),
-                      const SizedBox(height: 16),
-                      FilledButton.icon(
-                        onPressed: _recargar,
-                        icon: const Icon(Icons.refresh),
-                        label: const Text('Reintentar'),
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            }
-
-            final establecimientos =
-                snapshot.data ?? <EstablecimientoSolicitudOpcion>[];
-
-            if (establecimientos.isEmpty && widget.bloquearTipo) {
-              return Center(
-                child: Padding(
-                  padding: const EdgeInsets.all(24),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(Icons.storefront_outlined, size: 64),
-                      const SizedBox(height: 16),
-                      Text(
-                        _mensajeSinResultados,
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            }
-
-            return SingleChildScrollView(
-              padding: const EdgeInsets.all(20),
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Text(
-                      'Solicitud sobre un establecimiento',
-                      style: Theme.of(context).textTheme.headlineSmall
-                          ?.copyWith(fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(height: 8),
-                    const Text(
-                      'Selecciona el establecimiento y explica '
-                      'claramente lo que necesitas.',
-                    ),
-                    const SizedBox(height: 24),
-                    if (establecimientos.isEmpty) ...[
-                      Card(
-                        child: Padding(
-                          padding: const EdgeInsets.all(14),
-                          child: Text(_mensajeSinResultados),
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                    ],
-                    DropdownButtonFormField<String>(
-                      initialValue:
-                          establecimientos.any(
-                            (item) => item.id == _establecimientoId,
-                          )
-                          ? _establecimientoId
-                          : null,
-                      decoration: const InputDecoration(
-                        labelText: 'Establecimiento',
-                        border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.storefront),
-                      ),
-                      items: establecimientos.map((establecimiento) {
-                        return DropdownMenuItem<String>(
-                          value: establecimiento.id,
-                          child: Text(
-                            establecimiento.nombre,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        );
-                      }).toList(),
-                      onChanged: _guardando || establecimientos.isEmpty
-                          ? null
-                          : (valor) {
-                              setState(() {
-                                _establecimientoId = valor;
-                              });
-                            },
-                      validator: (valor) {
-                        if (valor == null || valor.isEmpty) {
-                          return 'Selecciona un establecimiento.';
-                        }
-
-                        return null;
-                      },
-                    ),
-                    if (_establecimientoId != null) ...[
-                      const SizedBox(height: 8),
-                      Text(
-                        establecimientos
-                            .firstWhere(
-                              (establecimiento) =>
-                                  establecimiento.id == _establecimientoId,
-                            )
-                            .direccion,
-                      ),
-                    ],
-                    const SizedBox(height: 20),
-                    DropdownButtonFormField<String>(
-                      initialValue: _tipo,
-                      decoration: const InputDecoration(
-                        labelText: 'Tipo de solicitud',
-                        border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.assignment),
-                      ),
-                      items: SolicitudEstablecimientoModel.tiposPermitidos.map((
-                        tipo,
-                      ) {
-                        return DropdownMenuItem<String>(
-                          value: tipo,
-                          child: Text(_etiquetaTipo(tipo)),
-                        );
-                      }).toList(),
-                      onChanged: _guardando || widget.bloquearTipo
-                          ? null
-                          : (valor) {
-                              if (valor == null) {
-                                return;
-                              }
-
-                              _cambiarTipo(valor);
-                            },
-                    ),
-                    const SizedBox(height: 10),
-                    Card(
+                  if (snapshot.hasError) {
+                    return Center(
                       child: Padding(
-                        padding: const EdgeInsets.all(14),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Icon(Icons.info_outline),
-                            const SizedBox(width: 12),
-                            Expanded(child: Text(_descripcionTipo(_tipo))),
-                          ],
+                        padding: const EdgeInsets.all(20),
+                        child: CerclySectionCard(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(
+                                Icons.error_outline_rounded,
+                                color: Colors.red,
+                                size: 52,
+                              ),
+                              const SizedBox(height: 12),
+                              const Text(
+                                'No se pudieron cargar los establecimientos.',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  color: CerclyColors.text,
+                                  fontWeight: FontWeight.w900,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                '${snapshot.error}',
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(
+                                  color: CerclyColors.muted,
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+                              OutlinedButton.icon(
+                                onPressed: _recargar,
+                                icon: const Icon(
+                                  Icons.refresh_rounded,
+                                ),
+                                label: const Text('Reintentar'),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
-                    ),
-                    const SizedBox(height: 20),
-                    TextFormField(
-                      controller: _mensajeController,
-                      enabled: !_guardando,
-                      minLines: 4,
-                      maxLines: 7,
-                      maxLength: 1000,
-                      decoration: const InputDecoration(
-                        labelText: 'Explicación de la solicitud',
-                        hintText:
-                            'Describe el motivo y proporciona '
-                            'información que permita verificarlo.',
-                        border: OutlineInputBorder(),
-                        alignLabelWithHint: true,
+                    );
+                  }
+
+                  final establecimientos =
+                      snapshot.data ??
+                      <EstablecimientoSolicitudOpcion>[];
+
+                  if (establecimientos.isEmpty &&
+                      widget.bloquearTipo) {
+                    return Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(20),
+                        child: CerclySectionCard(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Container(
+                                width: 68,
+                                height: 68,
+                                decoration: const BoxDecoration(
+                                  color: CerclyColors.softBlue,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(
+                                  Icons.storefront_outlined,
+                                  size: 34,
+                                  color: CerclyColors.blue,
+                                ),
+                              ),
+                              const SizedBox(height: 14),
+                              Text(
+                                _mensajeSinResultados,
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(
+                                  color: CerclyColors.text,
+                                  fontSize: 17,
+                                  fontWeight: FontWeight.w900,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
-                      validator: (valor) {
-                        final texto = valor?.trim() ?? '';
+                    );
+                  }
 
-                        if (texto.isEmpty) {
-                          return 'Escribe una explicación.';
-                        }
-
-                        if (texto.length < 10) {
-                          return 'La explicación debe tener '
-                              'al menos 10 caracteres.';
-                        }
-
-                        return null;
-                      },
+                  return SingleChildScrollView(
+                    padding: const EdgeInsets.fromLTRB(
+                      16,
+                      18,
+                      16,
+                      28,
                     ),
-                    const SizedBox(height: 12),
-                    FilledButton.icon(
-                      onPressed: _guardando ? null : _enviar,
-                      icon: _guardando
-                          ? const SizedBox(
-                              width: 18,
-                              height: 18,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : const Icon(Icons.send),
-                      label: Text(
-                        _guardando ? 'Enviando...' : 'Enviar solicitud',
+                    child: Form(
+                      key: _formKey,
+                      child: Column(
+                        crossAxisAlignment:
+                            CrossAxisAlignment.stretch,
+                        children: [
+                          const CerclyInfoBanner(
+                            text:
+                                'Selecciona el establecimiento y explica claramente lo que necesitas para que pueda revisarse.',
+                            icon: Icons.info_outline_rounded,
+                          ),
+                          const SizedBox(height: 16),
+                          CerclySectionCard(
+                            child: Column(
+                              crossAxisAlignment:
+                                  CrossAxisAlignment.stretch,
+                              children: [
+                                const CerclySectionTitle(
+                                  title: 'Datos de la solicitud',
+                                  subtitle:
+                                      'Elige el establecimiento y el tipo de solicitud.',
+                                  icon: Icons.assignment_rounded,
+                                ),
+                                const SizedBox(height: 20),
+                                if (establecimientos.isEmpty) ...[
+                                  CerclyInfoBanner(
+                                    text: _mensajeSinResultados,
+                                    icon: Icons
+                                        .storefront_outlined,
+                                  ),
+                                  const SizedBox(height: 14),
+                                ],
+                                DropdownButtonFormField<String>(
+                                  initialValue:
+                                      establecimientos.any(
+                                        (item) =>
+                                            item.id ==
+                                            _establecimientoId,
+                                      )
+                                      ? _establecimientoId
+                                      : null,
+                                  decoration:
+                                      const InputDecoration(
+                                    labelText: 'Establecimiento',
+                                    prefixIcon: Icon(
+                                      Icons.storefront_rounded,
+                                    ),
+                                  ),
+                                  items: establecimientos
+                                      .map((establecimiento) {
+                                    return DropdownMenuItem<String>(
+                                      value: establecimiento.id,
+                                      child: Text(
+                                        establecimiento.nombre,
+                                        overflow:
+                                            TextOverflow.ellipsis,
+                                      ),
+                                    );
+                                  }).toList(),
+                                  onChanged:
+                                      _guardando ||
+                                              establecimientos.isEmpty
+                                          ? null
+                                          : (valor) {
+                                              setState(() {
+                                                _establecimientoId =
+                                                    valor;
+                                              });
+                                            },
+                                  validator: (valor) {
+                                    if (valor == null ||
+                                        valor.isEmpty) {
+                                      return 'Selecciona un establecimiento.';
+                                    }
+                                    return null;
+                                  },
+                                ),
+                                if (_establecimientoId !=
+                                    null) ...[
+                                  const SizedBox(height: 8),
+                                  Row(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      const Icon(
+                                        Icons
+                                            .location_on_rounded,
+                                        size: 17,
+                                        color:
+                                            CerclyColors.blue,
+                                      ),
+                                      const SizedBox(width: 5),
+                                      Expanded(
+                                        child: Text(
+                                          establecimientos
+                                              .firstWhere(
+                                                (
+                                                  establecimiento,
+                                                ) =>
+                                                    establecimiento
+                                                        .id ==
+                                                    _establecimientoId,
+                                              )
+                                              .direccion,
+                                          style: const TextStyle(
+                                            color:
+                                                CerclyColors.muted,
+                                            fontSize: 12.5,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                                const SizedBox(height: 18),
+                                DropdownButtonFormField<String>(
+                                  initialValue: _tipo,
+                                  decoration:
+                                      const InputDecoration(
+                                    labelText: 'Tipo de solicitud',
+                                    prefixIcon: Icon(
+                                      Icons.category_rounded,
+                                    ),
+                                  ),
+                                  items:
+                                      SolicitudEstablecimientoModel
+                                          .tiposPermitidos
+                                          .map((tipo) {
+                                    return DropdownMenuItem<String>(
+                                      value: tipo,
+                                      child:
+                                          Text(_etiquetaTipo(tipo)),
+                                    );
+                                  }).toList(),
+                                  onChanged:
+                                      _guardando ||
+                                              widget.bloquearTipo
+                                          ? null
+                                          : (valor) {
+                                              if (valor == null) {
+                                                return;
+                                              }
+                                              _cambiarTipo(valor);
+                                            },
+                                ),
+                                const SizedBox(height: 12),
+                                CerclyInfoBanner(
+                                  text: _descripcionTipo(_tipo),
+                                  icon: Icons
+                                      .lightbulb_outline_rounded,
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          CerclySectionCard(
+                            child: Column(
+                              crossAxisAlignment:
+                                  CrossAxisAlignment.stretch,
+                              children: [
+                                const CerclySectionTitle(
+                                  title: 'Explicación',
+                                  subtitle:
+                                      'Describe el motivo con suficiente detalle para facilitar la revisión.',
+                                  icon: Icons
+                                      .chat_bubble_outline_rounded,
+                                ),
+                                const SizedBox(height: 18),
+                                TextFormField(
+                                  controller:
+                                      _mensajeController,
+                                  enabled: !_guardando,
+                                  minLines: 4,
+                                  maxLines: 7,
+                                  maxLength: 1000,
+                                  decoration:
+                                      const InputDecoration(
+                                    labelText:
+                                        'Explicación de la solicitud',
+                                    hintText:
+                                        'Describe el motivo y proporciona información que permita verificarlo.',
+                                    alignLabelWithHint: true,
+                                    prefixIcon: Icon(
+                                      Icons.edit_note_rounded,
+                                    ),
+                                  ),
+                                  validator: (valor) {
+                                    final texto =
+                                        valor?.trim() ?? '';
+                                    if (texto.isEmpty) {
+                                      return 'Escribe una explicación.';
+                                    }
+                                    if (texto.length < 10) {
+                                      return 'La explicación debe tener al menos 10 caracteres.';
+                                    }
+                                    return null;
+                                  },
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 18),
+                          SizedBox(
+                            height: 54,
+                            child: FilledButton.icon(
+                              onPressed:
+                                  _guardando ? null : _enviar,
+                              style: FilledButton.styleFrom(
+                                backgroundColor:
+                                    CerclyColors.blue,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius:
+                                      BorderRadius.circular(16),
+                                ),
+                              ),
+                              icon: _guardando
+                                  ? const SizedBox(
+                                      width: 18,
+                                      height: 18,
+                                      child:
+                                          CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: Colors.white,
+                                      ),
+                                    )
+                                  : const Icon(
+                                      Icons.send_rounded,
+                                    ),
+                              label: Text(
+                                _guardando
+                                    ? 'Enviando...'
+                                    : 'Enviar solicitud',
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w900,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                  ],
-                ),
+                  );
+                },
               ),
-            );
-          },
-        ),
+            ),
+          ),
+        ],
       ),
     );
   }
