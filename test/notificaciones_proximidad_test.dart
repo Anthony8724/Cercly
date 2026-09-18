@@ -217,10 +217,9 @@ void main() {
       );
       nuevoControl.cargarHistorial({'promo-1': instanteBase});
 
-      final resultado = nuevoControl.evaluar(
-        [promocion()],
-        ahora: instanteBase.add(const Duration(minutes: 30)),
-      );
+      final resultado = nuevoControl.evaluar([
+        promocion(),
+      ], ahora: instanteBase.add(const Duration(minutes: 30)));
 
       expect(resultado, isEmpty);
     });
@@ -255,9 +254,7 @@ void main() {
       final notificaciones = _NotificacionesFalsas();
       final controller = MonitorProximidadController(
         ubicacionService: _UbicacionFalsa(
-          const ResultadoUbicacion(
-            estado: EstadoUbicacion.permisoDenegado,
-          ),
+          const ResultadoUbicacion(estado: EstadoUbicacion.permisoDenegado),
         ),
         promocionesService: promociones,
         notificaciones: notificaciones,

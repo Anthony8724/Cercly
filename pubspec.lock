@@ -266,7 +266,7 @@ packages:
     dependency: transitive
     description:
       name: flutter_local_notifications_platform_interface
-      sha256: "f4ebff989b4f07b2656fb16b47852c0aab9fed9b4ec1c70103368337bc1886a9"
+      sha256: "43c3761d916c9bd3d5c7ebbc44d82f4990329840c0c5d62ad5260cc1b5d399bd"
       url: "https://pub.dev"
     source: hosted
     version: "12.2.0"
@@ -801,7 +801,7 @@ packages:
     source: hosted
     version: "0.6.0"
   shared_preferences:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: shared_preferences
       sha256: c3025c5534b01739267eb7d76959bbc25a6d10f6988e1c2a3036940133dd10bf
@@ -949,6 +949,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.7.12"
+  timezone:
+    dependency: transitive
+    description:
+      name: timezone
+      sha256: "981d1020d6ef8fe1e7b3de5054e5b25579ae7c403d7734adc508ffc47668e9cb"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.11.1"
   typed_data:
     dependency: transitive
     description:
@@ -965,14 +973,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.1.9"
-  timezone:
-    dependency: transitive
-    description:
-      name: timezone
-      sha256: "981d1020d6ef8fe1e7b3de5054e5b25579ae7c403d7734adc508ffc47668e9cb"
-      url: "https://pub.dev"
-    source: hosted
-    version: "0.11.1"
   url_launcher:
     dependency: "direct main"
     description:

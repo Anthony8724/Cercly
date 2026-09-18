@@ -20,8 +20,7 @@ class MonitorProximidadController {
        _promocionesService = promocionesService ?? PromocionPublicaService(),
        _notificaciones = notificaciones ?? NotificacionLocalService(),
        _control = control ?? ControlNotificacionesPromocion(),
-       _historial =
-           historial ?? HistorialNotificacionesPromocionLocal(),
+       _historial = historial ?? HistorialNotificacionesPromocionLocal(),
        _ahora = ahora ?? DateTime.now;
 
   final UbicacionService _ubicacionService;
