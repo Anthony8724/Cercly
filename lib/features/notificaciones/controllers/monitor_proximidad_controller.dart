@@ -98,6 +98,8 @@ class MonitorProximidadController {
     try {
       final historial = await _historial.cargar();
       _control.cargarHistorial(historial);
+    } catch (_) {
+      // Si el almacenamiento local falla, el monitor continúa en memoria.
     } finally {
       _historialCargado = true;
     }
