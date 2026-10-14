@@ -1,0 +1,49 @@
+
+name: SonarQube Cercly
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+  pull_request:
+    types: [opened, synchronize, reopened]
+  workflow_dispatch:
+
+jobs:
+  sonarqube:
+    name: Analizar calidad de Cercly
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Descargar codigo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Instalar Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Instalar Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: '3.47.3'
+          cache: true
+
+      - name: Instalar dependencias
+        run: flutter pub get
+
+      - name: Compilar Flutter Web
+        run: flutter build web --release
+
+      - name: Ejecutar pruebas y generar cobertura
+        run: flutter test --coverage
+
+      - name: Analizar con SonarQube
+        uses: SonarSource/sonarqube-scan-action@d209202bc7d53ff1cc128f7f907dac145c9d6ae9
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
