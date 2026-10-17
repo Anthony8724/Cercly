@@ -6,6 +6,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../services/auth_service.dart';
 import 'seleccion_tipo_cuenta_screen.dart';
 import 'password_screen.dart';
+import 'phone_auth_screen.dart';
 import '../services/auth_options.dart';
 
 typedef IniciarSesion = Future<void> Function({
@@ -109,7 +110,23 @@ class _LoginScreenState extends State<LoginScreen> {
     if (_isLoading) return;
     final service = widget.service ?? AuthService();
     if (!service.options.disponible(metodo)) return;
-    if (metodo == MetodoAcceso.celular) return;
+    if (metodo == MetodoAcceso.celular) {
+      setState(() => _isLoading = true);
+      final success = await Navigator.of(context).push<bool>(
+        MaterialPageRoute<bool>(
+          builder: (_) => PhoneAuthScreen(service: service),
+        ),
+      );
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+      if (success != true) return;
+      if (widget.devolverResultado) {
+        Navigator.of(context).pop(true);
+      } else {
+        Navigator.of(context).popUntil((route) => route.isFirst);
+      }
+      return;
+    }
     setState(() {
       _isLoading = true;
       _providerMessage = null;
@@ -350,7 +367,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               padding: const EdgeInsets.only(bottom: 8),
                               child: OutlinedButton(
                                 onPressed:
-                                    metodo == MetodoAcceso.celular || _isLoading ||
+                                    _isLoading ||
                                         !(widget.service?.options ??
                                                 const AuthOptions())
                                             .disponible(metodo)
