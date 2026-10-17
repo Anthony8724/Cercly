@@ -36,15 +36,11 @@ class EstablecimientoPublicoService
     implements EstablecimientoCercanoRepository {
   EstablecimientoPublicoService({
     SupabaseClient? supabase,
-    EjecutarRpcCercanos? ejecutarRpcCercanos,
-    CargarDetallesPublicos? cargarDetallesPublicos,
-    CargarHorariosPublicos? cargarHorariosPublicos,
-    EstadoHorarioService estadoHorarioService = const EstadoHorarioService(),
-  }) : _supabase = supabase ?? Supabase.instance.client,
-       _ejecutarRpcCercanos = ejecutarRpcCercanos,
-       _cargarDetallesPublicos = cargarDetallesPublicos,
-       _cargarHorariosPublicos = cargarHorariosPublicos,
-       _estadoHorarioService = estadoHorarioService;
+    this._ejecutarRpcCercanos,
+    this._cargarDetallesPublicos,
+    this._cargarHorariosPublicos,
+    this._estadoHorarioService = const EstadoHorarioService(),
+  }) : _supabase = supabase ?? Supabase.instance.client;
 
   static const String bucketEstablecimientos = 'establecimientos-imagenes';
   static const String bucketPromociones = 'promociones-imagenes';
