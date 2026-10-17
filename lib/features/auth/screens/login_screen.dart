@@ -1,3 +1,4 @@
+import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -33,11 +34,15 @@ class _LoginScreenState extends State<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
 
+  StreamSubscription<AuthState>? _oauthSubscription;
+  String? _providerMessage;
+  bool _oauthPending = false;
   bool _isLoading = false;
   bool _hidePassword = true;
 
   @override
   void dispose() {
+    _oauthSubscription?.cancel();
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
@@ -97,6 +102,59 @@ class _LoginScreenState extends State<LoginScreen> {
       if (mounted) {
         setState(() => _isLoading = false);
       }
+    }
+  }
+
+  Future<void> _provider(MetodoAcceso metodo) async {
+    if (_isLoading) return;
+    final service = widget.service ?? AuthService();
+    if (!service.options.disponible(metodo)) return;
+    if (metodo == MetodoAcceso.celular) return;
+    setState(() {
+      _isLoading = true;
+      _providerMessage = null;
+      _oauthPending = true;
+    });
+    _oauthSubscription ??= service.events.listen(
+      (state) {
+        if (!mounted ||
+            !_oauthPending ||
+            state.event != AuthChangeEvent.signedIn ||
+            state.session == null) {
+          return;
+        }
+        _oauthPending = false;
+        if (widget.devolverResultado) {
+          Navigator.of(context).pop(true);
+        } else {
+          Navigator.of(context).popUntil((route) => route.isFirst);
+        }
+      },
+      onError: (Object error) {
+        if (mounted) {
+          setState(() {
+            _oauthPending = false;
+            _providerMessage = AuthService.errorMessage(error);
+          });
+        }
+      },
+    );
+    try {
+      await service.signInWithProvider(metodo);
+      if (mounted && _oauthPending) {
+        setState(
+          () => _providerMessage = 'Continúa en el navegador. Si cancelaste, puedes intentarlo de nuevo.',
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _oauthPending = false;
+          _providerMessage = AuthService.errorMessage(e);
+        });
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -291,9 +349,26 @@ class _LoginScreenState extends State<LoginScreen> {
                             Padding(
                               padding: const EdgeInsets.only(bottom: 8),
                               child: OutlinedButton(
-                                onPressed: null,
-                                child: Text('${_nombreMetodo(metodo)} · No disponible'),
+                                onPressed:
+                                    metodo == MetodoAcceso.celular || _isLoading ||
+                                        !(widget.service?.options ??
+                                                const AuthOptions())
+                                            .disponible(metodo)
+                                    ? null
+                                    : () => _provider(metodo),
+                                child: Text(
+                                  (widget.service?.options ??
+                                              const AuthOptions())
+                                          .disponible(metodo)
+                                      ? _nombreMetodo(metodo)
+                                      : '${_nombreMetodo(metodo)} · No disponible',
+                                ),
                               ),
+                            ),
+                          if (_providerMessage != null)
+                            Semantics(
+                              liveRegion: true,
+                              child: Text(_providerMessage!),
                             ),
                           const SizedBox(height: 10),
                           TextButton(
