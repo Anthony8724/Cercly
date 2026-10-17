@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../services/auth_service.dart';
+import '../../solicitudes_establecimientos/screens/mis_solicitudes_screen.dart';
 
 class MiCuentaScreen extends StatelessWidget {
   const MiCuentaScreen({
@@ -20,7 +21,10 @@ class MiCuentaScreen extends StatelessWidget {
         authService ??
         (correo == null || cerrarSesion == null ? AuthService() : null);
     final correoVisible =
-        correo ?? servicio?.currentUser?.email ?? 'Usuario de Cercly';
+        correo ??
+        servicio?.currentUser?.email ??
+        servicio?.currentUser?.phone ??
+        'Usuario de Cercly';
 
     return Scaffold(
       backgroundColor: const Color(0xFFF6F9FE),
@@ -42,7 +46,7 @@ class MiCuentaScreen extends StatelessWidget {
         ),
       ),
       body: SafeArea(
-        child: Padding(
+        child: SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(18, 18, 18, 24),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -148,7 +152,17 @@ class MiCuentaScreen extends StatelessWidget {
                   ],
                 ),
               ),
-              const Spacer(),
+              const SizedBox(height: 12),
+              OutlinedButton.icon(
+                onPressed: () => Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => const MisSolicitudesScreen(),
+                  ),
+                ),
+                icon: const Icon(Icons.storefront_outlined),
+                label: const Text('Mis solicitudes de negocios'),
+              ),
+              const SizedBox(height: 24),
               SizedBox(
                 height: 52,
                 child: OutlinedButton.icon(

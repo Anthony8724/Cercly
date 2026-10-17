@@ -117,12 +117,9 @@ void main() {
     expect(find.text('Únete a Cercly'), findsOneWidget);
   });
 
-  test('resuelve navegación por rol e intención de propietario', () {
+  test('resuelve navegación exclusivamente por rol autorizado', () {
     expect(resolverDestinoCuenta(rol: 'usuario'), DestinoCuenta.cuenta);
-    expect(
-      resolverDestinoCuenta(rol: 'propietario'),
-      DestinoCuenta.negocio,
-    );
+    expect(resolverDestinoCuenta(rol: 'propietario'), DestinoCuenta.negocio);
     expect(
       resolverDestinoCuenta(rol: 'administrador'),
       DestinoCuenta.administrador,
@@ -132,7 +129,7 @@ void main() {
         rol: 'usuario',
         metadatos: const {'tipo_cuenta': 'propietario'},
       ),
-      DestinoCuenta.negocio,
+      DestinoCuenta.cuenta,
     );
   });
 
@@ -224,6 +221,7 @@ void main() {
     );
     await tester.enterText(find.byType(TextFormField).at(2), '123456');
     await tester.enterText(find.byType(TextFormField).at(3), '123456');
+    await tester.ensureVisible(find.text('Crear cuenta'));
     await tester.tap(find.text('Crear cuenta'));
     await tester.pump();
 

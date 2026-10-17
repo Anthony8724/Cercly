@@ -13,8 +13,10 @@ import 'acceso_publico_screen.dart';
 import 'mi_cuenta_screen.dart';
 
 typedef CargarRolUsuario = Future<String> Function(String usuarioId);
-typedef ConstruirNavegacionCuenta =
-    Widget Function(BuildContext context, DestinoCuenta destino);
+typedef ConstruirNavegacionCuenta = Widget Function(
+  BuildContext context,
+  DestinoCuenta destino,
+);
 
 enum DestinoCuenta { registro, cuenta, negocio, administrador }
 
@@ -25,8 +27,7 @@ DestinoCuenta resolverDestinoCuenta({
   if (rol == UsuarioModel.rolAdministrador) {
     return DestinoCuenta.administrador;
   }
-  if (rol == UsuarioModel.rolPropietario ||
-      metadatos?['tipo_cuenta'] == UsuarioModel.rolPropietario) {
+  if (rol == UsuarioModel.rolPropietario) {
     return DestinoCuenta.negocio;
   }
   return DestinoCuenta.cuenta;
@@ -173,6 +174,12 @@ class _PantallaSegunRolState extends State<_PantallaSegunRol> {
     _cargarRol();
   }
 
+  @override
+  void didUpdateWidget(covariant _PantallaSegunRol oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.usuario != widget.usuario) _cargarRol();
+  }
+
   void _cargarRol() {
     _rolFuture = _obtenerRol();
   }
@@ -239,7 +246,7 @@ class _PantallaSegunRolState extends State<_PantallaSegunRol> {
                               ),
                               const SizedBox(height: 8),
                               Text(
-                                '${snapshot.error}',
+                                'Comprueba tu conexión y vuelve a intentarlo.',
                                 textAlign: TextAlign.center,
                                 style: const TextStyle(
                                   color: CerclyColors.muted,
@@ -305,11 +312,7 @@ class _PantallaCarga extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              Icons.location_on_rounded,
-              color: CerclyColors.blue,
-              size: 46,
-            ),
+            Icon(Icons.location_on_rounded, color: CerclyColors.blue, size: 46),
             SizedBox(height: 14),
             Text(
               'Cercly',
