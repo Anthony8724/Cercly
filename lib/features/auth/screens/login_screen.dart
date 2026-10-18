@@ -348,37 +348,116 @@ class _LoginScreenState extends State<LoginScreen> {
                           const Row(
                             children: [
                               Expanded(child: Divider()),
-                              Flexible(
-                                flex: 4,
-                                child: Padding(
-                                  padding: EdgeInsets.symmetric(horizontal: 12),
-                                  child: Text(
-                                    'O regístrate con',
-                                    textAlign: TextAlign.center,
+                              Padding(
+                                padding: EdgeInsets.symmetric(horizontal: 12),
+                                child: Text(
+                                  'O continúa con',
+                                  style: TextStyle(
+                                    color: Color(0xFF64748B),
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
                                   ),
                                 ),
                               ),
                               Expanded(child: Divider()),
                             ],
                           ),
-                          const SizedBox(height: 12),
+                          const SizedBox(height: 16),
                           for (final metodo in MetodoAcceso.values)
                             Padding(
-                              padding: const EdgeInsets.only(bottom: 8),
-                              child: OutlinedButton(
-                                onPressed:
-                                    _isLoading ||
-                                        !(widget.service?.options ??
-                                                const AuthOptions())
-                                            .disponible(metodo)
-                                    ? null
-                                    : () => _provider(metodo),
-                                child: Text(
-                                  (widget.service?.options ??
+                              padding: const EdgeInsets.only(bottom: 10),
+                              child: SizedBox(
+                                height: 54,
+                                child: OutlinedButton(
+                                  onPressed:
+                                      _isLoading ||
+                                          !(widget.service?.options ??
+                                                  const AuthOptions())
+                                              .disponible(metodo)
+                                      ? null
+                                      : () => _provider(metodo),
+                                  style: OutlinedButton.styleFrom(
+                                    backgroundColor: Colors.white,
+                                    disabledBackgroundColor: Colors.white,
+                                    side: const BorderSide(
+                                      color: Color(0xFFDCE5F2),
+                                    ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(14),
+                                    ),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                    ),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Container(
+                                        width: 32,
+                                        height: 32,
+                                        alignment: Alignment.center,
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xFFF0F5FF),
+                                          borderRadius: BorderRadius.circular(
+                                            9,
+                                          ),
+                                        ),
+                                        child: metodo == MetodoAcceso.google
+                                            ? const Text(
+                                                'G',
+                                                style: TextStyle(
+                                                  color: Color(0xFF4285F4),
+                                                  fontSize: 20,
+                                                  fontWeight: FontWeight.w900,
+                                                ),
+                                              )
+                                            : Icon(
+                                                switch (metodo) {
+                                                  MetodoAcceso.microsoft =>
+                                                    Icons.window_rounded,
+                                                  MetodoAcceso.facebook =>
+                                                    Icons.facebook_rounded,
+                                                  MetodoAcceso.celular =>
+                                                    Icons.phone_android_rounded,
+                                                  MetodoAcceso.google =>
+                                                    Icons.language_rounded,
+                                                },
+                                                color:
+                                                    metodo ==
+                                                        MetodoAcceso.facebook
+                                                    ? const Color(0xFF1877F2)
+                                                    : const Color(0xFF1769FF),
+                                                size: 22,
+                                              ),
+                                      ),
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        child: Text(
+                                          _nombreMetodo(metodo),
+                                          style: const TextStyle(
+                                            color: Color(0xFF18345F),
+                                            fontWeight: FontWeight.w700,
+                                            fontSize: 14,
+                                          ),
+                                        ),
+                                      ),
+                                      if (!(widget.service?.options ??
                                               const AuthOptions())
-                                          .disponible(metodo)
-                                      ? _nombreMetodo(metodo)
-                                      : '${_nombreMetodo(metodo)} · No disponible',
+                                          .disponible(metodo))
+                                        const Text(
+                                          'Próximamente',
+                                          style: TextStyle(
+                                            color: Color(0xFF8A97AA),
+                                            fontSize: 11,
+                                          ),
+                                        )
+                                      else
+                                        const Icon(
+                                          Icons.arrow_forward_ios_rounded,
+                                          size: 14,
+                                          color: Color(0xFF1769FF),
+                                        ),
+                                    ],
+                                  ),
                                 ),
                               ),
                             ),

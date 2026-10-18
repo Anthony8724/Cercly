@@ -15,8 +15,9 @@ void main() {
       expect(find.text('Cercly'), findsOneWidget);
       expect(find.text('¿Olvidaste tu contraseña?'), findsOneWidget);
       for (final name in ['Google', 'Microsoft', 'Facebook', 'Celular']) {
-        expect(find.text('$name · No disponible'), findsOneWidget);
+        expect(find.text(name), findsOneWidget);
       }
+      expect(find.text('Próximamente'), findsNWidgets(4));
     });
   }
 }
