@@ -51,7 +51,14 @@ class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
   }
 
   Future<void> _cerrarSesion() async {
-    await AuthService().signOut();
+    try {
+      await AuthService().signOut();
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(AuthService.errorMessage(error))));
+    }
   }
 
   Future<void> _abrirSolicitudes() async {

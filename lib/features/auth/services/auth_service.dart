@@ -1,7 +1,13 @@
+import 'dart:async';
+import 'dart:io' show SocketException;
+
+import 'package:http/http.dart' show ClientException;
+
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter/foundation.dart';
 
 import 'auth_options.dart';
+import 'profile_service.dart';
 
 typedef OAuthLauncher = Future<bool> Function(
   OAuthProvider provider, {
@@ -38,24 +44,25 @@ class AuthService {
     String? nombre,
     String tipoCuenta = 'usuario',
   }) {
-    return _supabase.auth.signUp(
-      email: email.trim(),
-      password: password,
-      data: {
-        if (nombre != null) 'nombre': nombre.trim(),
-        'tipo_cuenta': tipoCuenta,
-      },
-    );
+    return _supabase.auth
+        .signUp(
+          email: email.trim(),
+          password: password,
+          data: {
+            if (nombre != null) 'nombre': nombre.trim(),
+            'tipo_cuenta': tipoCuenta,
+          },
+        )
+        .timeout(const Duration(seconds: 30));
   }
 
   Future<AuthResponse> signIn({
     required String email,
     required String password,
   }) {
-    return _supabase.auth.signInWithPassword(
-      email: email.trim(),
-      password: password,
-    );
+    return _supabase.auth
+        .signInWithPassword(email: email.trim(), password: password)
+        .timeout(const Duration(seconds: 30));
   }
 
   Future<bool> signInWithProvider(MetodoAcceso metodo) async {
@@ -126,12 +133,38 @@ class AuthService {
   }
 
   static String errorMessage(Object error) {
+    if (error is ProfileException) {
+      return switch (error.failure) {
+        ProfileFailure.missing => 'Tu perfil todavía no está disponible. Reintenta en unos momentos. Si continúa, contacta con soporte.',
+        ProfileFailure.inconsistent => 'Tu perfil necesita revisión. Contacta con soporte para recuperar el acceso.',
+        ProfileFailure.expired =>
+          'Tu sesión venció. Cierra la sesión e inicia sesión de nuevo.',
+      };
+    }
+    if (error is TimeoutException || error is AuthRetryableFetchException) {
+      return 'La conexión está tardando demasiado. Comprueba tu conexión y reintenta.';
+    }
+    if (error is PostgrestException) {
+      if (error.code == 'PGRST301' ||
+          error.code == 'PGRST303' ||
+          error.code == '28000') {
+        return 'Tu sesión venció. Cierra la sesión e inicia sesión de nuevo.';
+      }
+      return 'No pudimos cargar tu perfil. Reintenta en unos momentos.';
+    }
     if (error is AuthException) {
       if (error.statusCode == '429' ||
           (error.code?.contains('rate_limit') ?? false)) {
         return 'Demasiados intentos. Espera unos minutos antes de reintentar.';
       }
       return switch (error.code) {
+        'access_denied' => 'Cancelaste el acceso. Puedes intentarlo de nuevo.',
+        'session_expired' ||
+        'session_missing' ||
+        'session_not_found' ||
+        'refresh_token_not_found' ||
+        'refresh_token_already_used' ||
+        'bad_jwt' => 'Tu sesión venció. Inicia sesión de nuevo.',
         'provider_unavailable' ||
         'provider_disabled' => 'Este método todavía no está disponible.',
         'browser_unavailable' =>
@@ -143,10 +176,25 @@ class AuthService {
         _ => 'No se pudo completar el acceso. Inténtalo de nuevo.',
       };
     }
-    return 'Comprueba tu conexión y vuelve a intentarlo.';
+    if (error is SocketException || error is ClientException) {
+      return 'Comprueba tu conexión y vuelve a intentarlo.';
+    }
+    return 'Ocurrió un error inesperado. Vuelve a intentarlo.';
   }
 
   Future<void> signOut() {
-    return _supabase.auth.signOut();
+    return _supabase.auth.signOut().timeout(const Duration(seconds: 15));
+  }
+
+  /// Reintento explícito: una nueva suscripción sola repetiría el último error
+  /// almacenado por el stream del SDK.
+  Future<void> retrySession() async {
+    if (_supabase.auth.currentSession == null) {
+      await signOut();
+    } else {
+      await _supabase.auth.refreshSession().timeout(
+        const Duration(seconds: 15),
+      );
+    }
   }
 }

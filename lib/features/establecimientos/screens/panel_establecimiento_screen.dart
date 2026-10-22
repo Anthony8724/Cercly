@@ -42,7 +42,14 @@ class _PanelEstablecimientoScreenState
   }
 
   Future<void> _cerrarSesion() async {
-    await AuthService().signOut();
+    try {
+      await AuthService().signOut();
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(AuthService.errorMessage(error))));
+    }
   }
 
   Future<void> _abrirRegistro() async {

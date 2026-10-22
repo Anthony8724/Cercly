@@ -43,8 +43,9 @@ dependencies:
   flutter_local_notifications: ^22.3.1
   shared_preferences: ^2.5.5
 
-dev_dependencies:
   http: 1.6.0
+
+dev_dependencies:
   flutter_test:
     sdk: flutter
 

@@ -38,11 +38,15 @@ class _LoginScreenState extends State<LoginScreen> {
   StreamSubscription<AuthState>? _oauthSubscription;
   String? _providerMessage;
   bool _oauthPending = false;
+  bool _oauthCompleted = false;
+  Timer? _oauthTimer;
+  int _oauthAttempt = 0;
   bool _isLoading = false;
   bool _hidePassword = true;
 
   @override
   void dispose() {
+    _oauthTimer?.cancel();
     _oauthSubscription?.cancel();
     _emailController.dispose();
     _passwordController.dispose();
@@ -50,7 +54,9 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _signIn() async {
-    if (_isLoading || !_formKey.currentState!.validate()) return;
+    if (_isLoading || _oauthPending || !_formKey.currentState!.validate()) {
+      return;
+    }
 
     setState(() => _isLoading = true);
 
@@ -81,7 +87,7 @@ class _LoginScreenState extends State<LoginScreen> {
     } on AuthException catch (error) {
       if (!mounted) return;
 
-      String message = 'No se pudo iniciar sesión';
+      String message = AuthService.errorMessage(error);
 
       if (error.code == 'invalid_credentials') {
         message = 'Correo o contraseña incorrectos';
@@ -93,12 +99,12 @@ class _LoginScreenState extends State<LoginScreen> {
 
       ScaffoldMessenger.of(context)
           .showSnackBar(SnackBar(content: Text(message)));
-    } catch (_) {
+    } catch (error) {
       if (!mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Ocurrió un error inesperado')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(AuthService.errorMessage(error))));
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
@@ -107,7 +113,7 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _provider(MetodoAcceso metodo) async {
-    if (_isLoading) return;
+    if (_isLoading || _oauthPending) return;
     final service = widget.service ?? AuthService();
     if (!service.options.disponible(metodo)) return;
     if (metodo == MetodoAcceso.celular) {
@@ -131,16 +137,28 @@ class _LoginScreenState extends State<LoginScreen> {
       _isLoading = true;
       _providerMessage = null;
       _oauthPending = true;
+      _oauthCompleted = false;
+    });
+    final attempt = ++_oauthAttempt;
+    _oauthTimer?.cancel();
+    _oauthTimer = Timer(const Duration(minutes: 2), () {
+      if (mounted && _oauthPending && attempt == _oauthAttempt) {
+        _cancelOAuth(
+          message: 'El acceso no se completó. Puedes intentarlo de nuevo.',
+        );
+      }
     });
     _oauthSubscription ??= service.events.listen(
       (state) {
         if (!mounted ||
-            !_oauthPending ||
+            _oauthCompleted ||
             state.event != AuthChangeEvent.signedIn ||
             state.session == null) {
           return;
         }
         _oauthPending = false;
+        _oauthCompleted = true;
+        _oauthTimer?.cancel();
         if (widget.devolverResultado) {
           Navigator.of(context).pop(true);
         } else {
@@ -148,7 +166,8 @@ class _LoginScreenState extends State<LoginScreen> {
         }
       },
       onError: (Object error) {
-        if (mounted) {
+        if (mounted && _oauthPending) {
+          _oauthTimer?.cancel();
           setState(() {
             _oauthPending = false;
             _providerMessage = AuthService.errorMessage(error);
@@ -157,14 +176,17 @@ class _LoginScreenState extends State<LoginScreen> {
       },
     );
     try {
-      await service.signInWithProvider(metodo);
-      if (mounted && _oauthPending) {
+      await service
+          .signInWithProvider(metodo)
+          .timeout(const Duration(seconds: 15));
+      if (mounted && _oauthPending && attempt == _oauthAttempt) {
         setState(
           () => _providerMessage = 'Continúa en el navegador. Si cancelaste, puedes intentarlo de nuevo.',
         );
       }
     } catch (e) {
-      if (mounted) {
+      if (mounted && attempt == _oauthAttempt) {
+        _oauthTimer?.cancel();
         setState(() {
           _oauthPending = false;
           _providerMessage = AuthService.errorMessage(e);
@@ -173,6 +195,18 @@ class _LoginScreenState extends State<LoginScreen> {
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
+  }
+
+  void _cancelOAuth({
+    String message = 'Acceso cancelado. Puedes intentarlo de nuevo.',
+  }) {
+    _oauthTimer?.cancel();
+    setState(() {
+      _oauthAttempt++;
+      _oauthPending = false;
+      _isLoading = false;
+      _providerMessage = message;
+    });
   }
 
   Future<void> _openRegister() async {
@@ -306,7 +340,9 @@ class _LoginScreenState extends State<LoginScreen> {
                           SizedBox(
                             height: 52,
                             child: FilledButton(
-                              onPressed: _isLoading ? null : _signIn,
+                              onPressed: (_isLoading || _oauthPending)
+                                  ? null
+                                  : _signIn,
                               style: FilledButton.styleFrom(
                                 backgroundColor: const Color(0xFF1769FF),
                                 foregroundColor: Colors.white,
@@ -333,7 +369,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             ),
                           ),
                           TextButton(
-                            onPressed: _isLoading
+                            onPressed: (_isLoading || _oauthPending)
                                 ? null
                                 : () => Navigator.of(context).push(
                                     MaterialPageRoute<void>(
@@ -371,6 +407,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                 child: OutlinedButton(
                                   onPressed:
                                       _isLoading ||
+                                          _oauthPending ||
                                           !(widget.service?.options ??
                                                   const AuthOptions())
                                               .disponible(metodo)
@@ -461,6 +498,13 @@ class _LoginScreenState extends State<LoginScreen> {
                                 ),
                               ),
                             ),
+                          if (_oauthPending)
+                            TextButton(
+                              onPressed: _isLoading
+                                  ? null
+                                  : () => _cancelOAuth(),
+                              child: const Text('Cancelar intento'),
+                            ),
                           if (_providerMessage != null)
                             Semantics(
                               liveRegion: true,
@@ -468,7 +512,9 @@ class _LoginScreenState extends State<LoginScreen> {
                             ),
                           const SizedBox(height: 10),
                           TextButton(
-                            onPressed: _isLoading ? null : _openRegister,
+                            onPressed: (_isLoading || _oauthPending)
+                                ? null
+                                : _openRegister,
                             style: TextButton.styleFrom(
                               foregroundColor: const Color(0xFF1769FF),
                             ),

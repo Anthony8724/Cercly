@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -9,6 +11,7 @@ import '../../explorar/controllers/explorar_controller.dart';
 import '../../explorar/screens/navegacion_principal_screen.dart';
 import '../../usuarios/models/usuario_model.dart';
 import '../services/auth_service.dart';
+import '../services/profile_service.dart';
 import 'acceso_publico_screen.dart';
 import 'mi_cuenta_screen.dart';
 
@@ -33,7 +36,7 @@ DestinoCuenta resolverDestinoCuenta({
   return DestinoCuenta.cuenta;
 }
 
-class AuthGate extends StatelessWidget {
+class AuthGate extends StatefulWidget {
   const AuthGate({
     super.key,
     this.authStateChanges,
@@ -42,8 +45,10 @@ class AuthGate extends StatelessWidget {
     this.cargarRol,
     this.construirNavegacion,
     this.explorarController,
+    this.service,
   });
 
+  final AuthService? service;
   final Stream<User?>? authStateChanges;
   final WidgetBuilder? unauthenticatedBuilder;
   final WidgetBuilder? authenticatedBuilder;
@@ -52,56 +57,166 @@ class AuthGate extends StatelessWidget {
   final ExplorarController? explorarController;
 
   @override
-  Widget build(BuildContext context) {
-    final userStream = authStateChanges ?? AuthService().authStateChanges;
+  State<AuthGate> createState() => _AuthGateState();
+}
 
+class _AuthGateState extends State<AuthGate> {
+  late Stream<User?> _stream;
+  bool _retryingSession = false;
+  Object? _retryError;
+
+  Future<void> _retrySession() async {
+    if (_retryingSession) return;
+    setState(() {
+      _retryingSession = true;
+      _retryError = null;
+    });
+    try {
+      if (widget.authStateChanges == null) {
+        await (widget.service ?? AuthService()).retrySession();
+      } else {
+        _subscribe();
+      }
+    } catch (error) {
+      _retryError = error;
+    } finally {
+      if (mounted) setState(() => _retryingSession = false);
+    }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _subscribe();
+  }
+
+  void _subscribe() {
+    final source =
+        widget.authStateChanges ??
+        (widget.service ?? AuthService()).authStateChanges;
+    _stream = Stream<User?>.multi((controller) {
+      final timer = Timer(const Duration(seconds: 15), () {
+        controller.addError(TimeoutException('session'));
+      });
+      final subscription = source.listen(
+        (user) {
+          timer.cancel();
+          controller.add(user);
+        },
+        onError: (Object error, StackTrace stack) {
+          timer.cancel();
+          controller.addError(error, stack);
+        },
+        onDone: () {
+          timer.cancel();
+          controller.close();
+        },
+      );
+      controller.onCancel = () {
+        timer.cancel();
+        return subscription.cancel();
+      };
+    });
+  }
+
+  @override
+  void didUpdateWidget(covariant AuthGate oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.authStateChanges != widget.authStateChanges ||
+        oldWidget.service != widget.service) {
+      _subscribe();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return StreamBuilder<User?>(
-      stream: userStream,
+      stream: _stream,
+      initialData: widget.authStateChanges == null
+          ? (widget.service ?? AuthService()).currentUser
+          : null,
       builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const _PantallaCarga();
+        if (_retryingSession) {
+          return const _PantallaCarga(message: 'Comprobando sesión…');
+        }
+        if (snapshot.hasError) {
+          return Scaffold(
+            body: SafeArea(
+              child: Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        AuthService.errorMessage(
+                          _retryError ?? snapshot.error!,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      TextButton(
+                        onPressed: _retrySession,
+                        child: const Text('Reintentar'),
+                      ),
+                      TextButton(
+                        onPressed: () async {
+                          try {
+                            await (widget.service ?? AuthService()).signOut();
+                            if (mounted) setState(_subscribe);
+                          } catch (_) {
+                            if (mounted) setState(_subscribe);
+                          }
+                        },
+                        child: const Text('Cerrar sesión'),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          );
+        }
+        if (snapshot.connectionState == ConnectionState.waiting &&
+            snapshot.data == null) {
+          return const _PantallaCarga(message: 'Comprobando sesión…');
         }
 
         final usuario = snapshot.data;
 
         if (usuario == null) {
-          return unauthenticatedBuilder?.call(context) ??
+          return widget.unauthenticatedBuilder?.call(context) ??
               _construirNavegacionPredeterminada(
                 context,
                 DestinoCuenta.registro,
-                controller: explorarController,
+                controller: widget.explorarController,
               );
         }
 
-        if (authenticatedBuilder != null) {
-          return authenticatedBuilder!(context);
+        if (widget.authenticatedBuilder != null) {
+          return widget.authenticatedBuilder!(context);
         }
 
         final constructor =
-            construirNavegacion ??
+            widget.construirNavegacion ??
             (context, destino) => _construirNavegacionPredeterminada(
               context,
               destino,
-              controller: explorarController,
+              controller: widget.explorarController,
             );
 
         return _PantallaSegunRol(
+          key: ValueKey(usuario.id),
           usuario: usuario,
-          cargarRol: cargarRol ?? _cargarRolPredeterminado,
+          service: widget.service ?? AuthService(),
+          cargarRol: widget.cargarRol ?? _cargarRolPredeterminado,
           construirNavegacion: constructor,
         );
       },
     );
   }
 
-  static Future<String> _cargarRolPredeterminado(String usuarioId) async {
-    final datos = await Supabase.instance.client
-        .from('usuarios')
-        .select('rol')
-        .eq('id', usuarioId)
-        .single();
-    return datos['rol'] as String? ?? UsuarioModel.rolUsuario;
-  }
+  static Future<String> _cargarRolPredeterminado(String usuarioId) =>
+      ProfileService().loadRole(usuarioId);
 
   static Widget _construirNavegacionPredeterminada(
     BuildContext context,
@@ -152,11 +267,14 @@ class AuthGate extends StatelessWidget {
 
 class _PantallaSegunRol extends StatefulWidget {
   const _PantallaSegunRol({
+    super.key,
+    required this.service,
     required this.usuario,
     required this.cargarRol,
     required this.construirNavegacion,
   });
 
+  final AuthService service;
   final User usuario;
   final CargarRolUsuario cargarRol;
   final ConstruirNavegacionCuenta construirNavegacion;
@@ -185,11 +303,25 @@ class _PantallaSegunRolState extends State<_PantallaSegunRol> {
   }
 
   Future<String> _obtenerRol() async {
-    return widget.cargarRol(widget.usuario.id);
+    final role = await widget
+        .cargarRol(widget.usuario.id)
+        .timeout(const Duration(seconds: 15));
+    if (!UsuarioModel.rolesPermitidos.contains(role)) {
+      throw const ProfileException(ProfileFailure.inconsistent);
+    }
+    return role;
   }
 
   Future<void> _cerrarSesion() async {
-    await AuthService().signOut();
+    try {
+      await widget.service.signOut().timeout(const Duration(seconds: 15));
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(AuthService.errorMessage(error))),
+        );
+      }
+    }
   }
 
   @override
@@ -215,71 +347,73 @@ class _PantallaSegunRolState extends State<_PantallaSegunRol> {
                   child: SafeArea(
                     top: false,
                     child: Center(
-                      child: Padding(
-                        padding: const EdgeInsets.all(20),
-                        child: CerclySectionCard(
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Container(
-                                width: 70,
-                                height: 70,
-                                decoration: const BoxDecoration(
-                                  color: Color(0xFFFFEEEE),
-                                  shape: BoxShape.circle,
-                                ),
-                                child: const Icon(
-                                  Icons.error_outline_rounded,
-                                  size: 38,
-                                  color: Colors.redAccent,
-                                ),
-                              ),
-                              const SizedBox(height: 16),
-                              const Text(
-                                'No se pudo obtener el rol del usuario.',
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  color: CerclyColors.text,
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.w900,
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                              Text(
-                                'Comprueba tu conexión y vuelve a intentarlo.',
-                                textAlign: TextAlign.center,
-                                style: const TextStyle(
-                                  color: CerclyColors.muted,
-                                  height: 1.35,
-                                ),
-                              ),
-                              const SizedBox(height: 22),
-                              SizedBox(
-                                width: double.infinity,
-                                height: 50,
-                                child: FilledButton.icon(
-                                  onPressed: () {
-                                    setState(_cargarRol);
-                                  },
-                                  style: FilledButton.styleFrom(
-                                    backgroundColor: CerclyColors.blue,
+                      child: SingleChildScrollView(
+                        child: Padding(
+                          padding: const EdgeInsets.all(20),
+                          child: CerclySectionCard(
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Container(
+                                  width: 70,
+                                  height: 70,
+                                  decoration: const BoxDecoration(
+                                    color: Color(0xFFFFEEEE),
+                                    shape: BoxShape.circle,
                                   ),
-                                  icon: const Icon(Icons.refresh_rounded),
-                                  label: const Text(
-                                    'Reintentar',
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.w900,
+                                  child: const Icon(
+                                    Icons.error_outline_rounded,
+                                    size: 38,
+                                    color: Colors.redAccent,
+                                  ),
+                                ),
+                                const SizedBox(height: 16),
+                                const Text(
+                                  'No pudimos cargar tu perfil.',
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    color: CerclyColors.text,
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w900,
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  AuthService.errorMessage(snapshot.error!),
+                                  textAlign: TextAlign.center,
+                                  style: const TextStyle(
+                                    color: CerclyColors.muted,
+                                    height: 1.35,
+                                  ),
+                                ),
+                                const SizedBox(height: 22),
+                                SizedBox(
+                                  width: double.infinity,
+                                  height: 50,
+                                  child: FilledButton.icon(
+                                    onPressed: () {
+                                      setState(_cargarRol);
+                                    },
+                                    style: FilledButton.styleFrom(
+                                      backgroundColor: CerclyColors.blue,
+                                    ),
+                                    icon: const Icon(Icons.refresh_rounded),
+                                    label: const Text(
+                                      'Reintentar',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.w900,
+                                      ),
                                     ),
                                   ),
                                 ),
-                              ),
-                              const SizedBox(height: 8),
-                              TextButton.icon(
-                                onPressed: _cerrarSesion,
-                                icon: const Icon(Icons.logout_rounded),
-                                label: const Text('Cerrar sesión'),
-                              ),
-                            ],
+                                const SizedBox(height: 8),
+                                TextButton.icon(
+                                  onPressed: _cerrarSesion,
+                                  icon: const Icon(Icons.logout_rounded),
+                                  label: const Text('Cerrar sesión'),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
                       ),
@@ -302,11 +436,12 @@ class _PantallaSegunRolState extends State<_PantallaSegunRol> {
 }
 
 class _PantallaCarga extends StatelessWidget {
-  const _PantallaCarga();
+  const _PantallaCarga({this.message = 'Cargando tu perfil…'});
+  final String message;
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
+    return Scaffold(
       backgroundColor: CerclyColors.background,
       body: Center(
         child: Column(
@@ -322,8 +457,9 @@ class _PantallaCarga extends StatelessWidget {
                 fontWeight: FontWeight.w900,
               ),
             ),
-            SizedBox(height: 16),
-            SizedBox(
+            Text(message),
+            const SizedBox(height: 16),
+            const SizedBox(
               width: 26,
               height: 26,
               child: CircularProgressIndicator(

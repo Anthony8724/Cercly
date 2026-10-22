@@ -1,3 +1,5 @@
+import 'dart:io' show SocketException;
+
 import 'package:cercly/features/auth/screens/password_screen.dart';
 import 'package:cercly/features/auth/services/auth_service.dart';
 import 'package:flutter/material.dart';
@@ -9,7 +11,7 @@ class FakePassword extends AuthService {
   @override
   Future<void> resetPassword(String value) async {
     email = value;
-    if (fail) throw Exception('private');
+    if (fail) throw const SocketException('private');
   }
 
   @override

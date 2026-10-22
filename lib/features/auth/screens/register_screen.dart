@@ -90,7 +90,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     } on AuthException catch (error) {
       if (!mounted) return;
 
-      String message = 'No se pudo completar el registro';
+      String message = AuthService.errorMessage(error);
       if (error.statusCode == '429' ||
           error.code == 'over_email_send_rate_limit') {
         message =
@@ -106,12 +106,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
       ScaffoldMessenger.of(context)
           .showSnackBar(SnackBar(content: Text(message)));
-    } catch (_) {
+    } catch (error) {
       if (!mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Ocurrió un error inesperado')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(AuthService.errorMessage(error))));
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);

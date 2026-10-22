@@ -11,3 +11,7 @@ Esta carpeta almacenará la documentación técnica y académica del proyecto.
 - Plan de pruebas.
 - Evidencias de las iteraciones semanales.
 - Manual de usuario.
+
+## Autenticación
+
+- [Perfiles automáticos y recuperación segura — octubre de 2026](AUTENTICACION_PERFILES_AUTOMATICOS.md): implementación local, resultados de pruebas y operaciones pendientes de autorización.

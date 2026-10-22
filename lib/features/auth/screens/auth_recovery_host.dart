@@ -45,7 +45,16 @@ class _AuthRecoveryHostState extends State<AuthRecoveryHost> {
                     }
                   });
                 } else if (state.event == AuthChangeEvent.signedOut) {
-                  setState(() => _recovering = false);
+                  setState(() {
+                    _recovering = false;
+                    _error =
+                        state.signOutReason != null &&
+                            state.signOutReason != SignOutReason.userInitiated
+                        ? 'Tu sesión venció. Inicia sesión de nuevo.'
+                        : null;
+                  });
+                } else if (state.session != null) {
+                  setState(() => _error = null);
                 }
               },
               onError: (Object error) {

@@ -167,7 +167,18 @@ class MiCuentaScreen extends StatelessWidget {
                 height: 52,
                 child: OutlinedButton.icon(
                   key: const Key('cerrar-sesion-cuenta'),
-                  onPressed: cerrarSesion ?? servicio!.signOut,
+                  onPressed: () async {
+                    try {
+                      await (cerrarSesion ?? servicio!.signOut)();
+                    } catch (error) {
+                      if (!context.mounted) return;
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(AuthService.errorMessage(error)),
+                        ),
+                      );
+                    }
+                  },
                   style: OutlinedButton.styleFrom(
                     foregroundColor: const Color(0xFFB91C1C),
                     side: const BorderSide(color: Color(0xFFF0B7B7)),
