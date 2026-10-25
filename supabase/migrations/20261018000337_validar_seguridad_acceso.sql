@@ -2,8 +2,9 @@
 -- Conservar SELECT sobre miembros: otras políticas lo consultan como subconsulta.
 begin;
 set local lock_timeout = '5s';
+set local statement_timeout = '60s';
 
-revoke truncate, references, trigger on table
+revoke truncate, references, trigger, maintain on table
   public.usuarios, public.establecimientos, public.solicitudes_establecimientos,
   public.miembros_establecimiento, public.promociones
 from public, anon, authenticated;

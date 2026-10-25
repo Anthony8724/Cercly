@@ -1,5 +1,7 @@
 # Bloque 5 — Verificación previa al despliegue de seguridad Supabase
 
+> Estado histórico. Para el cierre del 25 de octubre y las tres migraciones actuales, consultar la [auditoría final](AUDITORIA_FINAL_AUTENTICACION.md) y el [procedimiento vigente](DESPLIEGUE_AUTENTICACION.md). Ya existe una base local restaurada con datos, pero se comprobaron carencias de propietarios/ACL. Los hashes y el conjunto de migraciones de este informe no son los del release actual.
+
 **Actualización de recuperación:** ejecución detenida por falta de acceso PostgreSQL acreditado para un respaldo lógico consistente. No se creó ni restauró un respaldo; los 24 casos HTTP continúan pendientes. Ver sección 11.
 
 **Recomendación: NO-GO para producción.** Las dos migraciones están preparadas y pasan las pruebas SQL locales, pero no hay un respaldo restaurable acreditado ni pruebas HTTP de autorización con sesiones reales de Supabase Auth en staging. Este documento no autoriza el despliegue.

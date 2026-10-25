@@ -1,6 +1,6 @@
 -- Fixtures sintéticos; ejecutar solo en una instancia local aislada.
 begin;
-select plan(24);
+select plan(27);
 insert into auth.users(id,email,raw_user_meta_data) values
  ('b6000000-0000-0000-0000-000000000001','recovery@cercly.test','{"nombre":"  ","full_name":"Persona Google","rol":"administrador"}'),
  ('b6000000-0000-0000-0000-000000000002','owner@cercly.test','{}'),
@@ -41,5 +41,13 @@ select ok(not (select prosecdef from pg_proc where oid='public.recuperar_mi_perf
 alter table public.usuarios add constraint prueba_fallo_perfil check(nombre <> 'Fallar perfil');
 select throws_ok($$insert into auth.users(id,email,raw_user_meta_data) values ('b6000000-0000-0000-0000-000000000004','fail@cercly.test','{"nombre":"Fallar perfil"}')$$,'P0001','No se pudo crear el perfil','fallo de trigger visible y sanitizado');
 select is((select count(*)::integer from auth.users where id='b6000000-0000-0000-0000-000000000004'),0,'fallo revierte alta sin huérfanos');
+-- PostgREST actual transmite claims JSON; no limitar la prueba al GUC legacy.
+set local role authenticated;
+select set_config('request.jwt.claim.sub','',true);
+select set_config('request.jwt.claims','{"sub":"b6000000-0000-0000-0000-000000000001","role":"authenticated","user_metadata":{"rol":"administrador"}}',true);
+select is((select rol from public.recuperar_mi_perfil()),'usuario','claims JSON recuperan sin elevar rol desde metadatos');
+select is((select count(*)::integer from public.usuarios),1,'RLS con claims JSON aísla perfiles');
+select ok(not public.es_administrador(),'claims JSON de usuario no autorizan administración');
+reset role;
 select * from finish();
 rollback;

@@ -1,5 +1,7 @@
 # Cercly: autenticación y perfiles automáticos
 
+> Actualización del 25 de octubre: consultar la [auditoría final](AUDITORIA_FINAL_AUTENTICACION.md) y el [procedimiento de despliegue](DESPLIEGUE_AUTENTICACION.md). Este informe conserva el estado histórico del 21 de octubre. Las tres migraciones fueron revisadas posteriormente; los hashes anteriores ya no son los de release. La restauración disponible conserva datos pero tiene propietarios/ACL incompletos para el ensayo de plataforma: cierre completo y producción siguen en NO-GO.
+
 Fecha: 21 de octubre de 2026, America/Guayaquil. Rama de revisión: `fix/auth-perfiles-automaticos`, creada desde `develop`. Implementación local revisada para un commit autorizado posteriormente por el usuario; sin push.
 
 **Resultado:** implementación y pruebas locales completas. La recuperación automática de perfiles ausentes en producción depende del despliegue autorizado de las migraciones. No se modificó producción, su configuración OAuth ni el respaldo local. No se crearon usuarios reales o de prueba en producción.

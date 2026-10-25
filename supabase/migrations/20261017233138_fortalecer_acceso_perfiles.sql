@@ -1,9 +1,11 @@
 -- No modifica roles existentes. Aplicar tras revisar en un entorno de pruebas.
 begin;
+set local lock_timeout = '5s';
+set local statement_timeout = '60s';
 alter table public.usuarios enable row level security;
-revoke all on public.usuarios from anon;
-revoke all on public.usuarios from authenticated;
-revoke update (id, rol, creado_en) on public.usuarios from authenticated;
+-- Los clientes también heredan PUBLIC. REVOKE de tabla elimina asimismo los
+-- grants correspondientes de columna; después se concede solo SELECT/nombre.
+revoke all on public.usuarios from public, anon, authenticated;
 grant select on public.usuarios to authenticated;
 grant update (nombre) on public.usuarios to authenticated;
 

@@ -1,0 +1,272 @@
+{
+  "date": "2026-10-25",
+  "scope": "PostgreSQL aislado; sin producción",
+  "roles_equal_rebuilt_restored": true,
+  "memberships_equal_rebuilt_restored": true,
+  "profile_policies_equal_normalized": true,
+  "source_roles_match_copy": true,
+  "source_memberships_match_copy": true,
+  "source_functions_match_copy": true,
+  "catalogs": {
+    "rebuilt": {
+      "evidence_path": "/tmp/cercly-security-results-ue2603vm/auth-catalog-before.log",
+      "sha256": "73b2f51455181988bcb8b26aae4336078dbad7ad3ed2db48dfa34deccb5bc0b7",
+      "auth_schema": {
+        "acl": "{supabase_admin=UC/supabase_admin,anon=U/supabase_admin,authenticated=U/supabase_admin,service_role=U/supabase_admin,supabase_auth_admin=UC/supabase_admin,dashboard_user=UC/supabase_admin,postgres=U/supabase_admin}",
+        "name": "auth",
+        "owner": "supabase_admin",
+        "anon_usage": true,
+        "authenticated_usage": true,
+        "authenticated_create": false
+      },
+      "tables": [
+        {
+          "acl": "{supabase_auth_admin=arwdDxtm/supabase_auth_admin,dashboard_user=arwdDxtm/supabase_auth_admin,postgres=arwdDxtm/supabase_auth_admin}",
+          "rls": false,
+          "name": "auth.users",
+          "owner": "supabase_auth_admin",
+          "force_rls": false,
+          "authenticated_insert": false,
+          "authenticated_select": false
+        },
+        {
+          "acl": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+          "rls": true,
+          "name": "public.establecimientos",
+          "owner": "postgres",
+          "force_rls": false,
+          "authenticated_insert": true,
+          "authenticated_select": true
+        },
+        {
+          "acl": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+          "rls": true,
+          "name": "public.miembros_establecimiento",
+          "owner": "postgres",
+          "force_rls": false,
+          "authenticated_insert": true,
+          "authenticated_select": true
+        },
+        {
+          "acl": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,service_role=arwdDxtm/postgres,authenticated=ardDxtm/postgres}",
+          "rls": true,
+          "name": "public.usuarios",
+          "owner": "postgres",
+          "force_rls": false,
+          "authenticated_insert": true,
+          "authenticated_select": true
+        }
+      ],
+      "auth_uid": {
+        "acl": "{=X/supabase_auth_admin,supabase_auth_admin=X/supabase_auth_admin,dashboard_user=X/supabase_auth_admin}",
+        "args": "",
+        "name": "auth.uid",
+        "owner": "supabase_auth_admin",
+        "definer": false,
+        "settings": null,
+        "definition": "CREATE OR REPLACE FUNCTION auth.uid()\n RETURNS uuid\n LANGUAGE sql\n STABLE\nAS $function$\n  select coalesce(\n    nullif(current_setting('request.jwt.claim.sub', true), ''),\n    (nullif(current_setting('request.jwt.claims', true), '')::jsonb ->> 'sub')\n  )::uuid;\n$function$\n",
+        "anon_execute": true,
+        "definition_md5": "4723b3af194e029f300318bf154ee6d7",
+        "authenticated_execute": true
+      }
+    },
+    "restored": {
+      "evidence_path": "/tmp/cercly-security-results-rplfzlez/auth-catalog-before.log",
+      "sha256": "a373d1ebe096a49cd6990097566fa0ecdb53f70a83b0374a6d97f300e0554e20",
+      "auth_schema": {
+        "acl": null,
+        "name": "auth",
+        "owner": "supabase_admin",
+        "anon_usage": false,
+        "authenticated_usage": false,
+        "authenticated_create": false
+      },
+      "tables": [
+        {
+          "acl": null,
+          "rls": true,
+          "name": "auth.users",
+          "owner": "supabase_admin",
+          "force_rls": false,
+          "authenticated_insert": false,
+          "authenticated_select": false
+        },
+        {
+          "acl": null,
+          "rls": true,
+          "name": "public.establecimientos",
+          "owner": "supabase_admin",
+          "force_rls": false,
+          "authenticated_insert": false,
+          "authenticated_select": false
+        },
+        {
+          "acl": null,
+          "rls": true,
+          "name": "public.miembros_establecimiento",
+          "owner": "supabase_admin",
+          "force_rls": false,
+          "authenticated_insert": false,
+          "authenticated_select": false
+        },
+        {
+          "acl": null,
+          "rls": true,
+          "name": "public.usuarios",
+          "owner": "supabase_admin",
+          "force_rls": false,
+          "authenticated_insert": false,
+          "authenticated_select": false
+        }
+      ],
+      "auth_uid": {
+        "acl": null,
+        "args": "",
+        "name": "auth.uid",
+        "owner": "supabase_admin",
+        "definer": false,
+        "settings": null,
+        "definition": "CREATE OR REPLACE FUNCTION auth.uid()\n RETURNS uuid\n LANGUAGE sql\n STABLE\nAS $function$\n  select \n  coalesce(\n    nullif(current_setting('request.jwt.claim.sub', true), ''),\n    (nullif(current_setting('request.jwt.claims', true), '')::jsonb ->> 'sub')\n  )::uuid\n$function$\n",
+        "anon_execute": true,
+        "definition_md5": "ea3b41bf29e2ad573067939329aa088e",
+        "authenticated_execute": true
+      }
+    },
+    "source": {
+      "evidence_path": "/tmp/cercly-auth-source-catalog.json",
+      "sha256": "a373d1ebe096a49cd6990097566fa0ecdb53f70a83b0374a6d97f300e0554e20",
+      "auth_schema": {
+        "acl": null,
+        "name": "auth",
+        "owner": "supabase_admin",
+        "anon_usage": false,
+        "authenticated_usage": false,
+        "authenticated_create": false
+      },
+      "tables": [
+        {
+          "acl": null,
+          "rls": true,
+          "name": "auth.users",
+          "owner": "supabase_admin",
+          "force_rls": false,
+          "authenticated_insert": false,
+          "authenticated_select": false
+        },
+        {
+          "acl": null,
+          "rls": true,
+          "name": "public.establecimientos",
+          "owner": "supabase_admin",
+          "force_rls": false,
+          "authenticated_insert": false,
+          "authenticated_select": false
+        },
+        {
+          "acl": null,
+          "rls": true,
+          "name": "public.miembros_establecimiento",
+          "owner": "supabase_admin",
+          "force_rls": false,
+          "authenticated_insert": false,
+          "authenticated_select": false
+        },
+        {
+          "acl": null,
+          "rls": true,
+          "name": "public.usuarios",
+          "owner": "supabase_admin",
+          "force_rls": false,
+          "authenticated_insert": false,
+          "authenticated_select": false
+        }
+      ],
+      "auth_uid": {
+        "acl": null,
+        "args": "",
+        "name": "auth.uid",
+        "owner": "supabase_admin",
+        "definer": false,
+        "settings": null,
+        "definition": "CREATE OR REPLACE FUNCTION auth.uid()\n RETURNS uuid\n LANGUAGE sql\n STABLE\nAS $function$\n  select \n  coalesce(\n    nullif(current_setting('request.jwt.claim.sub', true), ''),\n    (nullif(current_setting('request.jwt.claims', true), '')::jsonb ->> 'sub')\n  )::uuid\n$function$\n",
+        "anon_execute": true,
+        "definition_md5": "ea3b41bf29e2ad573067939329aa088e",
+        "authenticated_execute": true
+      }
+    }
+  },
+  "sql_tests": {
+    "17.6": {
+      "total": 216,
+      "suites": {
+        "auth_access_test": 11,
+        "auth_final_permissions_test": 19,
+        "consulta_establecimientos_cercanos_test": 19,
+        "importacion_osm_tulcan_test": 17,
+        "modelo_osm_postgis_test": 18,
+        "profile_recovery_test": 27,
+        "promover_osm_establecimientos_test": 28,
+        "reclamar_establecimiento_osm_test": 17,
+        "refinar_taxonomia_osm_test": 3,
+        "security_access_test": 57
+      },
+      "log": "/tmp/cercly-auth-followup-176.log"
+    },
+    "17.11": {
+      "total": 216,
+      "suites": {
+        "auth_access_test": 11,
+        "auth_final_permissions_test": 19,
+        "consulta_establecimientos_cercanos_test": 19,
+        "importacion_osm_tulcan_test": 17,
+        "modelo_osm_postgis_test": 18,
+        "profile_recovery_test": 27,
+        "promover_osm_establecimientos_test": 28,
+        "reclamar_establecimiento_osm_test": 17,
+        "refinar_taxonomia_osm_test": 3,
+        "security_access_test": 57
+      },
+      "log": "/tmp/cercly-auth-followup-1711.log"
+    }
+  },
+  "flutter_focused": 30,
+  "android": {
+    "emulator_version": "37.1.11.0",
+    "image": "android-37.2/google_apis_playstore_ps16k/x86_64",
+    "crash_component": "qemu-system-x86_64-headless / gles_swiftshader/libGLESv2.so",
+    "kvm": "installed and usable (version 12)",
+    "working_renderer": "host",
+    "cameras": "none",
+    "boot_ms": 19239,
+    "apk_sha256": "6b1f7d53db46a53fe393a685d08cb3bb73784864a75c5cc2c7198a34bbcde38c",
+    "smoke_results": [
+      {
+        "stage": "inicio",
+        "ui_missing_config": true,
+        "process_alive": true,
+        "fatal_error": false
+      },
+      {
+        "stage": "reapertura",
+        "ui_missing_config": true,
+        "process_alive": true,
+        "fatal_error": false
+      },
+      {
+        "stage": "callback-frio",
+        "ui_missing_config": true,
+        "process_alive": true,
+        "fatal_error": false
+      },
+      {
+        "stage": "callback-caliente",
+        "ui_missing_config": true,
+        "process_alive": true,
+        "fatal_error": false
+      }
+    ],
+    "oauth_real_tested": false,
+    "backend_configured": false
+  },
+  "decision": "NO-GO"
+}

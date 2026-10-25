@@ -1,4 +1,12 @@
 -- Solo contenedor aislado: compatibilidad mínima de plataforma, no producción.
+-- Misma resolución de identidad observada en la copia: claims JSON de PostgREST
+-- y claim individual legacy. No concede lectura sobre tablas Auth a clientes.
+create or replace function auth.uid() returns uuid language sql stable as $$
+  select coalesce(
+    nullif(current_setting('request.jwt.claim.sub', true), ''),
+    (nullif(current_setting('request.jwt.claims', true), '')::jsonb ->> 'sub')
+  )::uuid;
+$$;
 alter table auth.users add column if not exists phone text;
 alter table auth.users add column if not exists email_confirmed_at timestamptz;
 create table storage.buckets(id text primary key,name text,public boolean,file_size_limit bigint,allowed_mime_types text[]);

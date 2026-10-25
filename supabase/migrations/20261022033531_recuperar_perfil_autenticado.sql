@@ -2,14 +2,30 @@
 -- de seguridad 20261017/20261018. No repara ni modifica perfiles en lote.
 begin;
 set local lock_timeout = '5s';
+set local statement_timeout = '60s';
 
 -- Nunca habilitar recuperación sobre permisos de perfil sin endurecer.
 do $$
 begin
-  if has_table_privilege('authenticated', 'public.usuarios', 'INSERT')
+  if has_any_column_privilege('authenticated', 'public.usuarios', 'INSERT')
      or has_column_privilege('authenticated', 'public.usuarios', 'rol', 'UPDATE')
-     or has_table_privilege('anon', 'public.usuarios', 'INSERT') then
+     or has_column_privilege('authenticated', 'public.usuarios', 'id', 'UPDATE')
+     or has_column_privilege('authenticated', 'public.usuarios', 'creado_en', 'UPDATE')
+     or has_any_column_privilege('anon', 'public.usuarios', 'INSERT')
+     or has_any_column_privilege('anon', 'public.usuarios', 'SELECT')
+     or not (select relrowsecurity from pg_class where oid = 'public.usuarios'::regclass)
+     or not exists (select 1 from pg_policy
+       where polrelid = 'public.establecimientos'::regclass
+         and polname = 'alta sin verificacion autoconcedida'
+         and not polpermissive and polcmd = 'a') then
     raise exception 'Aplicar primero las migraciones de seguridad revisadas';
+  end if;
+  -- Dependencias de plataforma: no repararlas concediendo acceso a Auth.
+  -- Una restauración sin ACL debe fallar antes de instalar una RPC inutilizable.
+  if not has_schema_privilege('authenticated', 'auth', 'USAGE')
+     or not has_function_privilege('authenticated', 'auth.uid()', 'EXECUTE') then
+    raise exception using errcode = '42501',
+      message = 'Prerrequisitos Auth incompletos: verificar restauración de permisos';
   end if;
 end;
 $$;
