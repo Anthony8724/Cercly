@@ -59,4 +59,6 @@ class HistorialNotificacionesPromocionLocal
 
     await _preferences.setString(_clave, jsonEncode(datos));
   }
+
+  Future<void> borrarDatosLocales() => _preferences.remove(_clave);
 }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../services/auth_service.dart';
+import 'account_settings_screen.dart';
 import '../../solicitudes_establecimientos/screens/mis_solicitudes_screen.dart';
 
 class MiCuentaScreen extends StatelessWidget {
@@ -151,6 +152,17 @@ class MiCuentaScreen extends StatelessWidget {
                     ),
                   ],
                 ),
+              ),
+              const SizedBox(height: 12),
+              OutlinedButton.icon(
+                key: const Key('abrir-configuracion-cuenta'),
+                onPressed: () => Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => const ConfiguracionCuentaScreen(),
+                  ),
+                ),
+                icon: const Icon(Icons.settings_outlined),
+                label: const Text('Configuración'),
               ),
               const SizedBox(height: 12),
               OutlinedButton.icon(

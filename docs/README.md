@@ -14,6 +14,7 @@ Esta carpeta almacenará la documentación técnica y académica del proyecto.
 
 ## Autenticación
 
+- [Google Play 1 — icono y eliminación de cuentas](GOOGLE_PLAY_CUENTA_E_ICONO.md): implementación local, controles de borrado y decisiones de retención pendientes; producción NO-GO.
 - [Auditoría final — 25 de octubre de 2026](AUDITORIA_FINAL_AUTENTICACION.md): 216 aserciones SQL por versión, diagnóstico causal de permisos y smoke Android con GPU host; restauración completa pendiente.
 - [Procedimiento de despliegue de autenticación](DESPLIEGUE_AUTENTICACION.md): tres migraciones, respaldo, contingencia y criterios GO/NO-GO; no autorizado.
 - [Perfiles automáticos y recuperación segura — octubre de 2026](AUTENTICACION_PERFILES_AUTOMATICOS.md): implementación local, resultados de pruebas y operaciones pendientes de autorización.

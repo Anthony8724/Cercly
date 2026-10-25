@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../shared/ui/cercly_ui.dart';
 
 import '../../auth/services/auth_service.dart';
+import '../../auth/screens/account_settings_screen.dart';
 import '../../promociones/screens/promociones_establecimiento_screen.dart';
 import '../../solicitudes_establecimientos/screens/mis_solicitudes_screen.dart';
 import '../models/establecimiento_model.dart';
@@ -205,6 +206,15 @@ class _PanelEstablecimientoScreenState
             subtitle: email,
             icon: Icons.storefront_rounded,
             actions: [
+              CerclyHeaderAction(
+                icon: Icons.settings_outlined,
+                tooltip: 'Configuración de cuenta',
+                onPressed: () => Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => const ConfiguracionCuentaScreen(),
+                  ),
+                ),
+              ),
               CerclyHeaderAction(
                 icon: Icons.logout_rounded,
                 tooltip: 'Cerrar sesión',

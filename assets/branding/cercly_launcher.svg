@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 108 108">
+  <!-- Geometría y colores de _LogoCerclyPainter, cabecera_explorar.dart. -->
+  <rect width="108" height="108" fill="#0B2B5C"/>
+  <g transform="translate(22 22) scale(.64)">
+    <ellipse cx="49" cy="62" rx="47" ry="15" fill="none" stroke="#23B8FF" stroke-width="2.2"/>
+    <path d="M49 92 C30 66 25 41 31 27 C38 8 60 8 68 27 C75 44 67 67 49 92 Z" fill="#FFFFFF"/>
+    <circle cx="49" cy="38" r="11.5" fill="#0B4EA9"/>
+  </g>
+</svg>

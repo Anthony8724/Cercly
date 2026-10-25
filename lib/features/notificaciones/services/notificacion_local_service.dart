@@ -19,6 +19,11 @@ class NotificacionLocalService implements NotificacionPromocionGateway {
   bool _inicializado = false;
   bool? _permisoConcedido;
 
+  Future<void> cancelarTodas() async {
+    await inicializar();
+    await _plugin.cancelAll();
+  }
+
   @override
   Future<void> inicializar() async {
     if (_inicializado) return;

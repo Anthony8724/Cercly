@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Eliminar cuenta — Cercly</title>
+  <style>
+    body { font: 16px/1.55 system-ui, sans-serif; margin: 0; color: #102a56; background: #f6f9fe; }
+    main { max-width: 620px; margin: 5vh auto; padding: 28px; background: white; border-radius: 20px; }
+    h1 { margin-top: 0; } label { display: block; margin: 16px 0 6px; font-weight: 700; }
+    input, button { box-sizing: border-box; width: 100%; padding: 13px; font: inherit; border-radius: 10px; }
+    input { border: 1px solid #71819c; } button { margin-top: 18px; border: 0; background: #0b4ea9; color: white; font-weight: 700; }
+    button:disabled { opacity: .55; } #estado { min-height: 2em; } .alerta { color: #9b1c1c; }
+  </style>
+</head>
+<body>
+<main>
+  <h1>Solicitar eliminación de cuenta de Cercly</h1>
+  <p>Puedes solicitarla aquí aunque ya no tengas la aplicación. Al completar el
+    proceso se eliminan tu identidad de acceso y tu perfil. Los negocios compartidos,
+    solicitudes y archivos requieren revisión para no afectar a otras personas.
+    No se borran negocios compartidos automáticamente.</p>
+  <p>Primero verificaremos el acceso a tu correo con un código de un solo uso.
+    La solicitud se limita a la cuenta autenticada con ese código.</p>
+  <form id="inicio">
+    <label for="email">Correo de tu cuenta</label>
+    <input id="email" type="email" autocomplete="email" required maxlength="254">
+    <button type="submit">Enviar código</button>
+  </form>
+  <form id="confirmacion" hidden>
+    <label for="codigo">Código recibido por correo</label>
+    <input id="codigo" inputmode="numeric" autocomplete="one-time-code" required maxlength="16">
+    <label><input id="entiendo" type="checkbox" required style="width:auto"> Entiendo que la eliminación no se puede deshacer.</label>
+    <button type="submit">Verificar y solicitar eliminación</button>
+  </form>
+  <p id="estado" role="status" aria-live="polite"></p>
+</main>
+<script src="account-deletion-config.js"></script>
+<script type="module">
+  import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.75.0/+esm';
+  const config = window.CERCLY_ACCOUNT_DELETION_CONFIG;
+  const estado = document.getElementById('estado');
+  const inicio = document.getElementById('inicio');
+  const confirmacion = document.getElementById('confirmacion');
+  if (!config?.url || !config?.publishableKey) {
+    estado.textContent = 'Este canal aún no está configurado. No se envió ninguna solicitud.';
+    estado.className = 'alerta';
+    for (const button of document.querySelectorAll('button')) button.disabled = true;
+  } else {
+    const client = createClient(config.url, config.publishableKey);
+    inicio.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const button = inicio.querySelector('button');
+      button.disabled = true;
+      estado.textContent = 'Solicitando código…';
+      try {
+        const email = document.getElementById('email').value.trim();
+        const { error } = await client.auth.signInWithOtp({ email, options: { shouldCreateUser: false } });
+        if (error) throw error;
+        estado.textContent = 'Si existe una cuenta con ese correo, recibirás un código. Revisa también correo no deseado.';
+        confirmacion.hidden = false;
+      } catch {
+        estado.textContent = 'No se pudo solicitar el código. Vuelve a intentarlo.';
+      } finally { button.disabled = false; }
+    });
+    confirmacion.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const button = confirmacion.querySelector('button');
+      button.disabled = true;
+      estado.textContent = 'Verificando y enviando solicitud…';
+      try {
+        const email = document.getElementById('email').value.trim();
+        const token = document.getElementById('codigo').value.trim();
+        const { data, error } = await client.auth.verifyOtp({ email, token, type: 'email' });
+        if (error || !data.session) throw error || new Error('session');
+        const { data: result, error: requestError } = await client.functions.invoke('eliminar-cuenta', {
+          body: {}, headers: { Authorization: `Bearer ${data.session.access_token}` },
+        });
+        if (requestError) throw requestError;
+        if (result?.estado === 'eliminada') {
+          await client.auth.signOut({ scope: 'local' });
+          estado.textContent = 'Tu cuenta fue eliminada.';
+          inicio.hidden = confirmacion.hidden = true;
+        } else if (result?.estado === 'revision') {
+          await client.auth.signOut({ scope: 'local' });
+          estado.textContent = 'Recibimos tu solicitud. Tu cuenta aún no fue eliminada; un responsable debe revisar datos compartidos.';
+          inicio.hidden = confirmacion.hidden = true;
+        } else { throw new Error('unknown'); }
+      } catch {
+        estado.textContent = 'No podemos confirmar el estado. Vuelve a iniciar el proceso o contacta con soporte.';
+      } finally { button.disabled = false; }
+    });
+  }
+</script>
+</body>
+</html>

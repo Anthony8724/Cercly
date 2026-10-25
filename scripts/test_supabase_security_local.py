@@ -124,6 +124,7 @@ def main():
             '20261017233138_fortalecer_acceso_perfiles.sql',
             '20261018000337_validar_seguridad_acceso.sql',
             '20261022033531_recuperar_perfil_autenticado.sql',
+            '20261025225101_solicitar_eliminacion_cuenta.sql',
         )
         pending = [ROOT / 'supabase/migrations' / n for n in pending_names]
         if any(p.name > pending_names[-1] for p in migrations):
@@ -177,17 +178,18 @@ update public.usuarios set rol='propietario' where id='b4900000-0000-0000-0000-0
 """, user='supabase_admin')
         snapshot_query = integrity_query
         before = sql('profiles-before', snapshot_query)
-        sql('recovery-before-security', pending[-1].read_text(),
+        recovery = pending[2]
+        sql('recovery-before-security', recovery.read_text(),
             expected_error='Aplicar primero las migraciones de seguridad revisadas')
         for iteration in (1, 2):
             for path in pending:
                 sql(f'{path.stem}-pass-{iteration}', path.read_text())
                 if iteration == 1 and path == pending[0]:
-                    sql('recovery-before-second-migration', pending[-1].read_text(),
+                    sql('recovery-before-second-migration', recovery.read_text(),
                         expected_error='Aplicar primero las migraciones de seguridad revisadas')
                 if iteration == 1 and path == pending[1]:
                     sql('column-insert-drift', 'grant insert (id) on public.usuarios to authenticated;')
-                    sql('recovery-rejects-column-insert', pending[-1].read_text(),
+                    sql('recovery-rejects-column-insert', recovery.read_text(),
                         expected_error='Aplicar primero las migraciones de seguridad revisadas')
                     sql('undo-column-insert-drift', 'revoke insert (id) on public.usuarios from authenticated;')
             after = sql(f'profiles-after-{iteration}', snapshot_query)
@@ -197,7 +199,7 @@ update public.usuarios set rol='propietario' where id='b4900000-0000-0000-0000-0
         if args.diagnose_auth:
             sql('auth-catalog-after', catalog_audit)
             if not args.restored_verification:
-                migration_body = pending[-1].read_text().replace('begin;\n', '', 1)
+                migration_body = recovery.read_text().replace('begin;\n', '', 1)
                 migration_body = migration_body.rstrip().removesuffix('commit;')
                 for label, revoke in (
                     ('usage', 'revoke usage on schema auth from authenticated;'),
@@ -230,16 +232,20 @@ rollback;
             catalog_query = """
 select md5(string_agg(row_data, chr(10) order by row_data)) from (
  select jsonb_build_array(c.oid,relname,relowner,relacl,relrowsecurity,relforcerowsecurity)::text row_data from pg_class c
-  where relnamespace in ('public'::regnamespace,'auth'::regnamespace)
+  where relnamespace in ('public'::regnamespace,'auth'::regnamespace,
+                         'cercly_account_private'::regnamespace)
  union all select jsonb_build_array(attrelid,attnum,attacl)::text from pg_attribute
-  where attrelid in (select oid from pg_class where relnamespace in ('public'::regnamespace,'auth'::regnamespace))
+  where attrelid in (select oid from pg_class where relnamespace in
+    ('public'::regnamespace,'auth'::regnamespace,'cercly_account_private'::regnamespace))
  union all select to_jsonb(p)::text from pg_proc p
-  where pronamespace in ('public'::regnamespace,'cercly_auth_private'::regnamespace)
+  where pronamespace in ('public'::regnamespace,'cercly_auth_private'::regnamespace,
+                         'cercly_account_private'::regnamespace)
  union all select to_jsonb(p)::text from pg_policy p
  union all select to_jsonb(t)::text from pg_trigger t where not tgisinternal
 ) s;
 """
-            for path, table in zip(pending, ('public.usuarios', 'public.establecimientos', 'auth.users')):
+            for path, table in zip(pending, ('public.usuarios', 'public.establecimientos',
+                                              'auth.users', 'cercly_account_private.solicitudes_eliminacion')):
                 catalog_before = sql('catalog-before-lock-' + path.stem, catalog_query)
                 with ThreadPoolExecutor(max_workers=1) as pool:
                     holder = pool.submit(sql, 'lock-holder-' + path.stem,
@@ -257,7 +263,7 @@ select md5(string_agg(row_data, chr(10) order by row_data)) from (
                     holder.result()
                 if catalog_before != sql('catalog-after-lock-' + path.stem, catalog_query):
                     raise RuntimeError('Un fallo de migración dejó cambios parciales en catálogos')
-            print('Rollback de las tres migraciones bajo contención: PASS', flush=True)
+            print('Rollback de las cuatro migraciones bajo contención: PASS', flush=True)
         # Ocho transacciones distintas compiten por el mismo perfil ausente.
         # Se usan identidades sintéticas, nunca la base restaurada del usuario.
         concurrent_id = 'b6100000-0000-0000-0000-000000000001'
@@ -300,7 +306,8 @@ commit;
         for path in sorted((ROOT / 'supabase/tests').glob('*test.sql')):
             if args.restored_verification and path.name not in (
                     'auth_access_test.sql', 'security_access_test.sql',
-                    'profile_recovery_test.sql', 'auth_final_permissions_test.sql'):
+                    'profile_recovery_test.sql', 'auth_final_permissions_test.sql',
+                    'account_deletion_test.sql'):
                 continue
             sql(path.stem, path.read_text(), tap=True, user='supabase_admin')
         if before_suites != sql('data-after-suites', integrity_query):
