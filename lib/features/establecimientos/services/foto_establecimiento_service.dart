@@ -31,7 +31,7 @@ class FotoEstablecimientoService {
 
   Future<bool> _puedeGestionar(String establecimientoId) async {
     final respuesta = await _supabase.rpc(
-      'puede_gestionar_establecimiento',
+      'puede_gestionar_como_propietario',
       params: {'p_establecimiento_id': establecimientoId},
     );
 
@@ -55,6 +55,7 @@ class FotoEstablecimientoService {
   }
 
   Future<List<FotoEstablecimiento>> listar(String establecimientoId) async {
+    await _verificarPermiso(establecimientoId);
     final respuesta = await _supabase
         .from('fotos_establecimiento')
         .select()

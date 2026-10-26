@@ -6,6 +6,7 @@ import '../../../sky/sky_theme.dart';
 import '../../../shared/ui/cercly_ui.dart';
 
 import '../../auth/services/auth_service.dart';
+import '../../auth/screens/account_mode_selector.dart';
 import '../../auth/screens/account_settings_screen.dart';
 import '../../promociones/screens/promociones_establecimiento_screen.dart';
 import '../../solicitudes_establecimientos/screens/mis_solicitudes_screen.dart';
@@ -200,9 +201,20 @@ class _PanelEstablecimientoScreenState
   Widget build(BuildContext context) {
     final email = AuthService().currentUser?.email ?? 'Sin correo';
     final sky = SkyPalette.of(context);
+    final modes =
+        AccountModeScope.maybeOf(context)?.capabilities.availableModes.length ??
+        0;
 
     return Scaffold(
       backgroundColor: sky.background,
+      floatingActionButton: modes > 1
+          ? Material(
+              elevation: 4,
+              color: sky.surface,
+              shape: const CircleBorder(),
+              child: const AccountModeSelector(compact: true),
+            )
+          : null,
       body: SkySurface(
         child: Column(
           children: [

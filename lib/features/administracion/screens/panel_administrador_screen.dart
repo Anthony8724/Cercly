@@ -5,6 +5,7 @@ import '../../../sky/sky_logo.dart';
 import '../../../sky/sky_theme.dart';
 
 import '../../auth/services/auth_service.dart';
+import '../../auth/screens/account_mode_selector.dart';
 import '../../auth/screens/account_settings_screen.dart';
 import '../../establecimientos/models/establecimiento_model.dart';
 import '../../establecimientos/services/establecimiento_service.dart';
@@ -945,9 +946,20 @@ class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
   Widget build(BuildContext context) {
     final correo = AuthService().currentUser?.email ?? 'Sin correo';
     final sky = SkyPalette.of(context);
+    final modes =
+        AccountModeScope.maybeOf(context)?.capabilities.availableModes.length ??
+        0;
 
     return Scaffold(
       backgroundColor: sky.background,
+      floatingActionButton: modes > 1
+          ? Material(
+              elevation: 4,
+              color: sky.surface,
+              shape: const CircleBorder(),
+              child: const AccountModeSelector(compact: true),
+            )
+          : null,
       body: SkySurface(
         child: RefreshIndicator(
           onRefresh: _recargar,

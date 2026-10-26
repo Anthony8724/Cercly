@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:cercly/features/auth/screens/auth_gate.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 User user(String id) => User(
@@ -13,6 +14,7 @@ User user(String id) => User(
   createdAt: '2026-01-01',
 );
 void main() {
+  setUp(() => SharedPreferences.setMockInitialValues({}));
   for (final role in ['usuario', 'propietario', 'administrador']) {
     testWidgets('rol autorizado $role ignora metadatos', (tester) async {
       await tester.pumpWidget(

@@ -14,7 +14,7 @@ class PromocionService {
 
   Future<bool> _puedeGestionar(String establecimientoId) async {
     final respuesta = await _supabase.rpc(
-      'puede_gestionar_establecimiento',
+      'puede_gestionar_como_propietario',
       params: {'p_establecimiento_id': establecimientoId},
     );
 
@@ -41,6 +41,7 @@ class PromocionService {
   Future<List<PromocionModel>> listarPorEstablecimiento(
     String establecimientoId,
   ) async {
+    await _verificarPermiso(establecimientoId);
     final respuesta = await _supabase
         .from('promociones')
         .select()
@@ -51,6 +52,7 @@ class PromocionService {
   }
 
   Future<String?> obtenerUrlImagen(PromocionModel promocion) async {
+    await _verificarPermiso(promocion.establecimientoId);
     final ruta = promocion.imagenRutaStorage;
 
     if (ruta == null || ruta.isEmpty) {

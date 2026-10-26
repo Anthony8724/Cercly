@@ -110,7 +110,8 @@ class EstablecimientoService {
     return respuesta != null;
   }
 
-  Future<bool> puedeGestionar(String establecimientoId) async {
+  /// Comprobación de contexto del panel Propietario: ignora es_administrador().
+  Future<bool> puedeGestionarComoPropietario(String establecimientoId) async {
     final usuario = _supabase.auth.currentUser;
 
     if (usuario == null) {
@@ -118,7 +119,7 @@ class EstablecimientoService {
     }
 
     final respuesta = await _supabase.rpc(
-      'puede_gestionar_establecimiento',
+      'puede_gestionar_como_propietario',
       params: {'p_establecimiento_id': establecimientoId},
     );
 
@@ -218,7 +219,9 @@ class EstablecimientoService {
     }
   }
 
-  Future<void> actualizarInformacion(EstablecimientoModel establecimiento) async {
+  Future<void> actualizarInformacion(
+    EstablecimientoModel establecimiento,
+  ) async {
     final usuario = _supabase.auth.currentUser;
 
     if (usuario == null) {
@@ -226,10 +229,14 @@ class EstablecimientoService {
     }
 
     if (establecimiento.id.trim().isEmpty) {
-      throw ArgumentError('El establecimiento no tiene un identificador válido.');
+      throw ArgumentError(
+        'El establecimiento no tiene un identificador válido.',
+      );
     }
 
-    final tienePermiso = await puedeGestionar(establecimiento.id);
+    final tienePermiso = await puedeGestionarComoPropietario(
+      establecimiento.id,
+    );
 
     if (!tienePermiso) {
       throw StateError(

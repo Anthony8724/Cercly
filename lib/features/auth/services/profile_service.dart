@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../usuarios/models/usuario_model.dart';
+import 'account_capabilities.dart';
 
 enum ProfileFailure { missing, inconsistent, expired }
 
@@ -22,6 +23,34 @@ class ProfileService {
     userId,
     DateTime.now().add(const Duration(seconds: 15)),
   ).timeout(const Duration(seconds: 15));
+
+  /// El RPC no recibe UUID: calcula las capacidades desde auth.uid() en el servidor.
+  /// Antes de desplegarlo, se conserva el enrutamiento por rol existente.
+  Future<AccountCapabilities> loadCapabilities(String userId) async {
+    final role = await loadRole(userId);
+    _checkIdentity(userId);
+    try {
+      final rows = await _supabase
+          .rpc('mis_capacidades')
+          .retry(enabled: false, requestTimeout: const Duration(seconds: 7));
+      _checkIdentity(userId);
+      if (rows is! List || rows.length != 1 || rows.single is! Map) {
+        throw const ProfileException(ProfileFailure.inconsistent);
+      }
+      final capabilities = AccountCapabilities.fromServer(
+        Map<String, dynamic>.from(rows.single as Map),
+      );
+      if (capabilities.role != role) {
+        throw const ProfileException(ProfileFailure.inconsistent);
+      }
+      return capabilities;
+    } on PostgrestException catch (error) {
+      if (error.code == 'PGRST202') return AccountCapabilities.fromRole(role);
+      rethrow;
+    } on FormatException {
+      throw const ProfileException(ProfileFailure.inconsistent);
+    }
+  }
 
   void _checkIdentity(String userId) {
     if (_supabase.auth.currentUser?.id != userId) {

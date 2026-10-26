@@ -5,6 +5,7 @@ import '../../../sky/sky_logo.dart';
 import '../../../sky/sky_backdrop.dart';
 
 import '../services/auth_service.dart';
+import 'account_mode_selector.dart';
 import 'account_settings_screen.dart';
 import '../../solicitudes_establecimientos/screens/mis_solicitudes_screen.dart';
 
@@ -104,6 +105,14 @@ class MiCuentaScreen extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 18),
+                const AccountModeSelector(),
+                if ((AccountModeScope.maybeOf(context)
+                            ?.capabilities
+                            .availableModes
+                            .length ??
+                        0) >
+                    1)
+                  const SizedBox(height: 12),
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(

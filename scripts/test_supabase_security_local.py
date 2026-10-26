@@ -126,6 +126,8 @@ def main():
             '20261022033531_recuperar_perfil_autenticado.sql',
             '20261025225101_solicitar_eliminacion_cuenta.sql',
             '20261026033929_politica_eliminacion_revision.sql',
+            '20261026064908_capacidad_superadministrador.sql',
+            '20261026072156_aislar_operaciones_propietario_y_auditar_superadmin.sql',
         )
         pending = [ROOT / 'supabase/migrations' / n for n in pending_names]
         if any(p.name > pending_names[-1] for p in migrations):
@@ -308,11 +310,16 @@ commit;
             if args.restored_verification and path.name not in (
                     'auth_access_test.sql', 'security_access_test.sql',
                     'profile_recovery_test.sql', 'auth_final_permissions_test.sql',
-                    'account_deletion_test.sql'):
+                    'account_deletion_test.sql', 'superadmin_capabilities_test.sql',
+                    'owner_operation_security_test.sql'):
                 continue
             sql(path.stem, path.read_text(), tap=True, user='supabase_admin')
         if before_suites != sql('data-after-suites', integrity_query):
             raise RuntimeError('Una suite modificó datos fuera de rollback')
+        if not args.restored_verification:
+            sql('cleanup-preview', (ROOT / 'scripts/sql/vista_previa_limpieza.sql').read_text())
+            if before_suites != sql('data-after-preview', integrity_query):
+                raise RuntimeError('La vista previa de limpieza modificó datos')
         print('Todas las suites SQL aprobaron.', flush=True)
     finally:
         if args.restored_verification and 'source_before' in locals() and source_before:

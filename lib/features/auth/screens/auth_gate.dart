@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../shared/ui/cercly_ui.dart';
@@ -12,11 +13,16 @@ import '../../explorar/controllers/explorar_controller.dart';
 import '../../explorar/screens/navegacion_principal_screen.dart';
 import '../../usuarios/models/usuario_model.dart';
 import '../services/auth_service.dart';
+import '../services/account_capabilities.dart';
 import '../services/profile_service.dart';
 import 'acceso_publico_screen.dart';
+import 'account_mode_selector.dart';
 import 'mi_cuenta_screen.dart';
 
 typedef CargarRolUsuario = Future<String> Function(String usuarioId);
+typedef CargarCapacidadesCuenta = Future<AccountCapabilities> Function(
+  String usuarioId,
+);
 typedef ConstruirNavegacionCuenta = Widget Function(
   BuildContext context,
   DestinoCuenta destino,
@@ -44,6 +50,7 @@ class AuthGate extends StatefulWidget {
     this.unauthenticatedBuilder,
     this.authenticatedBuilder,
     this.cargarRol,
+    this.cargarCapacidades,
     this.construirNavegacion,
     this.explorarController,
     this.service,
@@ -54,6 +61,7 @@ class AuthGate extends StatefulWidget {
   final WidgetBuilder? unauthenticatedBuilder;
   final WidgetBuilder? authenticatedBuilder;
   final CargarRolUsuario? cargarRol;
+  final CargarCapacidadesCuenta? cargarCapacidades;
   final ConstruirNavegacionCuenta? construirNavegacion;
   final ExplorarController? explorarController;
 
@@ -209,15 +217,13 @@ class _AuthGateState extends State<AuthGate> {
           key: ValueKey(usuario.id),
           usuario: usuario,
           service: widget.service ?? AuthService(),
-          cargarRol: widget.cargarRol ?? _cargarRolPredeterminado,
+          cargarRol: widget.cargarRol,
+          cargarCapacidades: widget.cargarCapacidades,
           construirNavegacion: constructor,
         );
       },
     );
   }
-
-  static Future<String> _cargarRolPredeterminado(String usuarioId) =>
-      ProfileService().loadRole(usuarioId);
 
   static Widget _construirNavegacionPredeterminada(
     BuildContext context,
@@ -272,45 +278,127 @@ class _PantallaSegunRol extends StatefulWidget {
     required this.service,
     required this.usuario,
     required this.cargarRol,
+    required this.cargarCapacidades,
     required this.construirNavegacion,
   });
 
   final AuthService service;
   final User usuario;
-  final CargarRolUsuario cargarRol;
+  final CargarRolUsuario? cargarRol;
+  final CargarCapacidadesCuenta? cargarCapacidades;
   final ConstruirNavegacionCuenta construirNavegacion;
 
   @override
   State<_PantallaSegunRol> createState() => _PantallaSegunRolState();
 }
 
-class _PantallaSegunRolState extends State<_PantallaSegunRol> {
-  late Future<String> _rolFuture;
+class _PantallaSegunRolState extends State<_PantallaSegunRol>
+    with WidgetsBindingObserver {
+  late Future<_EstadoModo> _estadoFuture;
+
+  static String _claveModo(String id) => 'cercly_modo_cuenta_$id';
 
   @override
   void initState() {
     super.initState();
-    _cargarRol();
+    WidgetsBinding.instance.addObserver(this);
+    _cargarCapacidades();
   }
 
   @override
   void didUpdateWidget(covariant _PantallaSegunRol oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.usuario != widget.usuario) _cargarRol();
+    if (oldWidget.usuario != widget.usuario) _cargarCapacidades();
   }
 
-  void _cargarRol() {
-    _rolFuture = _obtenerRol();
-  }
-
-  Future<String> _obtenerRol() async {
-    final role = await widget
-        .cargarRol(widget.usuario.id)
-        .timeout(const Duration(seconds: 15));
-    if (!UsuarioModel.rolesPermitidos.contains(role)) {
-      throw const ProfileException(ProfileFailure.inconsistent);
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed && mounted) {
+      setState(_cargarCapacidades);
     }
-    return role;
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  void _cargarCapacidades() {
+    _estadoFuture = _obtenerEstado();
+  }
+
+  Future<AccountCapabilities> _obtenerCapacidades() async {
+    if (widget.cargarCapacidades != null) {
+      return widget.cargarCapacidades!(widget.usuario.id).timeout(
+        const Duration(seconds: 15),
+      );
+    }
+    if (widget.cargarRol != null) {
+      final role = await widget.cargarRol!(widget.usuario.id).timeout(
+        const Duration(seconds: 15),
+      );
+      if (!UsuarioModel.rolesPermitidos.contains(role)) {
+        throw const ProfileException(ProfileFailure.inconsistent);
+      }
+      return AccountCapabilities.fromRole(role);
+    }
+    return ProfileService()
+        .loadCapabilities(widget.usuario.id)
+        .timeout(const Duration(seconds: 20));
+  }
+
+  Future<_EstadoModo> _obtenerEstado() async {
+    final capabilities = await _obtenerCapacidades();
+    String? stored;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      stored = prefs.getString(_claveModo(widget.usuario.id));
+    } catch (_) {
+      // La preferencia visual no debe impedir acceder a una cuenta válida.
+    }
+    final chosen = AccountMode.values.where((mode) => mode.name == stored);
+    final mode = chosen.isNotEmpty && capabilities.allows(chosen.first)
+        ? chosen.first
+        : capabilities.defaultMode;
+    return _EstadoModo(capabilities, mode);
+  }
+
+  Future<void> _seleccionarModo(AccountMode mode) async {
+    try {
+      final capabilities = await _obtenerCapacidades();
+      if (!mounted) return;
+      if (!capabilities.allows(mode)) {
+        setState(_cargarCapacidades);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Este modo ya no está disponible para tu cuenta.'),
+          ),
+        );
+        return;
+      }
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString(_claveModo(widget.usuario.id), mode.name);
+      } catch (_) {
+        // El cambio sigue siendo válido durante esta sesión.
+      }
+      if (mounted) {
+        setState(
+          () => _estadoFuture = Future.value(_EstadoModo(capabilities, mode)),
+        );
+      }
+    } catch (_) {
+      if (!mounted) return;
+      setState(_cargarCapacidades);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'No pudimos verificar tus permisos. Inténtalo de nuevo.',
+          ),
+        ),
+      );
+    }
   }
 
   Future<void> _cerrarSesion() async {
@@ -327,8 +415,8 @@ class _PantallaSegunRolState extends State<_PantallaSegunRol> {
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<String>(
-      future: _rolFuture,
+    return FutureBuilder<_EstadoModo>(
+      future: _estadoFuture,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const _PantallaCarga();
@@ -393,7 +481,7 @@ class _PantallaSegunRolState extends State<_PantallaSegunRol> {
                                   height: 50,
                                   child: FilledButton.icon(
                                     onPressed: () {
-                                      setState(_cargarRol);
+                                      setState(_cargarCapacidades);
                                     },
                                     style: FilledButton.styleFrom(
                                       backgroundColor: CerclyColors.blue,
@@ -426,14 +514,28 @@ class _PantallaSegunRolState extends State<_PantallaSegunRol> {
           );
         }
 
-        final destino = resolverDestinoCuenta(
-          rol: snapshot.data ?? UsuarioModel.rolUsuario,
-          metadatos: widget.usuario.userMetadata,
+        final estado = snapshot.requireData;
+        final destino = switch (estado.mode) {
+          AccountMode.usuario => DestinoCuenta.cuenta,
+          AccountMode.propietario => DestinoCuenta.negocio,
+          AccountMode.administracion => DestinoCuenta.administrador,
+        };
+        return AccountModeScope(
+          capabilities: estado.capabilities,
+          selected: estado.mode,
+          select: _seleccionarModo,
+          refresh: () async => setState(_cargarCapacidades),
+          child: widget.construirNavegacion(context, destino),
         );
-        return widget.construirNavegacion(context, destino);
       },
     );
   }
+}
+
+class _EstadoModo {
+  const _EstadoModo(this.capabilities, this.mode);
+  final AccountCapabilities capabilities;
+  final AccountMode mode;
 }
 
 class _PantallaCarga extends StatelessWidget {
