@@ -3,4 +3,5 @@
 window.CERCLY_ACCOUNT_DELETION_CONFIG = {
   url: '',
   publishableKey: '',
+  captchaSiteKey: '',
 };

@@ -52,9 +52,10 @@ como borrado confirmado.
 
 La nueva migración, después de las tres de Auth pendientes, crea una cola mínima
 en un esquema no expuesto. `solicitar_eliminacion_cuenta()` no acepta un ID: usa
-`auth.uid()`, confirma que el usuario aún existe y comprueba `last_sign_in_at`
-en Auth (máximo cinco minutos). Un reingreso con email/contraseña u OAuth debe
-actualizar esa fecha; esto requiere validación real en staging. La petición
+`auth.uid()`, confirma que el usuario aún existe y, con la migración de política
+posterior, comprueba la creación de la sesión en `auth.sessions` (máximo cinco
+minutos). Un reingreso con email/contraseña u OAuth debe crear una sesión nueva;
+esto requiere validación real en staging. La petición
 repetida conserva una sola fila. Solo la Edge Function `eliminar-cuenta` tiene
 credencial de servidor; valida el token mediante Auth y llama a
 `auth.admin.deleteUser(id, false)` exclusivamente con el ID verificado.
@@ -82,16 +83,20 @@ como eliminación de la identidad.
 ## Solicitud fuera de la aplicación
 
 `web/eliminar-cuenta.html` prepara un camino público: correo → código de un solo
-uso → sesión Auth verificada → misma función de eliminación. El formulario no
+uso o Google OAuth → sesión Auth verificada → misma función de eliminación. El formulario no
 recibe IDs de cuenta. `web/account-deletion-config.js` está intencionalmente
 vacío: **la página todavía no es un recurso público funcional ni debe
 registrarse en Play Console**. Antes de publicarla se necesitan dominio/URL,
 clave publicable, plantilla Auth con código OTP, verificación del flujo para
-cuentas Google y controles antiabuso/CAPTCHA. No se ha definido correo de soporte;
+cuentas Google y CAPTCHA Turnstile activado en Auth. No se ha definido correo de soporte;
 no se inventó uno. La URL final debe cargarse sin error, permitir solicitar
 eliminación sin reinstalar la app y declararse en Data safety de Play Console.
 
 ## Decisiones de producto y retención pendientes
+
+La política aprobada y el plan de staging se detallan en
+`docs/GOOGLE_PLAY_ELIMINACION_STAGING.md`; esa guía prevalece sobre las notas
+de diseño anteriores de este documento.
 
 | Datos o caso | Tratamiento local preparado | Decisión pendiente antes de GO |
 |---|---|---|

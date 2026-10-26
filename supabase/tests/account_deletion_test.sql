@@ -1,6 +1,6 @@
 -- Identidades sintéticas; la transacción revierte todos los fixtures.
 begin;
-select plan(22);
+select plan(23);
 
 insert into auth.users(id,email,raw_user_meta_data,last_sign_in_at) values
  ('b7000000-0000-0000-0000-000000000001','delete-basic@cercly.test','{}',now()),
@@ -9,6 +9,10 @@ insert into auth.users(id,email,raw_user_meta_data,last_sign_in_at) values
  ('b7000000-0000-0000-0000-000000000004','delete-storage@cercly.test','{}',now()),
  ('b7000000-0000-0000-0000-000000000005','delete-stale@cercly.test','{}',now() - interval '1 hour'),
  ('b7000000-0000-0000-0000-000000000006','delete-request@cercly.test','{}',now());
+insert into auth.sessions(id,user_id,created_at)
+ select id,id,case when id='b7000000-0000-0000-0000-000000000005'::uuid
+   then now() - interval '1 hour' else now() end
+ from auth.users where email like 'delete-%@cercly.test';
 update public.usuarios set rol='administrador'
  where id='b7000000-0000-0000-0000-000000000003';
 insert into public.establecimientos(id,propietario_id,categoria_id,nombre,direccion,latitud,longitud,estado,publicable)
@@ -35,28 +39,38 @@ select ok(not has_function_privilege('anon','public.solicitar_eliminacion_cuenta
 set local role authenticated;
 select set_config('request.jwt.claim.sub','',true);
 select throws_ok('select public.solicitar_eliminacion_cuenta()', '28000',
- 'Sesión requerida','sin sesión: rechazo');
+ 'Sesión inválida','sin sesión: rechazo');
 select set_config('request.jwt.claim.sub','b7000000-0000-0000-0000-000000000001',true);
+select set_config('request.jwt.claims','{"session_id":"b7000000-0000-0000-0000-000000000001"}',true);
 select is(public.solicitar_eliminacion_cuenta(),'pendiente',
  'usuario sin relaciones solicita borrado');
 select is(public.solicitar_eliminacion_cuenta(),'pendiente',
  'solicitud duplicada es idempotente');
+select set_config('request.jwt.claims','{"session_id":"b7000000-0000-0000-0000-000000000002"}',true);
+select throws_ok('select public.solicitar_eliminacion_cuenta()', '42501',
+ 'Autenticación reciente requerida','sesión de otra identidad no verifica al titular');
+select set_config('request.jwt.claims','{"session_id":"b7000000-0000-0000-0000-000000000001"}',true);
 select throws_ok(
  $$select public.solicitar_eliminacion_cuenta('b7000000-0000-0000-0000-000000000003'::uuid)$$,
  '42883',null,'no existe parámetro para otra identidad');
 select set_config('request.jwt.claim.sub','b7000000-0000-0000-0000-000000000005',true);
+select set_config('request.jwt.claims','{"session_id":"b7000000-0000-0000-0000-000000000005"}',true);
 select throws_ok('select public.solicitar_eliminacion_cuenta()', '42501',
  'Autenticación reciente requerida','sesión antigua exige ingreso reciente');
 select set_config('request.jwt.claim.sub','b7000000-0000-0000-0000-000000000002',true);
+select set_config('request.jwt.claims','{"session_id":"b7000000-0000-0000-0000-000000000002"}',true);
 select is(public.solicitar_eliminacion_cuenta(),'revision',
  'propietario con negocio queda en revisión');
 select set_config('request.jwt.claim.sub','b7000000-0000-0000-0000-000000000003',true);
+select set_config('request.jwt.claims','{"session_id":"b7000000-0000-0000-0000-000000000003"}',true);
 select is(public.solicitar_eliminacion_cuenta(),'revision',
  'administrador queda en revisión sin cambiar rol');
 select set_config('request.jwt.claim.sub','b7000000-0000-0000-0000-000000000004',true);
+select set_config('request.jwt.claims','{"session_id":"b7000000-0000-0000-0000-000000000004"}',true);
 select is(public.solicitar_eliminacion_cuenta(),'revision',
  'objeto Storage bloquea borrado automático');
 select set_config('request.jwt.claim.sub','b7000000-0000-0000-0000-000000000006',true);
+select set_config('request.jwt.claims','{"session_id":"b7000000-0000-0000-0000-000000000006"}',true);
 select is(public.solicitar_eliminacion_cuenta(),'revision',
  'solicitud con datos de negocio requiere revisión');
 select throws_ok(

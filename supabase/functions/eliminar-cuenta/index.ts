@@ -55,7 +55,7 @@ Deno.serve(async (request) => {
   }
   // La credencial privilegiada existe solo en el runtime de esta función.
   // El flujo no usa la credencial si la solicitud requiere revisión.
-  if (decision !== 'pendiente' && decision !== 'revision') {
+  if (decision !== 'pendiente' && decision !== 'revision' && decision !== 'aprobada') {
     return json(503, { estado: 'estado_desconocido' });
   }
   const admin = createClient(url, serviceKey, {

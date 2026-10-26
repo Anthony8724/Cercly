@@ -21,17 +21,30 @@
     solicitudes y archivos requieren revisión para no afectar a otras personas.
     No se borran negocios compartidos automáticamente.</p>
   <p>Primero verificaremos el acceso a tu correo con un código de un solo uso.
-    La solicitud se limita a la cuenta autenticada con ese código.</p>
+    También puedes verificarte con Google. La solicitud se limita a la cuenta
+    autenticada; nunca se acepta un identificador de otra persona.</p>
+  <p>La eliminación inmediata se aplica solo si no quedan establecimientos,
+    solicitudes ni archivos que necesiten revisión. Si hay datos compartidos,
+    un administrador revisará la transferencia o desactivación y te avisaremos
+    del siguiente paso. Los registros administrativos mínimos se conservan
+    según la política institucional que debe aprobarse antes de publicar este canal.</p>
   <form id="inicio">
     <label for="email">Correo de tu cuenta</label>
     <input id="email" type="email" autocomplete="email" required maxlength="254">
+    <div id="captcha"></div>
     <button type="submit">Enviar código</button>
   </form>
+  <button id="google" type="button">Verificar con Google</button>
   <form id="confirmacion" hidden>
     <label for="codigo">Código recibido por correo</label>
     <input id="codigo" inputmode="numeric" autocomplete="one-time-code" required maxlength="16">
     <label><input id="entiendo" type="checkbox" required style="width:auto"> Entiendo que la eliminación no se puede deshacer.</label>
     <button type="submit">Verificar y solicitar eliminación</button>
+  </form>
+  <form id="confirmacion-google" hidden>
+    <label><input id="entiendo-google" type="checkbox" required style="width:auto">
+      Entiendo que la eliminación no se puede deshacer.</label>
+    <button type="submit">Solicitar eliminación de mi cuenta verificada</button>
   </form>
   <p id="estado" role="status" aria-live="polite"></p>
 </main>
@@ -42,26 +55,68 @@
   const estado = document.getElementById('estado');
   const inicio = document.getElementById('inicio');
   const confirmacion = document.getElementById('confirmacion');
-  if (!config?.url || !config?.publishableKey) {
+  const google = document.getElementById('google');
+  const confirmacionGoogle = document.getElementById('confirmacion-google');
+  if (!config?.url || !config?.publishableKey || !config?.captchaSiteKey ||
+      !config.url.startsWith('https://')) {
     estado.textContent = 'Este canal aún no está configurado. No se envió ninguna solicitud.';
     estado.className = 'alerta';
     for (const button of document.querySelectorAll('button')) button.disabled = true;
   } else {
     const client = createClient(config.url, config.publishableKey);
+    let captchaToken = '';
+    let lastSent = 0;
+    const captchaScript = document.createElement('script');
+    captchaScript.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
+    captchaScript.async = true;
+    captchaScript.onload = () => window.turnstile.render('#captcha', {
+      sitekey: config.captchaSiteKey,
+      callback: (token) => { captchaToken = token; },
+      'expired-callback': () => { captchaToken = ''; },
+    });
+    document.head.append(captchaScript);
+    const solicitar = async (session) => {
+      const { data: verified, error: identityError } = await client.auth.getUser(session.access_token);
+      if (identityError || !verified.user || verified.user.id !== session.user.id) {
+        throw new Error('identity');
+      }
+      const { data: result, error: requestError } = await client.functions.invoke('eliminar-cuenta', {
+        body: {}, headers: { Authorization: `Bearer ${session.access_token}` },
+      });
+      if (requestError) throw requestError;
+      if (result?.estado !== 'eliminada' && result?.estado !== 'revision') throw new Error('unknown');
+      await client.auth.signOut({ scope: 'local' });
+      estado.textContent = result.estado === 'eliminada'
+        ? 'Tu cuenta fue eliminada.'
+        : 'Recibimos tu solicitud. Tu cuenta sigue activa mientras se revisan los datos compartidos.';
+      inicio.hidden = confirmacion.hidden = confirmacionGoogle.hidden = google.hidden = true;
+    };
+    const { data: existing } = await client.auth.getSession();
+    if (existing.session) confirmacionGoogle.hidden = false;
     inicio.addEventListener('submit', async (event) => {
       event.preventDefault();
+      if (Date.now() - lastSent < 60000) {
+        estado.textContent = 'Espera un minuto antes de pedir otro código.';
+        return;
+      }
+      if (!captchaToken) {
+        estado.textContent = 'Completa la verificación de seguridad.';
+        return;
+      }
       const button = inicio.querySelector('button');
       button.disabled = true;
       estado.textContent = 'Solicitando código…';
       try {
         const email = document.getElementById('email').value.trim();
-        const { error } = await client.auth.signInWithOtp({ email, options: { shouldCreateUser: false } });
+        const { error } = await client.auth.signInWithOtp({ email,
+          options: { shouldCreateUser: false, captchaToken } });
         if (error) throw error;
+        lastSent = Date.now();
         estado.textContent = 'Si existe una cuenta con ese correo, recibirás un código. Revisa también correo no deseado.';
         confirmacion.hidden = false;
       } catch {
         estado.textContent = 'No se pudo solicitar el código. Vuelve a intentarlo.';
-      } finally { button.disabled = false; }
+      } finally { button.disabled = false; captchaToken = ''; window.turnstile?.reset(); }
     });
     confirmacion.addEventListener('submit', async (event) => {
       event.preventDefault();
@@ -73,21 +128,27 @@
         const token = document.getElementById('codigo').value.trim();
         const { data, error } = await client.auth.verifyOtp({ email, token, type: 'email' });
         if (error || !data.session) throw error || new Error('session');
-        const { data: result, error: requestError } = await client.functions.invoke('eliminar-cuenta', {
-          body: {}, headers: { Authorization: `Bearer ${data.session.access_token}` },
-        });
-        if (requestError) throw requestError;
-        if (result?.estado === 'eliminada') {
-          await client.auth.signOut({ scope: 'local' });
-          estado.textContent = 'Tu cuenta fue eliminada.';
-          inicio.hidden = confirmacion.hidden = true;
-        } else if (result?.estado === 'revision') {
-          await client.auth.signOut({ scope: 'local' });
-          estado.textContent = 'Recibimos tu solicitud. Tu cuenta aún no fue eliminada; un responsable debe revisar datos compartidos.';
-          inicio.hidden = confirmacion.hidden = true;
-        } else { throw new Error('unknown'); }
+        await solicitar(data.session);
       } catch {
         estado.textContent = 'No podemos confirmar el estado. Vuelve a iniciar el proceso o contacta con soporte.';
+      } finally { button.disabled = false; }
+    });
+    google.addEventListener('click', async () => {
+      google.disabled = true;
+      const { error } = await client.auth.signInWithOAuth({ provider: 'google',
+        options: { redirectTo: location.origin + location.pathname } });
+      if (error) { estado.textContent = 'No se pudo iniciar la verificación con Google.'; google.disabled = false; }
+    });
+    confirmacionGoogle.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const button = confirmacionGoogle.querySelector('button');
+      button.disabled = true;
+      try {
+        const { data } = await client.auth.getSession();
+        if (!data.session) throw new Error('session');
+        await solicitar(data.session);
+      } catch {
+        estado.textContent = 'No podemos confirmar el estado. Vuelve a verificar tu identidad.';
       } finally { button.disabled = false; }
     });
   }

@@ -125,6 +125,7 @@ def main():
             '20261018000337_validar_seguridad_acceso.sql',
             '20261022033531_recuperar_perfil_autenticado.sql',
             '20261025225101_solicitar_eliminacion_cuenta.sql',
+            '20261026033929_politica_eliminacion_revision.sql',
         )
         pending = [ROOT / 'supabase/migrations' / n for n in pending_names]
         if any(p.name > pending_names[-1] for p in migrations):
