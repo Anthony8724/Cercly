@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../../sky/sky_theme.dart';
+import '../../../sky/sky_backdrop.dart';
+
 import '../../establecimientos/models/establecimiento_publico_model.dart';
 import '../controllers/explorar_controller.dart';
 import '../models/ubicacion_usuario.dart';
@@ -37,6 +40,7 @@ class ExplorarScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final sky = SkyPalette.of(context);
     return AnimatedBuilder(
       animation: controller,
       builder: (context, _) {
@@ -44,12 +48,15 @@ class ExplorarScreen extends StatelessWidget {
 
         return AnnotatedRegion<SystemUiOverlayStyle>(
           value: SystemUiOverlayStyle.light.copyWith(
-            statusBarColor: const Color(0xFF02142F),
-            systemNavigationBarColor: Colors.white,
-            systemNavigationBarIconBrightness: Brightness.dark,
+            statusBarColor: sky.headerStart,
+            systemNavigationBarColor: sky.surface,
+            systemNavigationBarIconBrightness:
+                sky.environment == SkyEnvironment.noche
+                ? Brightness.light
+                : Brightness.dark,
           ),
-          child: ColoredBox(
-            color: const Color(0xFFF8FAFE),
+          child: SkySurface(
+            intensity: 1,
             child: RefreshIndicator(
               onRefresh: controller.buscar,
               child: CustomScrollView(
@@ -58,8 +65,9 @@ class ExplorarScreen extends StatelessWidget {
                   SliverToBoxAdapter(
                     child: CabeceraExplorar(
                       onPerfil: onPerfil,
-                      buscador:
-                          _BuscadorEstablecimientos(controller: controller),
+                      buscador: _BuscadorEstablecimientos(
+                        controller: controller,
+                      ),
                     ),
                   ),
                   SliverPadding(
@@ -83,8 +91,8 @@ class ExplorarScreen extends StatelessWidget {
                               cargarPromociones: cargarPromociones,
                               latitudUsuario: ubicacion?.latitud,
                               longitudUsuario: ubicacion?.longitud,
-                              radioMaximoMetros:
-                                  controller.radioMetros.toDouble(),
+                              radioMaximoMetros: controller.radioMetros
+                                  .toDouble(),
                               onEstablecimiento: (establecimiento) =>
                                   _abrirDetalle(context, establecimiento),
                               onVerTodas: () =>
@@ -114,8 +122,7 @@ class ExplorarScreen extends StatelessWidget {
           child: _MensajeCentral(
             icono: Icons.explore_outlined,
             titulo: 'Activa tu ubicación para comenzar',
-            descripcion:
-                'Cercly usa tu posición solamente para buscar lugares cercanos.',
+            descripcion: 'Cercly usa tu posición solamente para buscar lugares cercanos.',
           ),
         ),
       ];
@@ -176,7 +183,8 @@ class ExplorarScreen extends StatelessWidget {
       SliverPadding(
         padding: const EdgeInsets.fromLTRB(14, 0, 14, 20),
         sliver: SliverList.builder(
-          itemCount: controller.establecimientos.length +
+          itemCount:
+              controller.establecimientos.length +
               (controller.hayMasResultados ? 1 : 0),
           itemBuilder: (context, index) {
             if (index == controller.establecimientos.length) {
@@ -212,25 +220,22 @@ class _EncabezadoResultados extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final sky = SkyPalette.of(context);
     final titulo = controller.busqueda.trim().isEmpty
         ? 'Cerca de ti'
         : 'Resultados de búsqueda';
 
     return Row(
       children: [
-        const Icon(
-          Icons.location_on_rounded,
-          color: Color(0xFF1769FF),
-          size: 23,
-        ),
+        Icon(Icons.location_on_rounded, color: sky.primary, size: 23),
         const SizedBox(width: 5),
         Expanded(
           child: Text(
             titulo,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              color: Color(0xFF102A56),
+            style: TextStyle(
+              color: sky.text,
               fontSize: 19,
               height: 1,
               fontWeight: FontWeight.w900,
@@ -248,24 +253,20 @@ class _EncabezadoResultados extends StatelessWidget {
                 children: [
                   Text(
                     '${controller.establecimientos.length} lugares mostrados',
-                    style: const TextStyle(
-                      color: Color(0xFF6F819A),
+                    style: TextStyle(
+                      color: sky.muted,
                       fontSize: 9.5,
                       fontWeight: FontWeight.w500,
                     ),
                   ),
                   if (controller.busqueda.trim().isEmpty) ...[
                     const SizedBox(width: 10),
-                    const Icon(
-                      Icons.tune_rounded,
-                      size: 15,
-                      color: Color(0xFF526B91),
-                    ),
+                    Icon(Icons.tune_rounded, size: 15, color: sky.muted),
                     const SizedBox(width: 3),
-                    const Text(
+                    Text(
                       'Más cercanos',
                       style: TextStyle(
-                        color: Color(0xFF526B91),
+                        color: sky.muted,
                         fontSize: 9.5,
                         fontWeight: FontWeight.w600,
                       ),
@@ -290,8 +291,7 @@ class _BuscadorEstablecimientos extends StatefulWidget {
       _BuscadorEstablecimientosState();
 }
 
-class _BuscadorEstablecimientosState
-    extends State<_BuscadorEstablecimientos> {
+class _BuscadorEstablecimientosState extends State<_BuscadorEstablecimientos> {
   late final TextEditingController _textoController;
 
   @override
@@ -313,6 +313,7 @@ class _BuscadorEstablecimientosState
 
   @override
   Widget build(BuildContext context) {
+    final sky = SkyPalette.of(context);
     return SizedBox(
       height: 51,
       child: TextField(
@@ -321,31 +322,20 @@ class _BuscadorEstablecimientosState
         textInputAction: TextInputAction.search,
         onChanged: widget.controller.cambiarBusqueda,
         onSubmitted: (_) => widget.controller.buscar(),
-        style: const TextStyle(
-          color: Color(0xFF24364F),
+        style: TextStyle(
+          color: sky.text,
           fontSize: 14,
           fontWeight: FontWeight.w500,
         ),
         decoration: InputDecoration(
           hintText: 'Buscar lugares cerca de ti',
-          hintStyle: const TextStyle(
-            color: Color(0xFF7A8AA1),
-            fontSize: 13.5,
-          ),
-          prefixIcon: const Icon(
-            Icons.search_rounded,
-            color: Color(0xFF52647F),
-            size: 23,
-          ),
+          hintStyle: TextStyle(color: sky.muted, fontSize: 13.5),
+          prefixIcon: Icon(Icons.search_rounded, color: sky.muted, size: 23),
           suffixIcon: ValueListenableBuilder<TextEditingValue>(
             valueListenable: _textoController,
             builder: (context, valor, _) {
               if (valor.text.isEmpty) {
-                return const Icon(
-                  Icons.tune_rounded,
-                  color: Color(0xFF24446F),
-                  size: 21,
-                );
+                return Icon(Icons.tune_rounded, color: sky.primary, size: 21);
               }
               return IconButton(
                 key: const Key('limpiar-busqueda'),
@@ -356,18 +346,15 @@ class _BuscadorEstablecimientosState
             },
           ),
           filled: true,
-          fillColor: Colors.white,
+          fillColor: sky.inputFill,
           contentPadding: const EdgeInsets.symmetric(vertical: 0),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(17),
-            borderSide: const BorderSide(color: Color(0x22FFFFFF)),
+            borderSide: BorderSide(color: sky.border),
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(17),
-            borderSide: const BorderSide(
-              color: Color(0xFF8EC7FF),
-              width: 1.4,
-            ),
+            borderSide: BorderSide(color: sky.primary, width: 1.4),
           ),
         ),
       ),
@@ -391,32 +378,38 @@ class _MensajeCentral extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final sky = SkyPalette.of(context);
     return Padding(
       padding: const EdgeInsets.all(32),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(icono, size: 58, color: const Color(0xFF94A3B8)),
-          const SizedBox(height: 14),
-          Text(
-            titulo,
-            textAlign: TextAlign.center,
-            style: Theme.of(context)
-                .textTheme
-                .titleLarge
-                ?.copyWith(fontWeight: FontWeight.w700),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: sky.surface,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: sky.border),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(18),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icono, size: 58, color: sky.muted),
+              const SizedBox(height: 14),
+              Text(
+                titulo,
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.titleLarge
+                    ?.copyWith(fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                descripcion,
+                textAlign: TextAlign.center,
+                style: TextStyle(color: sky.muted),
+              ),
+              if (accion != null) ...[const SizedBox(height: 18), accion!],
+            ],
           ),
-          const SizedBox(height: 8),
-          Text(
-            descripcion,
-            textAlign: TextAlign.center,
-            style: const TextStyle(color: Color(0xFF64748B)),
-          ),
-          if (accion != null) ...[
-            const SizedBox(height: 18),
-            accion!,
-          ],
-        ],
+        ),
       ),
     );
   }

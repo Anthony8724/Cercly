@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../sky/sky_theme.dart';
 
 import '../controllers/explorar_controller.dart';
 import '../models/ubicacion_usuario.dart';
@@ -15,14 +16,14 @@ class EstadoUbicacionCard extends StatelessWidget {
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         decoration: BoxDecoration(
-          color: const Color(0xFFECFDF5),
+          color: SkyPalette.of(context).soft,
           borderRadius: BorderRadius.circular(12),
         ),
-        child: const Row(
+        child: Row(
           children: [
-            Icon(Icons.location_on, color: Color(0xFF059669)),
-            SizedBox(width: 8),
-            Expanded(child: Text('Ubicación actual lista')),
+            Icon(Icons.location_on, color: SkyPalette.of(context).success),
+            const SizedBox(width: 8),
+            const Expanded(child: Text('Ubicación actual lista')),
           ],
         ),
       );
@@ -48,13 +49,13 @@ class EstadoUbicacionCard extends StatelessWidget {
     final servicioDesactivado = estado == EstadoUbicacion.servicioDesactivado;
 
     return Card(
-      color: const Color(0xFFFFFBEB),
+      color: SkyPalette.of(context).surface,
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Icon(Icons.location_off, color: Color(0xFFD97706)),
+            Icon(Icons.location_off, color: SkyPalette.of(context).warning),
             const SizedBox(width: 12),
             Expanded(
               child: Column(

@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 
+import '../../../sky/sky_backdrop.dart';
+import '../../../sky/sky_theme.dart';
+
 import '../../../shared/ui/cercly_ui.dart';
 
 import '../../auth/services/auth_service.dart';
@@ -196,209 +199,218 @@ class _PanelEstablecimientoScreenState
   @override
   Widget build(BuildContext context) {
     final email = AuthService().currentUser?.email ?? 'Sin correo';
+    final sky = SkyPalette.of(context);
 
     return Scaffold(
-      backgroundColor: CerclyColors.background,
-      body: Column(
-        children: [
-          CerclyPageHeader(
-            title: 'Panel del establecimiento',
-            subtitle: email,
-            icon: Icons.storefront_rounded,
-            actions: [
-              CerclyHeaderAction(
-                icon: Icons.settings_outlined,
-                tooltip: 'Configuración de cuenta',
-                onPressed: () => Navigator.of(context).push(
-                  MaterialPageRoute<void>(
-                    builder: (_) => const ConfiguracionCuentaScreen(),
+      backgroundColor: sky.background,
+      body: SkySurface(
+        child: Column(
+          children: [
+            CerclyPageHeader(
+              title: 'Panel del establecimiento',
+              subtitle: email,
+              icon: Icons.storefront_rounded,
+              actions: [
+                CerclyHeaderAction(
+                  icon: Icons.settings_outlined,
+                  tooltip: 'Configuración de cuenta',
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => const ConfiguracionCuentaScreen(),
+                    ),
+                  ),
+                ),
+                CerclyHeaderAction(
+                  icon: Icons.logout_rounded,
+                  tooltip: 'Cerrar sesión',
+                  onPressed: _cerrarSesion,
+                ),
+              ],
+            ),
+            Expanded(
+              child: SafeArea(
+                top: false,
+                child: RefreshIndicator(
+                  onRefresh: _recargar,
+                  child: ListView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: const EdgeInsets.fromLTRB(16, 18, 16, 28),
+                    children: [
+                      const CerclySectionTitle(
+                        title: 'Mis establecimientos',
+                        subtitle: 'Administra la información, horarios, fotografías y promociones de tus negocios.',
+                        icon: Icons.business_rounded,
+                      ),
+                      const SizedBox(height: 14),
+                      FutureBuilder<List<EstablecimientoModel>>(
+                        future: _establecimientosFuture,
+                        builder: (context, snapshot) {
+                          if (snapshot.connectionState ==
+                              ConnectionState.waiting) {
+                            return const CerclySectionCard(
+                              child: Padding(
+                                padding: EdgeInsets.symmetric(vertical: 22),
+                                child: Center(
+                                  child: CircularProgressIndicator(),
+                                ),
+                              ),
+                            );
+                          }
+
+                          if (snapshot.hasError) {
+                            return CerclySectionCard(
+                              child: Column(
+                                children: [
+                                  const Icon(
+                                    Icons.error_outline_rounded,
+                                    color: Colors.red,
+                                    size: 42,
+                                  ),
+                                  const SizedBox(height: 12),
+                                  Text(
+                                    'No se pudieron cargar tus establecimientos.',
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                      color: SkyPalette.of(context).text,
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 12),
+                                  OutlinedButton.icon(
+                                    onPressed: () {
+                                      setState(_cargarEstablecimientos);
+                                    },
+                                    icon: const Icon(Icons.refresh_rounded),
+                                    label: const Text('Reintentar'),
+                                  ),
+                                ],
+                              ),
+                            );
+                          }
+
+                          final establecimientos =
+                              snapshot.data ?? <EstablecimientoModel>[];
+
+                          if (establecimientos.isEmpty) {
+                            return CerclySectionCard(
+                              child: Column(
+                                children: [
+                                  Container(
+                                    width: 68,
+                                    height: 68,
+                                    decoration: BoxDecoration(
+                                      color: SkyPalette.of(context).soft,
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: Icon(
+                                      Icons.add_business_rounded,
+                                      color: SkyPalette.of(context).primary,
+                                      size: 35,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 14),
+                                  Text(
+                                    'Todavía no tienes establecimientos',
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                      color: SkyPalette.of(context).text,
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.w900,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 7),
+                                  Text(
+                                    'Registra tu negocio para enviarlo a revisión.',
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                      color: SkyPalette.of(context).muted,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 16),
+                                  FilledButton.icon(
+                                    onPressed: _abrirRegistro,
+                                    style: FilledButton.styleFrom(
+                                      backgroundColor: SkyPalette.of(context)
+                                          .primary,
+                                    ),
+                                    icon: const Icon(
+                                      Icons.add_business_rounded,
+                                    ),
+                                    label: const Text(
+                                      'Registrar establecimiento',
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            );
+                          }
+
+                          return Column(
+                            children: [
+                              for (final establecimiento in establecimientos)
+                                _TarjetaEstablecimiento(
+                                  establecimiento: establecimiento,
+                                  colorEstado: _colorEstado(
+                                    establecimiento.estado,
+                                  ),
+                                  textoEstado: _textoEstado(
+                                    establecimiento.estado,
+                                  ),
+                                  onFotografias: () =>
+                                      _abrirFotografias(establecimiento),
+                                  onHorarios: () =>
+                                      _abrirHorarios(establecimiento),
+                                  onPromociones: () =>
+                                      _abrirPromociones(establecimiento),
+                                ),
+                              const SizedBox(height: 2),
+                              SizedBox(
+                                width: double.infinity,
+                                child: OutlinedButton.icon(
+                                  onPressed: _abrirRegistro,
+                                  icon: const Icon(Icons.add_business_rounded),
+                                  label: const Text(
+                                    'Registrar otro establecimiento',
+                                  ),
+                                ),
+                              ),
+                            ],
+                          );
+                        },
+                      ),
+                      const SizedBox(height: 24),
+                      const CerclySectionTitle(
+                        title: 'Administración general',
+                        subtitle: 'Gestiona información general y solicitudes relacionadas con tus negocios.',
+                        icon: Icons.settings_rounded,
+                      ),
+                      const SizedBox(height: 14),
+                      _OpcionPanel(
+                        icono: Icons.edit_rounded,
+                        titulo: 'Información del establecimiento',
+                        descripcion: 'Edita el nombre, descripción, dirección y teléfono.',
+                        onTap: _abrirInformacionEstablecimiento,
+                      ),
+                      const SizedBox(height: 10),
+                      _OpcionPanel(
+                        icono: Icons.assignment_rounded,
+                        titulo: 'Mis solicitudes',
+                        descripcion: 'Envía solicitudes y consulta la respuesta del administrador.',
+                        onTap: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute<void>(
+                              builder: (_) => const MisSolicitudesScreen(),
+                            ),
+                          );
+                        },
+                      ),
+                    ],
                   ),
                 ),
               ),
-              CerclyHeaderAction(
-                icon: Icons.logout_rounded,
-                tooltip: 'Cerrar sesión',
-                onPressed: _cerrarSesion,
-              ),
-            ],
-          ),
-          Expanded(
-            child: SafeArea(
-              top: false,
-              child: RefreshIndicator(
-                onRefresh: _recargar,
-                child: ListView(
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  padding: const EdgeInsets.fromLTRB(16, 18, 16, 28),
-                  children: [
-                    const CerclySectionTitle(
-                      title: 'Mis establecimientos',
-                      subtitle: 'Administra la información, horarios, fotografías y promociones de tus negocios.',
-                      icon: Icons.business_rounded,
-                    ),
-                    const SizedBox(height: 14),
-                    FutureBuilder<List<EstablecimientoModel>>(
-                      future: _establecimientosFuture,
-                      builder: (context, snapshot) {
-                        if (snapshot.connectionState ==
-                            ConnectionState.waiting) {
-                          return const CerclySectionCard(
-                            child: Padding(
-                              padding: EdgeInsets.symmetric(vertical: 22),
-                              child: Center(child: CircularProgressIndicator()),
-                            ),
-                          );
-                        }
-
-                        if (snapshot.hasError) {
-                          return CerclySectionCard(
-                            child: Column(
-                              children: [
-                                const Icon(
-                                  Icons.error_outline_rounded,
-                                  color: Colors.red,
-                                  size: 42,
-                                ),
-                                const SizedBox(height: 12),
-                                const Text(
-                                  'No se pudieron cargar tus establecimientos.',
-                                  textAlign: TextAlign.center,
-                                  style: TextStyle(
-                                    color: CerclyColors.text,
-                                    fontWeight: FontWeight.w800,
-                                  ),
-                                ),
-                                const SizedBox(height: 12),
-                                OutlinedButton.icon(
-                                  onPressed: () {
-                                    setState(_cargarEstablecimientos);
-                                  },
-                                  icon: const Icon(Icons.refresh_rounded),
-                                  label: const Text('Reintentar'),
-                                ),
-                              ],
-                            ),
-                          );
-                        }
-
-                        final establecimientos =
-                            snapshot.data ?? <EstablecimientoModel>[];
-
-                        if (establecimientos.isEmpty) {
-                          return CerclySectionCard(
-                            child: Column(
-                              children: [
-                                Container(
-                                  width: 68,
-                                  height: 68,
-                                  decoration: const BoxDecoration(
-                                    color: CerclyColors.softBlue,
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: const Icon(
-                                    Icons.add_business_rounded,
-                                    color: CerclyColors.blue,
-                                    size: 35,
-                                  ),
-                                ),
-                                const SizedBox(height: 14),
-                                const Text(
-                                  'Todavía no tienes establecimientos',
-                                  textAlign: TextAlign.center,
-                                  style: TextStyle(
-                                    color: CerclyColors.text,
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.w900,
-                                  ),
-                                ),
-                                const SizedBox(height: 7),
-                                const Text(
-                                  'Registra tu negocio para enviarlo a revisión.',
-                                  textAlign: TextAlign.center,
-                                  style: TextStyle(color: CerclyColors.muted),
-                                ),
-                                const SizedBox(height: 16),
-                                FilledButton.icon(
-                                  onPressed: _abrirRegistro,
-                                  style: FilledButton.styleFrom(
-                                    backgroundColor: CerclyColors.blue,
-                                  ),
-                                  icon: const Icon(Icons.add_business_rounded),
-                                  label: const Text(
-                                    'Registrar establecimiento',
-                                  ),
-                                ),
-                              ],
-                            ),
-                          );
-                        }
-
-                        return Column(
-                          children: [
-                            for (final establecimiento in establecimientos)
-                              _TarjetaEstablecimiento(
-                                establecimiento: establecimiento,
-                                colorEstado: _colorEstado(
-                                  establecimiento.estado,
-                                ),
-                                textoEstado: _textoEstado(
-                                  establecimiento.estado,
-                                ),
-                                onFotografias: () =>
-                                    _abrirFotografias(establecimiento),
-                                onHorarios: () =>
-                                    _abrirHorarios(establecimiento),
-                                onPromociones: () =>
-                                    _abrirPromociones(establecimiento),
-                              ),
-                            const SizedBox(height: 2),
-                            SizedBox(
-                              width: double.infinity,
-                              child: OutlinedButton.icon(
-                                onPressed: _abrirRegistro,
-                                icon: const Icon(Icons.add_business_rounded),
-                                label: const Text(
-                                  'Registrar otro establecimiento',
-                                ),
-                              ),
-                            ),
-                          ],
-                        );
-                      },
-                    ),
-                    const SizedBox(height: 24),
-                    const CerclySectionTitle(
-                      title: 'Administración general',
-                      subtitle: 'Gestiona información general y solicitudes relacionadas con tus negocios.',
-                      icon: Icons.settings_rounded,
-                    ),
-                    const SizedBox(height: 14),
-                    _OpcionPanel(
-                      icono: Icons.edit_rounded,
-                      titulo: 'Información del establecimiento',
-                      descripcion:
-                          'Edita el nombre, descripción, dirección y teléfono.',
-                      onTap: _abrirInformacionEstablecimiento,
-                    ),
-                    const SizedBox(height: 10),
-                    _OpcionPanel(
-                      icono: Icons.assignment_rounded,
-                      titulo: 'Mis solicitudes',
-                      descripcion: 'Envía solicitudes y consulta la respuesta del administrador.',
-                      onTap: () {
-                        Navigator.of(context).push(
-                          MaterialPageRoute<void>(
-                            builder: (_) => const MisSolicitudesScreen(),
-                          ),
-                        );
-                      },
-                    ),
-                  ],
-                ),
-              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -435,12 +447,12 @@ class _TarjetaEstablecimiento extends StatelessWidget {
                 width: 54,
                 height: 54,
                 decoration: BoxDecoration(
-                  color: CerclyColors.softBlue,
+                  color: SkyPalette.of(context).soft,
                   borderRadius: BorderRadius.circular(17),
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.storefront_rounded,
-                  color: CerclyColors.blue,
+                  color: SkyPalette.of(context).primary,
                   size: 29,
                 ),
               ),
@@ -451,8 +463,8 @@ class _TarjetaEstablecimiento extends StatelessWidget {
                   children: [
                     Text(
                       establecimiento.nombre,
-                      style: const TextStyle(
-                        color: CerclyColors.text,
+                      style: TextStyle(
+                        color: SkyPalette.of(context).text,
                         fontSize: 18,
                         fontWeight: FontWeight.w900,
                       ),
@@ -461,17 +473,17 @@ class _TarjetaEstablecimiento extends StatelessWidget {
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Icon(
+                        Icon(
                           Icons.location_on_rounded,
                           size: 16,
-                          color: CerclyColors.blue,
+                          color: SkyPalette.of(context).primary,
                         ),
                         const SizedBox(width: 4),
                         Expanded(
                           child: Text(
                             establecimiento.direccion,
-                            style: const TextStyle(
-                              color: CerclyColors.muted,
+                            style: TextStyle(
+                              color: SkyPalette.of(context).muted,
                               height: 1.3,
                             ),
                           ),
@@ -484,8 +496,8 @@ class _TarjetaEstablecimiento extends StatelessWidget {
                         establecimiento.descripcion,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          color: CerclyColors.muted,
+                        style: TextStyle(
+                          color: SkyPalette.of(context).muted,
                           fontSize: 12.5,
                         ),
                       ),
@@ -573,25 +585,25 @@ class _OpcionPanel extends StatelessWidget {
           width: 44,
           height: 44,
           decoration: BoxDecoration(
-            color: CerclyColors.softBlue,
+            color: SkyPalette.of(context).soft,
             borderRadius: BorderRadius.circular(14),
           ),
-          child: Icon(icono, color: CerclyColors.blue),
+          child: Icon(icono, color: SkyPalette.of(context).primary),
         ),
         title: Text(
           titulo,
-          style: const TextStyle(
-            color: CerclyColors.text,
+          style: TextStyle(
+            color: SkyPalette.of(context).text,
             fontWeight: FontWeight.w800,
           ),
         ),
         subtitle: Text(
           descripcion,
-          style: const TextStyle(color: CerclyColors.muted),
+          style: TextStyle(color: SkyPalette.of(context).muted),
         ),
-        trailing: const Icon(
+        trailing: Icon(
           Icons.chevron_right_rounded,
-          color: CerclyColors.blue,
+          color: SkyPalette.of(context).primary,
         ),
         onTap: onTap,
       ),

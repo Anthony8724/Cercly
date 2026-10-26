@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256" role="img" aria-label="C de Cercly integrada con un pin de ubicación">
+  <path id="c-pin" fill="#000000" d="M 191 58 C 161 24 110 18 74 39 C 35 61 23 101 32 141 C 38 166 51 182 71 199 L 120 238 Q 128 245 136 238 L 197 174 Q 206 165 197 157 L 184 146 Q 176 140 168 148 L 134 185 Q 128 191 122 185 L 87 154 C 66 136 61 112 70 92 C 78 72 98 60 120 59 C 139 58 153 65 163 77 Q 168 83 176 78 L 190 69 Q 198 64 191 58 Z"/>
+  <circle id="location-dot" cx="125" cy="118" r="18" fill="#000000"/>
+</svg>

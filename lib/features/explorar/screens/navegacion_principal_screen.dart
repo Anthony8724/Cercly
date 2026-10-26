@@ -2,6 +2,8 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../../../sky/sky_theme.dart';
+
 import '../controllers/explorar_controller.dart';
 import 'explorar_screen.dart';
 import 'mapa_establecimientos_screen.dart';
@@ -54,8 +56,9 @@ class _NavegacionPrincipalScreenState extends State<NavegacionPrincipalScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final sky = SkyPalette.of(context);
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFE),
+      backgroundColor: sky.background,
       body: IndexedStack(
         index: _indice,
         children: [
@@ -71,10 +74,10 @@ class _NavegacionPrincipalScreenState extends State<NavegacionPrincipalScreen> {
         ],
       ),
       bottomNavigationBar: DecoratedBox(
-        decoration: const BoxDecoration(
-          color: Colors.white,
+        decoration: BoxDecoration(
+          color: sky.surface,
           borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
-          boxShadow: [
+          boxShadow: const [
             BoxShadow(
               color: Color(0x1A1F4E8C),
               blurRadius: 16,
@@ -87,26 +90,21 @@ class _NavegacionPrincipalScreenState extends State<NavegacionPrincipalScreen> {
           child: NavigationBarTheme(
             data: NavigationBarThemeData(
               height: 70,
-              backgroundColor: Colors.white,
-              indicatorColor: const Color(0xFFE9F1FF),
+              backgroundColor: sky.surface,
+              indicatorColor: sky.soft,
               iconTheme: WidgetStateProperty.resolveWith((states) {
                 final seleccionado = states.contains(WidgetState.selected);
                 return IconThemeData(
-                  color: seleccionado
-                      ? const Color(0xFF1769FF)
-                      : const Color(0xFF40516C),
+                  color: seleccionado ? sky.interactive : sky.muted,
                   size: seleccionado ? 25 : 23,
                 );
               }),
               labelTextStyle: WidgetStateProperty.resolveWith((states) {
                 final seleccionado = states.contains(WidgetState.selected);
                 return TextStyle(
-                  color: seleccionado
-                      ? const Color(0xFF1769FF)
-                      : const Color(0xFF40516C),
+                  color: seleccionado ? sky.interactive : sky.muted,
                   fontSize: 11.5,
-                  fontWeight:
-                      seleccionado ? FontWeight.w700 : FontWeight.w500,
+                  fontWeight: seleccionado ? FontWeight.w700 : FontWeight.w500,
                 );
               }),
             ),

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -5,6 +7,8 @@ import 'config/supabase_options.dart';
 import 'features/auth/screens/auth_gate.dart';
 import 'features/auth/screens/auth_recovery_host.dart';
 import 'features/notificaciones/widgets/monitor_proximidad_app.dart';
+import 'sky/sky_controller.dart';
+import 'sky/sky_theme.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -22,43 +26,44 @@ Future<void> main() async {
   runApp(const CerclyApp());
 }
 
-class CerclyApp extends StatelessWidget {
-  const CerclyApp({super.key});
+class CerclyApp extends StatefulWidget {
+  const CerclyApp({super.key, this.skyController});
+  final SkyController? skyController;
+
+  @override
+  State<CerclyApp> createState() => _CerclyAppState();
+}
+
+class _CerclyAppState extends State<CerclyApp> {
+  late final SkyController _sky = widget.skyController ?? SkyController();
+
+  @override
+  void initState() {
+    super.initState();
+    unawaited(_sky.start());
+  }
+
+  @override
+  void dispose() {
+    if (widget.skyController == null) _sky.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      title: 'Cercly',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF2563EB),
-          primary: const Color(0xFF2563EB),
-          secondary: const Color(0xFF14B8A6),
-          tertiary: const Color(0xFFF97316),
-          surface: Colors.white,
-        ),
-        scaffoldBackgroundColor: const Color(0xFFF8FAFC),
-        cardTheme: const CardThemeData(
-          elevation: 0,
-          margin: EdgeInsets.zero,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.all(Radius.circular(16)),
-            side: BorderSide(color: Color(0xFFE2E8F0)),
+    return AnimatedBuilder(
+      animation: _sky,
+      builder: (context, _) => SkyScope(
+        controller: _sky,
+        child: MaterialApp(
+          debugShowCheckedModeBanner: false,
+          title: 'Cercly',
+          theme: skyTheme(_sky.palette),
+          themeAnimationDuration: Duration.zero,
+          home: const AuthRecoveryHost(
+            child: MonitorProximidadApp(child: AuthGate()),
           ),
         ),
-        inputDecorationTheme: const InputDecorationTheme(
-          filled: true,
-          fillColor: Colors.white,
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.all(Radius.circular(12)),
-            borderSide: BorderSide(color: Color(0xFFE2E8F0)),
-          ),
-        ),
-        useMaterial3: true,
-      ),
-      home: const AuthRecoveryHost(
-        child: MonitorProximidadApp(child: AuthGate()),
       ),
     );
   }

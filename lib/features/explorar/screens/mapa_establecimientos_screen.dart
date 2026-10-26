@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 
+import '../../../sky/sky_theme.dart';
+
 import '../../establecimientos/models/establecimiento_publico_model.dart';
 import '../controllers/explorar_controller.dart';
 import '../models/ubicacion_usuario.dart';
@@ -20,13 +22,14 @@ class MapaEstablecimientosScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final sky = SkyPalette.of(context);
     return AnimatedBuilder(
       animation: controller,
       builder: (context, _) {
         final ubicacion = controller.ubicacion;
 
         return ColoredBox(
-          color: const Color(0xFFF5F8FE),
+          color: sky.background,
           child: SafeArea(
             child: Stack(
               children: [
@@ -45,8 +48,7 @@ class MapaEstablecimientosScreen extends StatelessWidget {
                           children: [
                             if (mostrarTiles)
                               TileLayer(
-                                urlTemplate:
-                                    'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                                urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                                 userAgentPackageName: 'com.cercly.cercly',
                               ),
                             MarkerLayer(
@@ -64,9 +66,7 @@ class MapaEstablecimientosScreen extends StatelessWidget {
                                 for (final establecimiento
                                     in controller.establecimientos)
                                   Marker(
-                                    key: Key(
-                                      'marcador-${establecimiento.id}',
-                                    ),
+                                    key: Key('marcador-${establecimiento.id}'),
                                     point: LatLng(
                                       establecimiento.latitud,
                                       establecimiento.longitud,
@@ -104,14 +104,12 @@ class MapaEstablecimientosScreen extends StatelessWidget {
                   ),
                 ),
                 if (controller.cargandoResultados)
-                  const Positioned.fill(
+                  Positioned.fill(
                     child: IgnorePointer(
                       child: ColoredBox(
                         color: Color(0x22031A3A),
                         child: Center(
-                          child: CircularProgressIndicator(
-                            color: Color(0xFF1769FF),
-                          ),
+                          child: CircularProgressIndicator(color: sky.primary),
                         ),
                       ),
                     ),
@@ -128,14 +126,15 @@ class MapaEstablecimientosScreen extends StatelessWidget {
     BuildContext context,
     EstablecimientoPublicoModel establecimiento,
   ) {
+    final sky = SkyPalette.of(context);
     showModalBottomSheet<void>(
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
       builder: (context) => Container(
         padding: const EdgeInsets.fromLTRB(18, 12, 18, 22),
-        decoration: const BoxDecoration(
-          color: Colors.white,
+        decoration: BoxDecoration(
+          color: sky.surface,
           borderRadius: BorderRadius.vertical(top: Radius.circular(26)),
         ),
         child: SafeArea(
@@ -149,7 +148,7 @@ class MapaEstablecimientosScreen extends StatelessWidget {
                   width: 42,
                   height: 4,
                   decoration: BoxDecoration(
-                    color: const Color(0xFFD7E0ED),
+                    color: sky.border,
                     borderRadius: BorderRadius.circular(999),
                   ),
                 ),
@@ -175,8 +174,8 @@ class MapaEstablecimientosScreen extends StatelessWidget {
                           establecimiento.nombre,
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            color: Color(0xFF102A56),
+                          style: TextStyle(
+                            color: sky.text,
                             fontSize: 19,
                             height: 1.1,
                             fontWeight: FontWeight.w900,
@@ -185,8 +184,8 @@ class MapaEstablecimientosScreen extends StatelessWidget {
                         const SizedBox(height: 6),
                         Text(
                           establecimiento.categoria.nombre,
-                          style: const TextStyle(
-                            color: Color(0xFF55729D),
+                          style: TextStyle(
+                            color: sky.muted,
                             fontSize: 13,
                             fontWeight: FontWeight.w600,
                           ),
@@ -195,16 +194,16 @@ class MapaEstablecimientosScreen extends StatelessWidget {
                           const SizedBox(height: 7),
                           Row(
                             children: [
-                              const Icon(
+                              Icon(
                                 Icons.location_on_rounded,
                                 size: 16,
-                                color: Color(0xFF1769FF),
+                                color: sky.primary,
                               ),
                               const SizedBox(width: 4),
                               Text(
                                 establecimiento.distanciaFormateada,
-                                style: const TextStyle(
-                                  color: Color(0xFF526B91),
+                                style: TextStyle(
+                                  color: sky.muted,
                                   fontSize: 12.5,
                                 ),
                               ),
@@ -232,8 +231,8 @@ class MapaEstablecimientosScreen extends StatelessWidget {
                     );
                   },
                   style: FilledButton.styleFrom(
-                    backgroundColor: const Color(0xFF1769FF),
-                    foregroundColor: Colors.white,
+                    backgroundColor: sky.primary,
+                    foregroundColor: sky.onPrimary,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(14),
                     ),
@@ -254,20 +253,18 @@ class MapaEstablecimientosScreen extends StatelessWidget {
 }
 
 class _PanelMapa extends StatelessWidget {
-  const _PanelMapa({
-    required this.controller,
-    required this.tieneUbicacion,
-  });
+  const _PanelMapa({required this.controller, required this.tieneUbicacion});
 
   final ExplorarController controller;
   final bool tieneUbicacion;
 
   @override
   Widget build(BuildContext context) {
+    final sky = SkyPalette.of(context);
     return Material(
       elevation: 5,
       shadowColor: const Color(0x33031A3A),
-      color: Colors.white,
+      color: sky.surface,
       borderRadius: BorderRadius.circular(20),
       clipBehavior: Clip.antiAlias,
       child: Theme(
@@ -279,17 +276,15 @@ class _PanelMapa extends StatelessWidget {
             width: 40,
             height: 40,
             decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [Color(0xFF1769FF), Color(0xFF0B4EA9)],
-              ),
+              gradient: sky.headerGradient,
               borderRadius: BorderRadius.circular(13),
             ),
             child: const Icon(Icons.map_rounded, color: Colors.white, size: 22),
           ),
           title: Text(
             tieneUbicacion ? 'Mapa Cercly' : 'Mapa sin ubicación',
-            style: const TextStyle(
-              color: Color(0xFF102A56),
+            style: TextStyle(
+              color: sky.text,
               fontWeight: FontWeight.w900,
               fontSize: 16,
             ),
@@ -298,15 +293,9 @@ class _PanelMapa extends StatelessWidget {
             tieneUbicacion
                 ? '${controller.establecimientos.length} lugares cerca de ti'
                 : 'Activa tu ubicación para comenzar',
-            style: const TextStyle(
-              color: Color(0xFF71819A),
-              fontSize: 11.5,
-            ),
+            style: TextStyle(color: sky.muted, fontSize: 11.5),
           ),
-          trailing: const Icon(
-            Icons.tune_rounded,
-            color: Color(0xFF1769FF),
-          ),
+          trailing: Icon(Icons.tune_rounded, color: sky.primary),
           children: [FiltrosExplorar(controller: controller)],
         ),
       ),
@@ -321,13 +310,14 @@ class _SinUbicacion extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final sky = SkyPalette.of(context);
     final cargando = controller.estadoUbicacion == EstadoUbicacion.cargando;
     return Container(
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          colors: [Color(0xFFEAF3FF), Color(0xFFF8FAFE)],
+          colors: [sky.soft, sky.background],
         ),
       ),
       child: Center(
@@ -339,41 +329,37 @@ class _SinUbicacion extends StatelessWidget {
               Container(
                 width: 82,
                 height: 82,
-                decoration: const BoxDecoration(
+                decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: Color(0xFFE0ECFF),
+                  color: sky.surface,
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.location_off_rounded,
                   size: 42,
-                  color: Color(0xFF1769FF),
+                  color: sky.primary,
                 ),
               ),
               const SizedBox(height: 18),
-              const Text(
+              Text(
                 'Encuentra lugares en el mapa',
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                  color: Color(0xFF102A56),
+                  color: sky.text,
                   fontSize: 20,
                   fontWeight: FontWeight.w900,
                 ),
               ),
               const SizedBox(height: 8),
               Text(
-                controller.mensajeUbicacion ??
-                    'Activa tu ubicación para mostrar los establecimientos cercanos.',
+                controller.mensajeUbicacion ?? 'Activa tu ubicación para mostrar los establecimientos cercanos.',
                 textAlign: TextAlign.center,
-                style: const TextStyle(
-                  color: Color(0xFF65758C),
-                  height: 1.35,
-                ),
+                style: TextStyle(color: sky.muted, height: 1.35),
               ),
               const SizedBox(height: 20),
               FilledButton.icon(
                 onPressed: cargando ? null : controller.solicitarUbicacion,
                 style: FilledButton.styleFrom(
-                  backgroundColor: const Color(0xFF1769FF),
+                  backgroundColor: sky.primary,
                   padding: const EdgeInsets.symmetric(
                     horizontal: 20,
                     vertical: 14,
@@ -398,21 +384,19 @@ class _MarcadorUsuario extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final sky = SkyPalette.of(context);
     return Container(
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        color: const Color(0x552563EB),
+        color: sky.primary.withValues(alpha: .38),
         border: Border.all(color: Colors.white, width: 2.5),
-        boxShadow: const [
-          BoxShadow(color: Color(0x332563EB), blurRadius: 8),
+        boxShadow: [
+          BoxShadow(color: sky.primary.withValues(alpha: .25), blurRadius: 8),
         ],
       ),
       padding: const EdgeInsets.all(10),
-      child: const DecoratedBox(
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: Color(0xFF1769FF),
-        ),
+      child: DecoratedBox(
+        decoration: BoxDecoration(shape: BoxShape.circle, color: sky.primary),
       ),
     );
   }
@@ -429,9 +413,8 @@ class _MarcadorEstablecimiento extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = tienePromocion
-        ? const Color(0xFFF97316)
-        : const Color(0xFF1769FF);
+    final sky = SkyPalette.of(context);
+    final color = tienePromocion ? const Color(0xFFF97316) : sky.primary;
 
     return GestureDetector(
       onTap: onTap,
@@ -470,15 +453,12 @@ class _PortadaMini extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final sky = SkyPalette.of(context);
     final url = establecimiento.urlFotoPortada;
     if (url == null || url.isEmpty) {
-      return const ColoredBox(
-        color: Color(0xFFE1ECFF),
-        child: Icon(
-          Icons.storefront_rounded,
-          color: Color(0xFF1769FF),
-          size: 36,
-        ),
+      return ColoredBox(
+        color: sky.soft,
+        child: Icon(Icons.storefront_rounded, color: sky.primary, size: 36),
       );
     }
 
@@ -486,13 +466,9 @@ class _PortadaMini extends StatelessWidget {
       url,
       fit: BoxFit.cover,
       cacheWidth: 300,
-      errorBuilder: (_, _, _) => const ColoredBox(
-        color: Color(0xFFE1ECFF),
-        child: Icon(
-          Icons.storefront_rounded,
-          color: Color(0xFF1769FF),
-          size: 36,
-        ),
+      errorBuilder: (_, _, _) => ColoredBox(
+        color: sky.soft,
+        child: Icon(Icons.storefront_rounded, color: sky.primary, size: 36),
       ),
     );
   }

@@ -1,4 +1,9 @@
 import 'package:flutter/material.dart';
+
+import '../../../sky/sky_backdrop.dart';
+
+import '../../../sky/sky_theme.dart';
+
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../shared/ui/cercly_ui.dart';
@@ -156,134 +161,142 @@ class _EditarInformacionEstablecimientoScreenState
     final requiereRevision = widget.establecimiento.estado == 'aprobado';
 
     return Scaffold(
-      backgroundColor: CerclyColors.background,
-      body: Column(
-        children: [
-          CerclyPageHeader(
-            title: 'Información del establecimiento',
-            subtitle: widget.establecimiento.nombre,
-            icon: Icons.edit_note_rounded,
-            onBack: () => Navigator.of(context).maybePop(),
-          ),
-          Expanded(
-            child: SafeArea(
-              top: false,
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(16, 18, 16, 28),
-                child: Form(
-                  key: _formKey,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      if (requiereRevision) ...[
-                        const CerclyInfoBanner(
-                          text: 'Al guardar cambios en un establecimiento aprobado, volverá a estado pendiente para revisión.',
-                          icon: Icons.info_outline_rounded,
+      backgroundColor: SkyPalette.of(context).background,
+      body: SkySurface(
+        child: Column(
+          children: [
+            CerclyPageHeader(
+              title: 'Información del establecimiento',
+              subtitle: widget.establecimiento.nombre,
+              icon: Icons.edit_note_rounded,
+              onBack: () => Navigator.of(context).maybePop(),
+            ),
+            Expanded(
+              child: SafeArea(
+                top: false,
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(16, 18, 16, 28),
+                  child: Form(
+                    key: _formKey,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        if (requiereRevision) ...[
+                          const CerclyInfoBanner(
+                            text: 'Al guardar cambios en un establecimiento aprobado, volverá a estado pendiente para revisión.',
+                            icon: Icons.info_outline_rounded,
+                          ),
+                          const SizedBox(height: 16),
+                        ],
+                        CerclySectionCard(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              const CerclySectionTitle(
+                                title: 'Datos públicos',
+                                subtitle: 'Actualiza la información que se mostrará a los usuarios de Cercly.',
+                                icon: Icons.badge_rounded,
+                              ),
+                              const SizedBox(height: 20),
+                              TextFormField(
+                                key: const Key('editar-establecimiento-nombre'),
+                                controller: _nombreController,
+                                decoration: const InputDecoration(
+                                  labelText: 'Nombre',
+                                  prefixIcon: Icon(Icons.storefront_rounded),
+                                ),
+                                maxLength: 120,
+                                textInputAction: TextInputAction.next,
+                                validator: _validarNombre,
+                              ),
+                              const SizedBox(height: 12),
+                              TextFormField(
+                                key: const Key(
+                                  'editar-establecimiento-descripcion',
+                                ),
+                                controller: _descripcionController,
+                                decoration: const InputDecoration(
+                                  labelText: 'Descripción',
+                                  prefixIcon: Icon(Icons.description_rounded),
+                                ),
+                                maxLength: 1000,
+                                maxLines: 4,
+                              ),
+                              const SizedBox(height: 12),
+                              TextFormField(
+                                key: const Key(
+                                  'editar-establecimiento-direccion',
+                                ),
+                                controller: _direccionController,
+                                decoration: const InputDecoration(
+                                  labelText: 'Dirección',
+                                  prefixIcon: Icon(Icons.location_on_rounded),
+                                ),
+                                maxLength: 250,
+                                textInputAction: TextInputAction.next,
+                                validator: _validarDireccion,
+                              ),
+                              const SizedBox(height: 12),
+                              TextFormField(
+                                key: const Key(
+                                  'editar-establecimiento-telefono',
+                                ),
+                                controller: _telefonoController,
+                                decoration: const InputDecoration(
+                                  labelText: 'Teléfono público (opcional)',
+                                  prefixIcon: Icon(Icons.phone_rounded),
+                                ),
+                                maxLength: 20,
+                                keyboardType: TextInputType.phone,
+                              ),
+                            ],
+                          ),
                         ),
                         const SizedBox(height: 16),
+                        const CerclyInfoBanner(
+                          text: 'La categoría, ubicación y horarios se administran desde sus secciones correspondientes.',
+                          icon: Icons.tune_rounded,
+                        ),
+                        const SizedBox(height: 18),
+                        SizedBox(
+                          height: 54,
+                          child: FilledButton.icon(
+                            key: const Key(
+                              'guardar-informacion-establecimiento',
+                            ),
+                            onPressed: _guardando ? null : _guardar,
+                            style: FilledButton.styleFrom(
+                              backgroundColor: SkyPalette.of(context).primary,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                            ),
+                            icon: _guardando
+                                ? const SizedBox(
+                                    width: 20,
+                                    height: 20,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: Colors.white,
+                                    ),
+                                  )
+                                : const Icon(Icons.save_rounded),
+                            label: Text(
+                              _guardando ? 'Guardando...' : 'Guardar cambios',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
+                          ),
+                        ),
                       ],
-                      CerclySectionCard(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            const CerclySectionTitle(
-                              title: 'Datos públicos',
-                              subtitle: 'Actualiza la información que se mostrará a los usuarios de Cercly.',
-                              icon: Icons.badge_rounded,
-                            ),
-                            const SizedBox(height: 20),
-                            TextFormField(
-                              key: const Key('editar-establecimiento-nombre'),
-                              controller: _nombreController,
-                              decoration: const InputDecoration(
-                                labelText: 'Nombre',
-                                prefixIcon: Icon(Icons.storefront_rounded),
-                              ),
-                              maxLength: 120,
-                              textInputAction: TextInputAction.next,
-                              validator: _validarNombre,
-                            ),
-                            const SizedBox(height: 12),
-                            TextFormField(
-                              key: const Key(
-                                'editar-establecimiento-descripcion',
-                              ),
-                              controller: _descripcionController,
-                              decoration: const InputDecoration(
-                                labelText: 'Descripción',
-                                prefixIcon: Icon(Icons.description_rounded),
-                              ),
-                              maxLength: 1000,
-                              maxLines: 4,
-                            ),
-                            const SizedBox(height: 12),
-                            TextFormField(
-                              key: const Key(
-                                'editar-establecimiento-direccion',
-                              ),
-                              controller: _direccionController,
-                              decoration: const InputDecoration(
-                                labelText: 'Dirección',
-                                prefixIcon: Icon(Icons.location_on_rounded),
-                              ),
-                              maxLength: 250,
-                              textInputAction: TextInputAction.next,
-                              validator: _validarDireccion,
-                            ),
-                            const SizedBox(height: 12),
-                            TextFormField(
-                              key: const Key('editar-establecimiento-telefono'),
-                              controller: _telefonoController,
-                              decoration: const InputDecoration(
-                                labelText: 'Teléfono público (opcional)',
-                                prefixIcon: Icon(Icons.phone_rounded),
-                              ),
-                              maxLength: 20,
-                              keyboardType: TextInputType.phone,
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      const CerclyInfoBanner(
-                        text: 'La categoría, ubicación y horarios se administran desde sus secciones correspondientes.',
-                        icon: Icons.tune_rounded,
-                      ),
-                      const SizedBox(height: 18),
-                      SizedBox(
-                        height: 54,
-                        child: FilledButton.icon(
-                          key: const Key('guardar-informacion-establecimiento'),
-                          onPressed: _guardando ? null : _guardar,
-                          style: FilledButton.styleFrom(
-                            backgroundColor: CerclyColors.blue,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                          ),
-                          icon: _guardando
-                              ? const SizedBox(
-                                  width: 20,
-                                  height: 20,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    color: Colors.white,
-                                  ),
-                                )
-                              : const Icon(Icons.save_rounded),
-                          label: Text(
-                            _guardando ? 'Guardando...' : 'Guardar cambios',
-                            style: const TextStyle(fontWeight: FontWeight.w900),
-                          ),
-                        ),
-                      ),
-                    ],
+                    ),
                   ),
                 ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

@@ -8,7 +8,11 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'explorar_establecimientos_test.dart' as fixtures;
 
-PromocionDestacadaModel promo(String id, {bool activa = true, bool vencida = false}) {
+PromocionDestacadaModel promo(
+  String id, {
+  bool activa = true,
+  bool vencida = false,
+}) {
   final ahora = DateTime.now();
   return PromocionDestacadaModel(
     id: id,
@@ -18,7 +22,9 @@ PromocionDestacadaModel promo(String id, {bool activa = true, bool vencida = fal
     titulo: 'Promoción $id',
     descripcion: 'Descripción de prueba',
     fechaInicio: ahora.subtract(const Duration(days: 2)),
-    fechaFin: vencida ? ahora.subtract(const Duration(days: 1)) : ahora.add(const Duration(days: 1)),
+    fechaFin: vencida
+        ? ahora.subtract(const Duration(days: 1))
+        : ahora.add(const Duration(days: 1)),
     radioAlertaMetros: 100,
     latitud: .8116,
     longitud: -77.7172,
@@ -33,29 +39,70 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
     var perfil = false;
-    await tester.pumpWidget(MaterialApp(home: Scaffold(
-      body: SingleChildScrollView(child: CabeceraExplorar(
-        onPerfil: () => perfil = true,
-        buscador: const TextField(),
-      )),
-    )));
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: SingleChildScrollView(
+            child: CabeceraExplorar(
+              onPerfil: () => perfil = true,
+              buscador: const TextField(),
+            ),
+          ),
+        ),
+      ),
+    );
     expect(find.text('Tu mundo más cerca'), findsOneWidget);
     expect(tester.takeException(), isNull);
     await tester.tap(find.byKey(const Key('perfil-explorar')));
     expect(perfil, isTrue);
   });
 
-  testWidgets('carrusel solo muestra vigentes y usa distancia del RPC', (tester) async {
+  testWidgets('título de Explorar completo a 320 px con texto ampliado', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(320, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: MediaQuery(
+          data: MediaQueryData(textScaler: TextScaler.linear(1.5)),
+          child: Scaffold(
+            body: SingleChildScrollView(
+              child: CabeceraExplorar(buscador: TextField()),
+            ),
+          ),
+        ),
+      ),
+    );
+    final title = tester.widget<Text>(find.text('Descubre cerca de ti'));
+    expect(title.overflow, isNot(TextOverflow.ellipsis));
+    expect(title.maxLines, 2);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('carrusel solo muestra vigentes y usa distancia del RPC', (
+    tester,
+  ) async {
     var abierto = false;
     var todas = false;
-    await tester.pumpWidget(MaterialApp(home: Scaffold(
-      body: PromocionesExplorar(
-        establecimientos: [fixtures.establecimiento(promocion: true)],
-        cargarPromociones: () async => [promo('vigente'), promo('inactiva', activa: false), promo('vencida', vencida: true)],
-        onEstablecimiento: (_) => abierto = true,
-        onVerTodas: () => todas = true,
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: PromocionesExplorar(
+            establecimientos: [fixtures.establecimiento(promocion: true)],
+            cargarPromociones: () async => [
+              promo('vigente'),
+              promo('inactiva', activa: false),
+              promo('vencida', vencida: true),
+            ],
+            onEstablecimiento: (_) => abierto = true,
+            onVerTodas: () => todas = true,
+          ),
+        ),
       ),
-    )));
+    );
     await tester.pumpAndSettle();
     expect(find.byKey(const Key('promocion-vigente')), findsOneWidget);
     expect(find.byKey(const Key('promocion-inactiva')), findsNothing);
@@ -67,30 +114,51 @@ void main() {
     expect(todas, isTrue);
   });
 
-  testWidgets('sin candidatos no consulta ni reserva un carrusel vacío', (tester) async {
+  testWidgets('sin candidatos no consulta ni reserva un carrusel vacío', (
+    tester,
+  ) async {
     var consultas = 0;
-    await tester.pumpWidget(MaterialApp(home: Scaffold(body: PromocionesExplorar(
-      establecimientos: [fixtures.establecimiento()],
-      cargarPromociones: () async { consultas++; return []; },
-      onEstablecimiento: (_) {},
-      onVerTodas: () {},
-    ))));
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: PromocionesExplorar(
+            establecimientos: [fixtures.establecimiento()],
+            cargarPromociones: () async {
+              consultas++;
+              return [];
+            },
+            onEstablecimiento: (_) {},
+            onVerTodas: () {},
+          ),
+        ),
+      ),
+    );
     expect(consultas, 0);
     expect(find.text('Promociones cerca de ti'), findsNothing);
   });
 
-  testWidgets('loading, error y reintento sin cliente Supabase', (tester) async {
+  testWidgets('loading, error y reintento sin cliente Supabase', (
+    tester,
+  ) async {
     final pendiente = Completer<List<PromocionDestacadaModel>>();
     var consultas = 0;
-    await tester.pumpWidget(MaterialApp(home: Scaffold(body: PromocionesExplorar(
-      establecimientos: [fixtures.establecimiento(promocion: true)],
-      cargarPromociones: () {
-        consultas++;
-        return consultas == 1 ? pendiente.future : Future.value([promo('vigente')]);
-      },
-      onEstablecimiento: (_) {},
-      onVerTodas: () {},
-    ))));
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: PromocionesExplorar(
+            establecimientos: [fixtures.establecimiento(promocion: true)],
+            cargarPromociones: () {
+              consultas++;
+              return consultas == 1
+                  ? pendiente.future
+                  : Future.value([promo('vigente')]);
+            },
+            onEstablecimiento: (_) {},
+            onVerTodas: () {},
+          ),
+        ),
+      ),
+    );
     expect(find.byKey(const Key('promociones-loading')), findsOneWidget);
     pendiente.completeError(Exception('sin conexión'));
     await tester.pumpAndSettle();

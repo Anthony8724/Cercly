@@ -17,6 +17,7 @@ import 'package:cercly/features/explorar/screens/navegacion_principal_screen.dar
 import 'package:cercly/features/explorar/services/ubicacion_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class _EstablecimientosVacios implements EstablecimientoCercanoRepository {
@@ -76,6 +77,7 @@ User _usuario() => User.fromJson({
 })!;
 
 void main() {
+  setUp(() => SharedPreferences.setMockInitialValues({}));
   testWidgets('sin sesión abre Explorar y muestra Regístrate', (tester) async {
     await tester.pumpWidget(
       MaterialApp(

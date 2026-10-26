@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+
+import '../../../sky/sky_theme.dart';
+
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 
@@ -101,7 +104,7 @@ class _SeleccionarUbicacionEstablecimientoScreenState
     final centroInicial = _seleccion ?? _centroTulcan;
 
     return Scaffold(
-      backgroundColor: CerclyColors.background,
+      backgroundColor: SkyPalette.of(context).background,
       body: Column(
         children: [
           CerclyPageHeader(
@@ -164,7 +167,7 @@ class _SeleccionarUbicacionEstablecimientoScreenState
                           vertical: 13,
                         ),
                         decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.96),
+                          color: SkyPalette.of(context).surface,
                           borderRadius: BorderRadius.circular(18),
                           boxShadow: const [
                             BoxShadow(
@@ -174,18 +177,18 @@ class _SeleccionarUbicacionEstablecimientoScreenState
                             ),
                           ],
                         ),
-                        child: const Row(
+                        child: Row(
                           children: [
                             Icon(
                               Icons.touch_app_rounded,
-                              color: Color(0xFF1769FF),
+                              color: SkyPalette.of(context).interactive,
                             ),
-                            SizedBox(width: 10),
+                            const SizedBox(width: 10),
                             Expanded(
                               child: Text(
                                 'Toca el mapa exactamente donde se encuentra tu negocio.',
                                 style: TextStyle(
-                                  color: Color(0xFF203A63),
+                                  color: SkyPalette.of(context).text,
                                   fontWeight: FontWeight.w700,
                                   height: 1.25,
                                 ),
@@ -203,7 +206,7 @@ class _SeleccionarUbicacionEstablecimientoScreenState
                     child: Container(
                       padding: const EdgeInsets.all(14),
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: SkyPalette.of(context).surface,
                         borderRadius: BorderRadius.circular(22),
                         boxShadow: const [
                           BoxShadow(
@@ -245,7 +248,7 @@ class _SeleccionarUbicacionEstablecimientoScreenState
                             child: FilledButton.icon(
                               onPressed: _seleccion == null ? null : _confirmar,
                               style: FilledButton.styleFrom(
-                                backgroundColor: CerclyColors.blue,
+                                backgroundColor: SkyPalette.of(context).primary,
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(14),
                                 ),

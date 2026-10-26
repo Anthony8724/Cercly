@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 
+import '../../../sky/apariencia_screen.dart';
+import '../../../sky/sky_backdrop.dart';
+import '../../../sky/sky_theme.dart';
+import '../../../sky/sky_controller.dart';
 import '../services/account_deletion_service.dart';
 
 class ConfiguracionCuentaScreen extends StatelessWidget {
@@ -9,15 +13,39 @@ class ConfiguracionCuentaScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(title: const Text('Configuración')),
-    body: SafeArea(
-      child: ListTile(
-        leading: const Icon(Icons.manage_accounts_outlined),
-        title: const Text('Cuenta'),
-        trailing: const Icon(Icons.chevron_right),
-        onTap: () => Navigator.of(context).push(
-          MaterialPageRoute<void>(
-            builder: (_) => CuentaScreen(deletionService: deletionService),
-          ),
+    body: SkySurface(
+      intensity: .48,
+      child: SafeArea(
+        child: Column(
+          children: [
+            ListTile(
+              leading: const Icon(Icons.manage_accounts_outlined),
+              title: const Text('Cuenta'),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) =>
+                      CuentaScreen(deletionService: deletionService),
+                ),
+              ),
+            ),
+            ListTile(
+              key: const Key('abrir-apariencia'),
+              leading: const Icon(Icons.palette_outlined),
+              title: const Text('Apariencia'),
+              subtitle: const Text('Cercly Sky: automático o ambiente manual'),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: SkyScope.maybeOf(context) == null
+                  ? null
+                  : () => Navigator.of(context).push(
+                      MaterialPageRoute<void>(
+                        builder: (_) => AparienciaScreen(
+                          controller: SkyScope.maybeOf(context)!,
+                        ),
+                      ),
+                    ),
+            ),
+          ],
         ),
       ),
     ),
@@ -29,29 +57,43 @@ class CuentaScreen extends StatelessWidget {
   final AccountDeletionService? deletionService;
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('Cuenta')),
-    body: SafeArea(
-      child: ListTile(
-        key: const Key('abrir-eliminar-cuenta'),
-        leading: const Icon(
-          Icons.person_remove_outlined,
-          color: Color(0xFFB91C1C),
-        ),
-        title: const Text('Eliminar mi cuenta'),
-        subtitle: const Text(
-          'Solicita la eliminación de tu identidad y datos.',
-        ),
-        trailing: const Icon(Icons.chevron_right),
-        onTap: () => Navigator.of(context).push(
-          MaterialPageRoute<void>(
-            builder: (_) =>
-                EliminarCuentaScreen(deletionService: deletionService),
+  Widget build(BuildContext context) {
+    const deletionEnabled = bool.fromEnvironment(
+      'ACCOUNT_DELETION_ENABLED',
+      defaultValue: true,
+    );
+    return Scaffold(
+      appBar: AppBar(title: const Text('Cuenta')),
+      body: SkySurface(
+        intensity: .48,
+        child: SafeArea(
+          child: ListTile(
+            key: const Key('abrir-eliminar-cuenta'),
+            leading: const Icon(
+              Icons.person_remove_outlined,
+              color: Color(0xFFB91C1C),
+            ),
+            title: const Text('Eliminar mi cuenta'),
+            subtitle: Text(
+              deletionEnabled
+                  ? 'Solicita la eliminación de tu identidad y datos.'
+                  : 'Disponible cuando termine la validación del servicio.',
+            ),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: !deletionEnabled
+                ? null
+                : () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => EliminarCuentaScreen(
+                        deletionService: deletionService,
+                      ),
+                    ),
+                  ),
           ),
         ),
       ),
-    ),
-  );
+    );
+  }
 }
 
 class EliminarCuentaScreen extends StatefulWidget {
@@ -138,51 +180,54 @@ class _EliminarCuentaScreenState extends State<EliminarCuentaScreen> {
   @override
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(title: const Text('Eliminar mi cuenta')),
-    body: SafeArea(
-      child: ListView(
-        padding: const EdgeInsets.all(24),
-        children: [
-          const Icon(
-            Icons.warning_amber_rounded,
-            size: 48,
-            color: Color(0xFFB91C1C),
-          ),
-          const SizedBox(height: 16),
-          const Text(
-            'Antes de continuar',
-            style: TextStyle(fontSize: 23, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 12),
-          const Text(
-            'Al completar la eliminación perderás el acceso a Cercly. '
-            'Se quitarán tu identidad de Supabase Auth y tu perfil. '
-            'Los negocios compartidos no se borran automáticamente. '
-            'Si tienes negocios, solicitudes o archivos, la solicitud quedará '
-            'en revisión y te informaremos de los pasos pendientes.',
-          ),
-          const SizedBox(height: 20),
-          if (_loading)
-            const Center(
-              child: CircularProgressIndicator(
-                key: Key('eliminacion-cargando'),
+    body: SkySurface(
+      intensity: .4,
+      child: SafeArea(
+        child: ListView(
+          padding: const EdgeInsets.all(24),
+          children: [
+            Icon(
+              Icons.warning_amber_rounded,
+              size: 48,
+              color: SkyPalette.of(context).error,
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'Antes de continuar',
+              style: TextStyle(fontSize: 23, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 12),
+            const Text(
+              'Al completar la eliminación perderás el acceso a Cercly. '
+              'Se quitarán tu identidad de Supabase Auth y tu perfil. '
+              'Los negocios compartidos no se borran automáticamente. '
+              'Si tienes negocios, solicitudes o archivos, la solicitud quedará '
+              'en revisión y te informaremos de los pasos pendientes.',
+            ),
+            const SizedBox(height: 20),
+            if (_loading)
+              const Center(
+                child: CircularProgressIndicator(
+                  key: Key('eliminacion-cargando'),
+                ),
               ),
-            ),
-          if (_message.isNotEmpty) ...[
-            Text(_message, key: const Key('estado-eliminacion')),
-            const SizedBox(height: 14),
+            if (_message.isNotEmpty) ...[
+              Text(_message, key: const Key('estado-eliminacion')),
+              const SizedBox(height: 14),
+            ],
+            if (_failure == AccountDeletionFailure.recentAuth)
+              TextButton(
+                onPressed: _service.signOutForReauthentication,
+                child: const Text('Cerrar sesión para volver a entrar'),
+              ),
+            if (_outcome == null)
+              FilledButton(
+                key: const Key('solicitar-eliminacion'),
+                onPressed: _loading ? null : _confirmar,
+                child: const Text('Continuar con la eliminación'),
+              ),
           ],
-          if (_failure == AccountDeletionFailure.recentAuth)
-            TextButton(
-              onPressed: _service.signOutForReauthentication,
-              child: const Text('Cerrar sesión para volver a entrar'),
-            ),
-          if (_outcome == null)
-            FilledButton(
-              key: const Key('solicitar-eliminacion'),
-              onPressed: _loading ? null : _confirmar,
-              child: const Text('Continuar con la eliminación'),
-            ),
-        ],
+        ),
       ),
     ),
   );

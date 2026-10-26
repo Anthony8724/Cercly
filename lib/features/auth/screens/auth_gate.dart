@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../shared/ui/cercly_ui.dart';
+import '../../../sky/sky_logo.dart';
 
 import '../../administracion/screens/panel_administrador_screen.dart';
 import '../../establecimientos/screens/panel_establecimiento_screen.dart';
@@ -447,16 +448,9 @@ class _PantallaCarga extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.location_on_rounded, color: CerclyColors.blue, size: 46),
+            SkyMark(size: 54),
             SizedBox(height: 14),
-            Text(
-              'Cercly',
-              style: TextStyle(
-                color: CerclyColors.text,
-                fontSize: 24,
-                fontWeight: FontWeight.w900,
-              ),
-            ),
+            SkyWordmark(size: 24),
             Text(message),
             const SizedBox(height: 16),
             const SizedBox(

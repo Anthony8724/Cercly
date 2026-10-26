@@ -1,6 +1,7 @@
-import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
+
+import '../../../sky/sky_backdrop.dart';
+import '../../../sky/sky_theme.dart';
 
 import '../models/solicitud_establecimiento_model.dart';
 import '../services/solicitud_establecimiento_service.dart';
@@ -15,11 +16,6 @@ class SolicitudesAdministradorScreen extends StatefulWidget {
 
 class _SolicitudesAdministradorScreenState
     extends State<SolicitudesAdministradorScreen> {
-  static const _azul = Color(0xFF1769FF);
-  static const _navy = Color(0xFF0A2A66);
-  static const _fondo = Color(0xFFF5F8FE);
-  static const _borde = Color(0xFFE2E9F5);
-
   final SolicitudEstablecimientoService _service =
       SolicitudEstablecimientoService();
 
@@ -270,19 +266,12 @@ class _SolicitudesAdministradorScreenState
   Widget _cabecera() {
     return Container(
       height: 158,
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Color(0xFF3F7FE8), Color(0xFF174FAD), Color(0xFF0A2A66)],
-        ),
-        borderRadius: BorderRadius.vertical(bottom: Radius.circular(28)),
+      decoration: BoxDecoration(
+        gradient: SkyPalette.of(context).headerGradient,
+        borderRadius: const BorderRadius.vertical(bottom: Radius.circular(28)),
       ),
       child: Stack(
         children: [
-          const Positioned.fill(
-            child: CustomPaint(painter: _SolicitudesStarPainter()),
-          ),
           SafeArea(
             bottom: false,
             child: Padding(
@@ -353,9 +342,15 @@ class _SolicitudesAdministradorScreenState
             height: 44,
             padding: const EdgeInsets.symmetric(horizontal: 7),
             decoration: BoxDecoration(
-              color: seleccionado ? _azul : Colors.white,
+              color: seleccionado
+                  ? SkyPalette.of(context).primary
+                  : SkyPalette.of(context).surface,
               borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: seleccionado ? _azul : _borde),
+              border: Border.all(
+                color: seleccionado
+                    ? SkyPalette.of(context).primary
+                    : SkyPalette.of(context).border,
+              ),
               boxShadow: seleccionado
                   ? const [
                       BoxShadow(
@@ -374,13 +369,17 @@ class _SolicitudesAdministradorScreenState
                   Icon(
                     icono,
                     size: 14,
-                    color: seleccionado ? Colors.white : _navy,
+                    color: seleccionado
+                        ? Colors.white
+                        : SkyPalette.of(context).text,
                   ),
                   const SizedBox(width: 5),
                   Text(
                     texto,
                     style: TextStyle(
-                      color: seleccionado ? Colors.white : _navy,
+                      color: seleccionado
+                          ? Colors.white
+                          : SkyPalette.of(context).text,
                       fontSize: 10.5,
                       fontWeight: FontWeight.w800,
                     ),
@@ -430,324 +429,287 @@ class _SolicitudesAdministradorScreenState
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _fondo,
-      body: RefreshIndicator(
-        onRefresh: _recargar,
-        child: ListView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          padding: EdgeInsets.zero,
-          children: [
-            _cabecera(),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 20, 16, 32),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Solicitudes de establecimientos',
-                    style: TextStyle(
-                      color: _navy,
-                      fontSize: 20,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: -0.35,
+      backgroundColor: SkyPalette.of(context).background,
+      body: SkySurface(
+        child: RefreshIndicator(
+          onRefresh: _recargar,
+          child: ListView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: EdgeInsets.zero,
+            children: [
+              _cabecera(),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 20, 16, 32),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Solicitudes de establecimientos',
+                      style: TextStyle(
+                        color: SkyPalette.of(context).text,
+                        fontSize: 20,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: -0.35,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 6),
-                  const Text(
-                    'Revisa las solicitudes antes de aprobarlas o rechazarlas.',
-                    style: TextStyle(
-                      color: Color(0xFF6F819F),
-                      fontSize: 12.5,
-                      height: 1.35,
+                    const SizedBox(height: 6),
+                    Text(
+                      'Revisa las solicitudes antes de aprobarlas o rechazarlas.',
+                      style: TextStyle(
+                        color: SkyPalette.of(context).muted,
+                        fontSize: 12.5,
+                        height: 1.35,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 18),
-                  _selectorEstado(),
-                  const SizedBox(height: 20),
-                  FutureBuilder<List<SolicitudEstablecimientoDetalle>>(
-                    future: _solicitudesFuture,
-                    builder: (context, snapshot) {
-                      if (snapshot.connectionState == ConnectionState.waiting) {
-                        return const Padding(
-                          padding: EdgeInsets.all(40),
-                          child: Center(child: CircularProgressIndicator()),
-                        );
-                      }
+                    const SizedBox(height: 18),
+                    _selectorEstado(),
+                    const SizedBox(height: 20),
+                    FutureBuilder<List<SolicitudEstablecimientoDetalle>>(
+                      future: _solicitudesFuture,
+                      builder: (context, snapshot) {
+                        if (snapshot.connectionState ==
+                            ConnectionState.waiting) {
+                          return const Padding(
+                            padding: EdgeInsets.all(40),
+                            child: Center(child: CircularProgressIndicator()),
+                          );
+                        }
 
-                      if (snapshot.hasError) {
-                        return _Mensaje(
-                          icono: Icons.error_outline,
-                          texto:
-                              'No se pudieron cargar las solicitudes.\n'
-                              '${snapshot.error}',
-                          boton: 'Reintentar',
-                          onPressed: _recargar,
-                        );
-                      }
+                        if (snapshot.hasError) {
+                          return _Mensaje(
+                            icono: Icons.error_outline,
+                            texto:
+                                'No se pudieron cargar las solicitudes.\n'
+                                '${snapshot.error}',
+                            boton: 'Reintentar',
+                            onPressed: _recargar,
+                          );
+                        }
 
-                      final todas =
-                          snapshot.data ?? <SolicitudEstablecimientoDetalle>[];
+                        final todas =
+                            snapshot.data ??
+                            <SolicitudEstablecimientoDetalle>[];
 
-                      final solicitudes = todas
-                          .where(
-                            (detalle) =>
-                                detalle.solicitud.estado == _estadoSeleccionado,
-                          )
-                          .toList();
+                        final solicitudes = todas
+                            .where(
+                              (detalle) =>
+                                  detalle.solicitud.estado ==
+                                  _estadoSeleccionado,
+                            )
+                            .toList();
 
-                      if (solicitudes.isEmpty) {
-                        return _Mensaje(
-                          icono: _iconoEstado(_estadoSeleccionado),
-                          texto:
-                              'No hay solicitudes '
-                              '${_nombreEstado(_estadoSeleccionado).toLowerCase()}s.',
-                          textoSecundario: _textoVacioSecundario(
-                            _estadoSeleccionado,
-                          ),
-                        );
-                      }
-
-                      return Column(
-                        children: solicitudes.map((detalle) {
-                          final solicitud = detalle.solicitud;
-                          final procesando =
-                              _solicitudProcesando == solicitud.id;
-                          final color = _colorEstado(solicitud.estado);
-
-                          return Container(
-                            margin: const EdgeInsets.only(bottom: 12),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(20),
-                              border: Border.all(color: _borde),
-                              boxShadow: const [
-                                BoxShadow(
-                                  color: Color(0x0D0A2A66),
-                                  blurRadius: 14,
-                                  offset: Offset(0, 5),
-                                ),
-                              ],
-                            ),
-                            child: Padding(
-                              padding: const EdgeInsets.all(16),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
-                                    children: [
-                                      Container(
-                                        width: 42,
-                                        height: 42,
-                                        decoration: BoxDecoration(
-                                          color: color.withValues(alpha: 0.10),
-                                          borderRadius: BorderRadius.circular(
-                                            13,
-                                          ),
-                                        ),
-                                        child: Icon(
-                                          _iconoEstado(solicitud.estado),
-                                          color: color,
-                                          size: 21,
-                                        ),
-                                      ),
-                                      const SizedBox(width: 12),
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            Text(
-                                              detalle.nombreEstablecimiento,
-                                              style: const TextStyle(
-                                                color: _navy,
-                                                fontSize: 16,
-                                                fontWeight: FontWeight.w900,
-                                              ),
-                                            ),
-                                            const SizedBox(height: 3),
-                                            Text(
-                                              _nombreTipo(solicitud.tipo),
-                                              style: const TextStyle(
-                                                color: Color(0xFF6F819F),
-                                                fontSize: 12,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                      Chip(
-                                        backgroundColor: color.withValues(
-                                          alpha: 0.09,
-                                        ),
-                                        side: BorderSide.none,
-                                        visualDensity: VisualDensity.compact,
-                                        avatar: Icon(
-                                          _iconoEstado(solicitud.estado),
-                                          color: color,
-                                          size: 18,
-                                        ),
-                                        label: Text(
-                                          _nombreEstado(solicitud.estado),
-                                          style: TextStyle(
-                                            color: color,
-                                            fontSize: 11,
-                                            fontWeight: FontWeight.w800,
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 12),
-                                  Text(
-                                    'Solicitante: '
-                                    '${detalle.nombreSolicitante}',
-                                    style: const TextStyle(
-                                      color: _navy,
-                                      fontSize: 12.5,
-                                      fontWeight: FontWeight.w700,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 5),
-                                  Row(
-                                    children: [
-                                      const Icon(
-                                        Icons.calendar_today_outlined,
-                                        size: 13,
-                                        color: Color(0xFF6F819F),
-                                      ),
-                                      const SizedBox(width: 5),
-                                      Text(
-                                        _formatearFecha(solicitud.creadoEn),
-                                        style: const TextStyle(
-                                          color: Color(0xFF6F819F),
-                                          fontSize: 11.5,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 7),
-                                  Text(
-                                    solicitud.mensaje.isEmpty
-                                        ? 'Sin mensaje'
-                                        : solicitud.mensaje,
-                                    maxLines: 3,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: const TextStyle(
-                                      color: Color(0xFF6F819F),
-                                      fontSize: 12.5,
-                                      height: 1.35,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 16),
-                                  if (procesando)
-                                    const Center(
-                                      child: CircularProgressIndicator(),
-                                    )
-                                  else
-                                    Wrap(
-                                      spacing: 8,
-                                      runSpacing: 8,
-                                      alignment: WrapAlignment.end,
-                                      children: [
-                                        TextButton(
-                                          onPressed: () {
-                                            _mostrarDetalles(detalle);
-                                          },
-                                          child: const Text('Ver detalles'),
-                                        ),
-                                        if (solicitud.estaPendiente) ...[
-                                          OutlinedButton.icon(
-                                            onPressed: () {
-                                              _responder(
-                                                detalle,
-                                                SolicitudEstablecimientoModel
-                                                    .estadoRechazada,
-                                              );
-                                            },
-                                            icon: const Icon(Icons.close),
-                                            label: const Text('Rechazar'),
-                                            style: OutlinedButton.styleFrom(
-                                              foregroundColor: Colors.red,
-                                            ),
-                                          ),
-                                          FilledButton.icon(
-                                            onPressed: () {
-                                              _responder(
-                                                detalle,
-                                                SolicitudEstablecimientoModel
-                                                    .estadoAprobada,
-                                              );
-                                            },
-                                            icon: const Icon(Icons.check),
-                                            label: const Text('Aprobar'),
-                                          ),
-                                        ],
-                                      ],
-                                    ),
-                                ],
-                              ),
+                        if (solicitudes.isEmpty) {
+                          return _Mensaje(
+                            icono: _iconoEstado(_estadoSeleccionado),
+                            texto:
+                                'No hay solicitudes '
+                                '${_nombreEstado(_estadoSeleccionado).toLowerCase()}s.',
+                            textoSecundario: _textoVacioSecundario(
+                              _estadoSeleccionado,
                             ),
                           );
-                        }).toList(),
-                      );
-                    },
-                  ),
-                ],
+                        }
+
+                        return Column(
+                          children: solicitudes.map((detalle) {
+                            final solicitud = detalle.solicitud;
+                            final procesando =
+                                _solicitudProcesando == solicitud.id;
+                            final color = _colorEstado(solicitud.estado);
+
+                            return Container(
+                              margin: const EdgeInsets.only(bottom: 12),
+                              decoration: BoxDecoration(
+                                color: SkyPalette.of(context).surface,
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(
+                                  color: SkyPalette.of(context).border,
+                                ),
+                                boxShadow: const [
+                                  BoxShadow(
+                                    color: Color(0x0D0A2A66),
+                                    blurRadius: 14,
+                                    offset: Offset(0, 5),
+                                  ),
+                                ],
+                              ),
+                              child: Padding(
+                                padding: const EdgeInsets.all(16),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        Container(
+                                          width: 42,
+                                          height: 42,
+                                          decoration: BoxDecoration(
+                                            color: color.withValues(
+                                              alpha: 0.10,
+                                            ),
+                                            borderRadius: BorderRadius.circular(
+                                              13,
+                                            ),
+                                          ),
+                                          child: Icon(
+                                            _iconoEstado(solicitud.estado),
+                                            color: color,
+                                            size: 21,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 12),
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                detalle.nombreEstablecimiento,
+                                                style: TextStyle(
+                                                  color: SkyPalette.of(context)
+                                                      .text,
+                                                  fontSize: 16,
+                                                  fontWeight: FontWeight.w900,
+                                                ),
+                                              ),
+                                              const SizedBox(height: 3),
+                                              Text(
+                                                _nombreTipo(solicitud.tipo),
+                                                style: TextStyle(
+                                                  color: SkyPalette.of(context)
+                                                      .muted,
+                                                  fontSize: 12,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                        Chip(
+                                          backgroundColor: color.withValues(
+                                            alpha: 0.09,
+                                          ),
+                                          side: BorderSide.none,
+                                          visualDensity: VisualDensity.compact,
+                                          avatar: Icon(
+                                            _iconoEstado(solicitud.estado),
+                                            color: color,
+                                            size: 18,
+                                          ),
+                                          label: Text(
+                                            _nombreEstado(solicitud.estado),
+                                            style: TextStyle(
+                                              color: color,
+                                              fontSize: 11,
+                                              fontWeight: FontWeight.w800,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 12),
+                                    Text(
+                                      'Solicitante: '
+                                      '${detalle.nombreSolicitante}',
+                                      style: TextStyle(
+                                        color: SkyPalette.of(context).text,
+                                        fontSize: 12.5,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 5),
+                                    Row(
+                                      children: [
+                                        Icon(
+                                          Icons.calendar_today_outlined,
+                                          size: 13,
+                                          color: SkyPalette.of(context).muted,
+                                        ),
+                                        const SizedBox(width: 5),
+                                        Text(
+                                          _formatearFecha(solicitud.creadoEn),
+                                          style: TextStyle(
+                                            color: SkyPalette.of(context).muted,
+                                            fontSize: 11.5,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 7),
+                                    Text(
+                                      solicitud.mensaje.isEmpty
+                                          ? 'Sin mensaje'
+                                          : solicitud.mensaje,
+                                      maxLines: 3,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(
+                                        color: SkyPalette.of(context).muted,
+                                        fontSize: 12.5,
+                                        height: 1.35,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 16),
+                                    if (procesando)
+                                      const Center(
+                                        child: CircularProgressIndicator(),
+                                      )
+                                    else
+                                      Wrap(
+                                        spacing: 8,
+                                        runSpacing: 8,
+                                        alignment: WrapAlignment.end,
+                                        children: [
+                                          TextButton(
+                                            onPressed: () {
+                                              _mostrarDetalles(detalle);
+                                            },
+                                            child: const Text('Ver detalles'),
+                                          ),
+                                          if (solicitud.estaPendiente) ...[
+                                            OutlinedButton.icon(
+                                              onPressed: () {
+                                                _responder(
+                                                  detalle,
+                                                  SolicitudEstablecimientoModel
+                                                      .estadoRechazada,
+                                                );
+                                              },
+                                              icon: const Icon(Icons.close),
+                                              label: const Text('Rechazar'),
+                                              style: OutlinedButton.styleFrom(
+                                                foregroundColor: Colors.red,
+                                              ),
+                                            ),
+                                            FilledButton.icon(
+                                              onPressed: () {
+                                                _responder(
+                                                  detalle,
+                                                  SolicitudEstablecimientoModel
+                                                      .estadoAprobada,
+                                                );
+                                              },
+                                              icon: const Icon(Icons.check),
+                                              label: const Text('Aprobar'),
+                                            ),
+                                          ],
+                                        ],
+                                      ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          }).toList(),
+                        );
+                      },
+                    ),
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
   }
-}
-
-class _SolicitudesStarPainter extends CustomPainter {
-  const _SolicitudesStarPainter();
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final random = math.Random(19);
-    final estrellas = Paint();
-
-    for (var i = 0; i < 20; i++) {
-      estrellas.color = Colors.white.withValues(
-        alpha: 0.22 + random.nextDouble() * 0.45,
-      );
-      canvas.drawCircle(
-        Offset(
-          random.nextDouble() * size.width,
-          random.nextDouble() * size.height * 0.82,
-        ),
-        0.45 + random.nextDouble() * 0.9,
-        estrellas,
-      );
-    }
-
-    final destello = Paint()
-      ..color = Colors.white.withValues(alpha: 0.6)
-      ..strokeWidth = 0.9
-      ..strokeCap = StrokeCap.round;
-
-    for (final punto in [
-      Offset(size.width * 0.46, 31),
-      Offset(size.width * 0.76, 58),
-    ]) {
-      canvas.drawLine(
-        Offset(punto.dx - 3.5, punto.dy),
-        Offset(punto.dx + 3.5, punto.dy),
-        destello,
-      );
-      canvas.drawLine(
-        Offset(punto.dx, punto.dy - 3.5),
-        Offset(punto.dx, punto.dy + 3.5),
-        destello,
-      );
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
 class _DialogoRespuesta extends StatefulWidget {
@@ -886,9 +848,9 @@ class _Mensaje extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 34),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: SkyPalette.of(context).surface,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: const Color(0xFFE2E9F5)),
+        border: Border.all(color: SkyPalette.of(context).border),
         boxShadow: const [
           BoxShadow(
             color: Color(0x0D0A2A66),
@@ -903,17 +865,17 @@ class _Mensaje extends StatelessWidget {
             width: 56,
             height: 56,
             decoration: BoxDecoration(
-              color: const Color(0xFFEAF2FF),
+              color: SkyPalette.of(context).soft,
               borderRadius: BorderRadius.circular(18),
             ),
-            child: Icon(icono, size: 27, color: const Color(0xFF1769FF)),
+            child: Icon(icono, size: 27, color: SkyPalette.of(context).primary),
           ),
           const SizedBox(height: 15),
           Text(
             texto,
             textAlign: TextAlign.center,
-            style: const TextStyle(
-              color: Color(0xFF0A2A66),
+            style: TextStyle(
+              color: SkyPalette.of(context).text,
               fontSize: 15,
               fontWeight: FontWeight.w900,
             ),
@@ -923,8 +885,8 @@ class _Mensaje extends StatelessWidget {
             Text(
               textoSecundario!,
               textAlign: TextAlign.center,
-              style: const TextStyle(
-                color: Color(0xFF6F819F),
+              style: TextStyle(
+                color: SkyPalette.of(context).muted,
                 fontSize: 12.5,
                 height: 1.35,
               ),

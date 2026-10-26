@@ -1,6 +1,8 @@
-import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
+
+import '../../../sky/sky_backdrop.dart';
+import '../../../sky/sky_logo.dart';
+import '../../../sky/sky_theme.dart';
 
 import '../../auth/services/auth_service.dart';
 import '../../auth/screens/account_settings_screen.dart';
@@ -17,11 +19,6 @@ class PanelAdministradorScreen extends StatefulWidget {
 }
 
 class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
-  static const _azul = Color(0xFF2468F2);
-  static const _azulOscuro = Color(0xFF102A56);
-  static const _fondo = Color(0xFFF5F8FE);
-  static const _borde = Color(0xFFE2E9F5);
-
   final EstablecimientoService _service = EstablecimientoService();
   final TextEditingController _busquedaController = TextEditingController();
 
@@ -99,7 +96,9 @@ class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
           FilledButton(
             onPressed: () => Navigator.of(dialogContext).pop(true),
             style: FilledButton.styleFrom(
-              backgroundColor: esAprobacion ? _azul : const Color(0xFFE5484D),
+              backgroundColor: esAprobacion
+                  ? SkyPalette.of(context).primary
+                  : const Color(0xFFE5484D),
             ),
             child: Text(esAprobacion ? 'Aprobar' : 'Rechazar'),
           ),
@@ -159,24 +158,15 @@ class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
   Color _colorEstado(String estado) {
     switch (estado) {
       case 'aprobado':
-        return const Color(0xFF168A54);
+        return SkyPalette.of(context).success;
       case 'rechazado':
-        return const Color(0xFFE5484D);
+        return SkyPalette.of(context).error;
       default:
-        return const Color(0xFFE99908);
+        return SkyPalette.of(context).warning;
     }
   }
 
-  Color _fondoEstado(String estado) {
-    switch (estado) {
-      case 'aprobado':
-        return const Color(0xFFE9F7F0);
-      case 'rechazado':
-        return const Color(0xFFFFEEEE);
-      default:
-        return const Color(0xFFFFF5D9);
-    }
-  }
+  Color _fondoEstado(String estado) => SkyPalette.of(context).soft;
 
   IconData _iconoEstado(String estado) {
     switch (estado) {
@@ -195,9 +185,9 @@ class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (bottomSheetContext) => Container(
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+        decoration: BoxDecoration(
+          color: SkyPalette.of(context).surface,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
         ),
         child: SafeArea(
           child: SingleChildScrollView(
@@ -218,10 +208,10 @@ class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
                 const SizedBox(height: 22),
                 Text(
                   establecimiento.nombre,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 22,
                     fontWeight: FontWeight.w900,
-                    color: _azulOscuro,
+                    color: SkyPalette.of(context).text,
                   ),
                 ),
                 const SizedBox(height: 18),
@@ -264,7 +254,7 @@ class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
                   child: FilledButton(
                     onPressed: () => Navigator.of(bottomSheetContext).pop(),
                     style: FilledButton.styleFrom(
-                      backgroundColor: _azul,
+                      backgroundColor: SkyPalette.of(context).primary,
                       padding: const EdgeInsets.symmetric(vertical: 14),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(16),
@@ -289,7 +279,7 @@ class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
     return Tooltip(
       message: tooltip,
       child: Material(
-        color: Colors.white,
+        color: SkyPalette.of(context).surface,
         borderRadius: BorderRadius.circular(11),
         elevation: 0,
         shadowColor: const Color(0x1A0A2A66),
@@ -301,7 +291,7 @@ class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
             height: 36,
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(11),
-              border: Border.all(color: const Color(0xFFE4EAF5)),
+              border: Border.all(color: SkyPalette.of(context).border),
               boxShadow: const [
                 BoxShadow(
                   color: Color(0x0F0A2A66),
@@ -310,7 +300,7 @@ class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
                 ),
               ],
             ),
-            child: Icon(icono, size: 18, color: _azulOscuro),
+            child: Icon(icono, size: 18, color: SkyPalette.of(context).text),
           ),
         ),
       ),
@@ -318,37 +308,20 @@ class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
   }
 
   Widget _marcaCercly() {
-    return const Row(
+    return Column(
       mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(Icons.location_on_rounded, color: _azul, size: 43),
-        SizedBox(width: 2),
-        Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Cercly',
-              style: TextStyle(
-                color: _azulOscuro,
-                fontSize: 31,
-                height: 0.95,
-                fontWeight: FontWeight.w900,
-                letterSpacing: -0.9,
-              ),
-            ),
-            SizedBox(height: 3),
-            Text(
-              'Descubre lo que te rodea',
-              style: TextStyle(
-                color: _azulOscuro,
-                fontSize: 8,
-                height: 1,
-                fontWeight: FontWeight.w700,
-                letterSpacing: -0.1,
-              ),
-            ),
-          ],
+        const SkyHorizontalLogo(markSize: 43, wordSize: 31, onDark: true),
+        const SizedBox(height: 3),
+        Text(
+          'Descubre lo que te rodea',
+          style: TextStyle(
+            color: SkyPalette.of(context).onPrimary,
+            fontSize: 8,
+            height: 1,
+            fontWeight: FontWeight.w700,
+          ),
         ),
       ],
     );
@@ -366,24 +339,11 @@ class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
             right: 0,
             height: 175,
             child: DecoratedBox(
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    Color(0xFF8EC7FF),
-                    Color(0xFF3F7FE8),
-                    Color(0xFF174FAD),
-                    Color(0xFF0A2A66),
-                  ],
-                  stops: [0, 0.33, 0.7, 1],
-                ),
+              decoration: BoxDecoration(
+                gradient: SkyPalette.of(context).headerGradient,
               ),
               child: Stack(
                 children: [
-                  const Positioned.fill(
-                    child: CustomPaint(painter: _StarPainter()),
-                  ),
                   Positioned(
                     left: -42,
                     top: -30,
@@ -435,9 +395,11 @@ class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
             bottom: 0,
             child: Container(
               padding: const EdgeInsets.fromLTRB(16, 21, 16, 14),
-              decoration: const BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+              decoration: BoxDecoration(
+                color: SkyPalette.of(context).surface,
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(28),
+                ),
                 boxShadow: [
                   BoxShadow(
                     color: Color(0x140A2A66),
@@ -456,7 +418,7 @@ class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const FittedBox(
+                            FittedBox(
                               fit: BoxFit.scaleDown,
                               alignment: Alignment.centerLeft,
                               child: Text(
@@ -464,7 +426,7 @@ class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
                                 style: TextStyle(
                                   fontSize: 22,
                                   fontWeight: FontWeight.w900,
-                                  color: _azulOscuro,
+                                  color: SkyPalette.of(context).text,
                                   height: 1.05,
                                   letterSpacing: -0.55,
                                 ),
@@ -478,7 +440,8 @@ class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
                               style: TextStyle(
                                 fontSize: 10.5,
                                 height: 1.2,
-                                color: _azulOscuro.withValues(alpha: 0.62),
+                                color: SkyPalette.of(context).text
+                                    .withValues(alpha: 0.62),
                               ),
                             ),
                           ],
@@ -520,9 +483,9 @@ class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
                     height: 58,
                     padding: const EdgeInsets.symmetric(horizontal: 11),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFFBFDFF),
+                      color: SkyPalette.of(context).soft,
                       borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: const Color(0xFFE7EDF7)),
+                      border: Border.all(color: SkyPalette.of(context).border),
                       boxShadow: const [
                         BoxShadow(
                           color: Color(0x100A2A66),
@@ -537,12 +500,12 @@ class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
                           width: 36,
                           height: 36,
                           decoration: BoxDecoration(
-                            color: const Color(0xFFEAF2FF),
+                            color: SkyPalette.of(context).soft,
                             borderRadius: BorderRadius.circular(11),
                           ),
-                          child: const Icon(
+                          child: Icon(
                             Icons.person_rounded,
-                            color: _azul,
+                            color: SkyPalette.of(context).primary,
                             size: 20,
                           ),
                         ),
@@ -551,13 +514,13 @@ class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Text(
+                              Text(
                                 'Administrador de Cercly',
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: TextStyle(
                                   fontWeight: FontWeight.w900,
-                                  color: _azulOscuro,
+                                  color: SkyPalette.of(context).text,
                                   fontSize: 12.5,
                                 ),
                               ),
@@ -566,8 +529,8 @@ class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
                                 correo,
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
-                                  color: Color(0xFF6B7D9B),
+                                style: TextStyle(
+                                  color: SkyPalette.of(context).muted,
                                   fontSize: 9.5,
                                 ),
                               ),
@@ -583,22 +546,22 @@ class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
                               vertical: 5,
                             ),
                             decoration: BoxDecoration(
-                              color: const Color(0xFFEAF2FF),
+                              color: SkyPalette.of(context).soft,
                               borderRadius: BorderRadius.circular(99),
                             ),
-                            child: const Row(
+                            child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 Icon(
                                   Icons.verified_user_rounded,
                                   size: 14,
-                                  color: _azul,
+                                  color: SkyPalette.of(context).primary,
                                 ),
                                 SizedBox(width: 4),
                                 Text(
                                   'Administrador',
                                   style: TextStyle(
-                                    color: _azul,
+                                    color: SkyPalette.of(context).primary,
                                     fontSize: 9.5,
                                     fontWeight: FontWeight.w900,
                                   ),
@@ -635,13 +598,20 @@ class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
             height: 46,
             padding: const EdgeInsets.symmetric(horizontal: 8),
             decoration: BoxDecoration(
-              color: seleccionado ? _azul : Colors.white,
+              color: seleccionado
+                  ? SkyPalette.of(context).primary
+                  : SkyPalette.of(context).surface,
               borderRadius: BorderRadius.circular(15),
-              border: Border.all(color: seleccionado ? _azul : _borde),
+              border: Border.all(
+                color: seleccionado
+                    ? SkyPalette.of(context).primary
+                    : SkyPalette.of(context).border,
+              ),
               boxShadow: seleccionado
                   ? [
                       BoxShadow(
-                        color: _azul.withValues(alpha: 0.16),
+                        color: SkyPalette.of(context).primary
+                            .withValues(alpha: 0.16),
                         blurRadius: 14,
                         offset: const Offset(0, 5),
                       ),
@@ -656,13 +626,17 @@ class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
                   Icon(
                     icono,
                     size: 14,
-                    color: seleccionado ? Colors.white : _azulOscuro,
+                    color: seleccionado
+                        ? Colors.white
+                        : SkyPalette.of(context).text,
                   ),
                   const SizedBox(width: 5),
                   Text(
                     texto,
                     style: TextStyle(
-                      color: seleccionado ? Colors.white : _azulOscuro,
+                      color: seleccionado
+                          ? Colors.white
+                          : SkyPalette.of(context).text,
                       fontSize: 10.5,
                       fontWeight: FontWeight.w800,
                     ),
@@ -683,8 +657,8 @@ class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
                     child: Text(
                       '$cantidad',
                       textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        color: _azul,
+                      style: TextStyle(
+                        color: SkyPalette.of(context).primary,
                         fontSize: 9.5,
                         fontWeight: FontWeight.w900,
                       ),
@@ -726,7 +700,7 @@ class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
         onChanged: (valor) => setState(() => _busqueda = valor.trim()),
         decoration: InputDecoration(
           hintText: 'Buscar establecimiento...',
-          hintStyle: const TextStyle(color: Color(0xFF8091AC)),
+          hintStyle: TextStyle(color: SkyPalette.of(context).muted),
           prefixIcon: const Icon(Icons.search_rounded),
           suffixIcon: _busqueda.isEmpty
               ? null
@@ -738,19 +712,22 @@ class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
                   icon: const Icon(Icons.close_rounded),
                 ),
           filled: true,
-          fillColor: Colors.white,
-          contentPadding: const EdgeInsets.symmetric(vertical: 14),
+          fillColor: SkyPalette.of(context).inputFill,
+          contentPadding: EdgeInsets.symmetric(vertical: 14),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(17),
-            borderSide: const BorderSide(color: _borde),
+            borderSide: BorderSide(color: SkyPalette.of(context).border),
           ),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(17),
-            borderSide: const BorderSide(color: _borde),
+            borderSide: BorderSide(color: SkyPalette.of(context).border),
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(17),
-            borderSide: const BorderSide(color: _azul, width: 1.4),
+            borderSide: BorderSide(
+              color: SkyPalette.of(context).primary,
+              width: 1.4,
+            ),
           ),
         ),
       ),
@@ -792,7 +769,7 @@ class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
               icon: const Icon(Icons.check_rounded, size: 17),
               label: const Text('Aprobar'),
               style: FilledButton.styleFrom(
-                backgroundColor: _azul,
+                backgroundColor: SkyPalette.of(context).primary,
                 padding: const EdgeInsets.symmetric(vertical: 12),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(13),
@@ -812,7 +789,9 @@ class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
               onPressed: () => _cambiarEstado(establecimiento, 'aprobado'),
               icon: const Icon(Icons.check_rounded, size: 17),
               label: const Text('Cambiar a aprobado'),
-              style: FilledButton.styleFrom(backgroundColor: _azul),
+              style: FilledButton.styleFrom(
+                backgroundColor: SkyPalette.of(context).primary,
+              ),
             )
           : OutlinedButton.icon(
               onPressed: () => _cambiarEstado(establecimiento, 'rechazado'),
@@ -832,9 +811,9 @@ class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
       margin: const EdgeInsets.only(bottom: 13),
       padding: const EdgeInsets.all(15),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: SkyPalette.of(context).surface,
         borderRadius: BorderRadius.circular(21),
-        border: Border.all(color: _borde),
+        border: Border.all(color: SkyPalette.of(context).border),
         boxShadow: const [
           BoxShadow(
             color: Color(0x0A102A56),
@@ -853,12 +832,12 @@ class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
                 width: 54,
                 height: 54,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFEAF2FF),
+                  color: SkyPalette.of(context).soft,
                   borderRadius: BorderRadius.circular(16),
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.storefront_rounded,
-                  color: _azul,
+                  color: SkyPalette.of(context).primary,
                   size: 27,
                 ),
               ),
@@ -871,19 +850,19 @@ class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
                       establecimiento.nombre,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 17,
                         fontWeight: FontWeight.w900,
-                        color: _azulOscuro,
+                        color: SkyPalette.of(context).text,
                       ),
                     ),
                     const SizedBox(height: 6),
                     Row(
                       children: [
-                        const Icon(
+                        Icon(
                           Icons.location_on_outlined,
                           size: 15,
-                          color: Color(0xFF60779C),
+                          color: SkyPalette.of(context).muted,
                         ),
                         const SizedBox(width: 4),
                         Expanded(
@@ -891,8 +870,8 @@ class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
                             establecimiento.direccion,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              color: Color(0xFF60779C),
+                            style: TextStyle(
+                              color: SkyPalette.of(context).muted,
                               fontSize: 12.5,
                             ),
                           ),
@@ -938,8 +917,8 @@ class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
                 : establecimiento.descripcion,
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              color: Color(0xFF5D708F),
+            style: TextStyle(
+              color: SkyPalette.of(context).muted,
               height: 1.35,
               fontSize: 13,
             ),
@@ -965,167 +944,95 @@ class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
   @override
   Widget build(BuildContext context) {
     final correo = AuthService().currentUser?.email ?? 'Sin correo';
+    final sky = SkyPalette.of(context);
 
     return Scaffold(
-      backgroundColor: _fondo,
-      body: RefreshIndicator(
-        onRefresh: _recargar,
-        child: CustomScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          slivers: [
-            SliverToBoxAdapter(child: _cabecera(correo)),
-            SliverPadding(
-              padding: const EdgeInsets.fromLTRB(16, 10, 16, 36),
-              sliver: SliverToBoxAdapter(
-                child: FutureBuilder<List<EstablecimientoModel>>(
-                  future: _establecimientosFuture,
-                  builder: (context, snapshot) {
-                    if (snapshot.connectionState == ConnectionState.waiting) {
-                      return const Padding(
-                        padding: EdgeInsets.symmetric(vertical: 70),
-                        child: Center(child: CircularProgressIndicator()),
-                      );
-                    }
+      backgroundColor: sky.background,
+      body: SkySurface(
+        child: RefreshIndicator(
+          onRefresh: _recargar,
+          child: CustomScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            slivers: [
+              SliverToBoxAdapter(child: _cabecera(correo)),
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(16, 10, 16, 36),
+                sliver: SliverToBoxAdapter(
+                  child: FutureBuilder<List<EstablecimientoModel>>(
+                    future: _establecimientosFuture,
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 70),
+                          child: Center(child: CircularProgressIndicator()),
+                        );
+                      }
 
-                    if (snapshot.hasError) {
-                      return _MensajePanel(
-                        icono: Icons.error_outline_rounded,
-                        mensaje:
-                            'No se pudieron cargar los establecimientos.\n${snapshot.error}',
-                        boton: 'Reintentar',
-                        onPressed: _recargar,
-                      );
-                    }
+                      if (snapshot.hasError) {
+                        return _MensajePanel(
+                          icono: Icons.error_outline_rounded,
+                          mensaje:
+                              'No se pudieron cargar los establecimientos.\n${snapshot.error}',
+                          boton: 'Reintentar',
+                          onPressed: _recargar,
+                        );
+                      }
 
-                    final todos = snapshot.data ?? <EstablecimientoModel>[];
-                    final consulta = _busqueda.toLowerCase();
-                    final establecimientos = todos.where((establecimiento) {
-                      final coincideEstado =
-                          establecimiento.estado == _estadoSeleccionado;
-                      final coincideBusqueda =
-                          consulta.isEmpty ||
-                          establecimiento.nombre.toLowerCase().contains(
-                            consulta,
-                          ) ||
-                          establecimiento.direccion.toLowerCase().contains(
-                            consulta,
-                          );
-                      return coincideEstado && coincideBusqueda;
-                    }).toList();
+                      final todos = snapshot.data ?? <EstablecimientoModel>[];
+                      final consulta = _busqueda.toLowerCase();
+                      final establecimientos = todos.where((establecimiento) {
+                        final coincideEstado =
+                            establecimiento.estado == _estadoSeleccionado;
+                        final coincideBusqueda =
+                            consulta.isEmpty ||
+                            establecimiento.nombre.toLowerCase().contains(
+                              consulta,
+                            ) ||
+                            establecimiento.direccion.toLowerCase().contains(
+                              consulta,
+                            );
+                        return coincideEstado && coincideBusqueda;
+                      }).toList();
 
-                    return Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _selectorEstado(todos),
-                        const SizedBox(height: 15),
-                        _buscador(),
-                        const SizedBox(height: 15),
-                        Text(
-                          '${establecimientos.length} ${establecimientos.length == 1 ? 'establecimiento' : 'establecimientos'}',
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w800,
-                            color: _azulOscuro,
-                            fontSize: 13,
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _selectorEstado(todos),
+                          const SizedBox(height: 15),
+                          _buscador(),
+                          const SizedBox(height: 15),
+                          Text(
+                            '${establecimientos.length} ${establecimientos.length == 1 ? 'establecimiento' : 'establecimientos'}',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w800,
+                              color: SkyPalette.of(context).text,
+                              fontSize: 13,
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 7),
-                        if (establecimientos.isEmpty)
-                          _MensajePanel(
-                            icono: _busqueda.isEmpty
-                                ? _iconoEstado(_estadoSeleccionado)
-                                : Icons.search_off_rounded,
-                            mensaje: _busqueda.isEmpty
-                                ? 'No hay establecimientos ${_nombreEstado(_estadoSeleccionado).toLowerCase()}s.'
-                                : 'No encontramos resultados para â€œ$_busquedaâ€.',
-                          )
-                        else
-                          ...establecimientos.map(_tarjetaEstablecimiento),
-                      ],
-                    );
-                  },
+                          const SizedBox(height: 7),
+                          if (establecimientos.isEmpty)
+                            _MensajePanel(
+                              icono: _busqueda.isEmpty
+                                  ? _iconoEstado(_estadoSeleccionado)
+                                  : Icons.search_off_rounded,
+                              mensaje: _busqueda.isEmpty
+                                  ? 'No hay establecimientos ${_nombreEstado(_estadoSeleccionado).toLowerCase()}s.'
+                                  : 'No encontramos resultados para â€œ$_busquedaâ€.',
+                            )
+                          else
+                            ...establecimientos.map(_tarjetaEstablecimiento),
+                        ],
+                      );
+                    },
+                  ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
   }
-}
-
-class _StarPainter extends CustomPainter {
-  const _StarPainter();
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final resplandor = Paint()
-      ..shader = const RadialGradient(
-        colors: [Color(0x66FFFFFF), Color(0x00FFFFFF)],
-      ).createShader(
-        Rect.fromCircle(
-          center: Offset(size.width * 0.62, size.height * 0.36),
-          radius: 74,
-        ),
-      );
-    canvas.drawCircle(
-      Offset(size.width * 0.62, size.height * 0.36),
-      74,
-      resplandor,
-    );
-
-    final random = math.Random(27);
-    final paint = Paint();
-
-    for (var i = 0; i < 28; i++) {
-      final x = random.nextDouble() * size.width;
-      final y = random.nextDouble() * size.height * 0.82;
-      final intensidad = 0.25 + random.nextDouble() * 0.5;
-      final radio = 0.45 + random.nextDouble() * 1.05;
-      paint.color = Colors.white.withValues(alpha: intensidad);
-      canvas.drawCircle(Offset(x, y), radio, paint);
-    }
-
-    final brillo = Paint()
-      ..color = Colors.white.withValues(alpha: 0.72)
-      ..strokeWidth = 1;
-
-    for (final punto in [
-      Offset(size.width * 0.46, 36),
-      Offset(size.width * 0.62, 72),
-      Offset(size.width * 0.84, 30),
-    ]) {
-      canvas.drawLine(
-        Offset(punto.dx - 4, punto.dy),
-        Offset(punto.dx + 4, punto.dy),
-        brillo,
-      );
-      canvas.drawLine(
-        Offset(punto.dx, punto.dy - 4),
-        Offset(punto.dx, punto.dy + 4),
-        brillo,
-      );
-    }
-
-    final halo = Path()
-      ..moveTo(size.width * 0.55, size.height * 0.54)
-      ..quadraticBezierTo(
-        size.width * 0.68,
-        size.height * 0.28,
-        size.width * 0.86,
-        size.height * 0.38,
-      );
-    canvas.drawPath(
-      halo,
-      Paint()
-        ..color = Colors.white.withValues(alpha: 0.5)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 1.15
-        ..strokeCap = StrokeCap.round,
-    );
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
 class _Detalle extends StatelessWidget {
@@ -1141,7 +1048,7 @@ class _Detalle extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: const Color(0xFFF7F9FD),
+        color: SkyPalette.of(context).soft,
         borderRadius: BorderRadius.circular(16),
       ),
       child: Column(
@@ -1149,14 +1056,14 @@ class _Detalle extends StatelessWidget {
         children: [
           Text(
             etiqueta,
-            style: const TextStyle(
+            style: TextStyle(
               fontWeight: FontWeight.w800,
-              color: Color(0xFF173765),
+              color: SkyPalette.of(context).text,
               fontSize: 12,
             ),
           ),
           const SizedBox(height: 4),
-          Text(valor, style: const TextStyle(color: Color(0xFF566B8C))),
+          Text(valor, style: TextStyle(color: SkyPalette.of(context).muted)),
         ],
       ),
     );
@@ -1182,26 +1089,26 @@ class _MensajePanel extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(28),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: SkyPalette.of(context).surface,
         borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: const Color(0xFFE3EAF5)),
+        border: Border.all(color: SkyPalette.of(context).border),
       ),
       child: Column(
         children: [
           Container(
             width: 56,
             height: 56,
-            decoration: const BoxDecoration(
-              color: Color(0xFFEAF2FF),
+            decoration: BoxDecoration(
+              color: SkyPalette.of(context).soft,
               shape: BoxShape.circle,
             ),
-            child: Icon(icono, size: 29, color: const Color(0xFF2468F2)),
+            child: Icon(icono, size: 29, color: SkyPalette.of(context).accent),
           ),
           const SizedBox(height: 14),
           Text(
             mensaje,
             textAlign: TextAlign.center,
-            style: const TextStyle(color: Color(0xFF566B8C), height: 1.4),
+            style: TextStyle(color: SkyPalette.of(context).muted, height: 1.4),
           ),
           if (boton != null && onPressed != null) ...[
             const SizedBox(height: 16),

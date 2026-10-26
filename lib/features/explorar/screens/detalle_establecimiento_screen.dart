@@ -1,4 +1,8 @@
 import 'package:flutter/material.dart';
+
+import '../../../sky/sky_backdrop.dart';
+import '../../../sky/sky_theme.dart';
+
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../auth/screens/login_screen.dart';
@@ -146,7 +150,7 @@ class _DetalleEstablecimientoScreenState
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF6F9FE),
+      backgroundColor: SkyPalette.of(context).background,
       appBar: AppBar(
         foregroundColor: Colors.white,
         title: const Text(
@@ -155,18 +159,14 @@ class _DetalleEstablecimientoScreenState
         ),
         centerTitle: false,
         elevation: 0,
-        flexibleSpace: const DecoratedBox(
+        flexibleSpace: DecoratedBox(
           decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [Color(0xFF02142F), Color(0xFF0B5DD8)],
-            ),
+            gradient: SkyPalette.of(context).headerGradient,
           ),
         ),
       ),
       bottomNavigationBar: Container(
-        color: Colors.white,
+        color: SkyPalette.of(context).surface,
         padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
         child: SafeArea(
           top: false,
@@ -176,7 +176,7 @@ class _DetalleEstablecimientoScreenState
               key: const Key('boton-como-llegar'),
               onPressed: () => _comoLlegar(context),
               style: FilledButton.styleFrom(
-                backgroundColor: const Color(0xFF1769FF),
+                backgroundColor: SkyPalette.of(context).primary,
                 foregroundColor: Colors.white,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(15),
@@ -191,141 +191,142 @@ class _DetalleEstablecimientoScreenState
           ),
         ),
       ),
-      body: ListView(
-        padding: EdgeInsets.zero,
-        children: [
-          _HeroEstablecimiento(establecimiento: establecimiento),
-          Transform.translate(
-            offset: const Offset(0, -18),
-            child: Container(
-              margin: const EdgeInsets.symmetric(horizontal: 14),
-              padding: const EdgeInsets.fromLTRB(18, 18, 18, 20),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(22),
-                boxShadow: const [
-                  BoxShadow(
-                    color: Color(0x1F0B4EA9),
-                    blurRadius: 18,
-                    offset: Offset(0, 6),
-                  ),
-                ],
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(
-                        child: Text(
-                          establecimiento.nombre,
-                          style: const TextStyle(
-                            color: Color(0xFF102A56),
-                            fontSize: 24,
-                            height: 1.08,
-                            fontWeight: FontWeight.w900,
-                            letterSpacing: -.4,
+      body: SkySurface(
+        child: ListView(
+          padding: EdgeInsets.zero,
+          children: [
+            _HeroEstablecimiento(establecimiento: establecimiento),
+            Transform.translate(
+              offset: const Offset(0, -18),
+              child: Container(
+                margin: const EdgeInsets.symmetric(horizontal: 14),
+                padding: const EdgeInsets.fromLTRB(18, 18, 18, 20),
+                decoration: BoxDecoration(
+                  color: SkyPalette.of(context).surface,
+                  borderRadius: BorderRadius.circular(22),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Color(0x1F0B4EA9),
+                      blurRadius: 18,
+                      offset: Offset(0, 6),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            establecimiento.nombre,
+                            style: TextStyle(
+                              color: SkyPalette.of(context).text,
+                              fontSize: 24,
+                              height: 1.08,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: -.4,
+                            ),
                           ),
                         ),
-                      ),
-                      if (establecimiento.distanciaFormateada.isNotEmpty)
-                        _PildoraDistancia(
-                          distancia: establecimiento.distanciaFormateada,
-                        ),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: [
-                      _EtiquetaCategoria(
-                        texto: establecimiento.categoria.nombre,
-                      ),
-                      _EstadoHorarioChip(
-                        cargando: _cargandoHorario,
-                        estado: _estadoHorario,
-                        texto: _textoEstadoHorario,
-                      ),
-                    ],
-                  ),
-                  if (establecimiento.descripcion.trim().isNotEmpty) ...[
-                    const SizedBox(height: 18),
-                    Text(
-                      establecimiento.descripcion,
-                      style: const TextStyle(
-                        color: Color(0xFF53647E),
-                        height: 1.45,
-                        fontSize: 14,
-                      ),
+                        if (establecimiento.distanciaFormateada.isNotEmpty)
+                          _PildoraDistancia(
+                            distancia: establecimiento.distanciaFormateada,
+                          ),
+                      ],
                     ),
-                  ],
-                  const SizedBox(height: 22),
-                  const Text(
-                    'Información',
-                    style: TextStyle(
-                      color: Color(0xFF102A56),
-                      fontSize: 18,
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  _DatoDetalle(
-                    icono: Icons.location_on_outlined,
-                    titulo: 'Dirección',
-                    valor: establecimiento.direccion,
-                  ),
-                  if (establecimiento.telefonoPublico.trim().isNotEmpty)
-                    _DatoDetalle(
-                      icono: Icons.phone_outlined,
-                      titulo: 'Teléfono',
-                      valor: establecimiento.telefonoPublico,
-                    ),
-                  if ((establecimiento.ciudad ?? '').isNotEmpty ||
-                      (establecimiento.provincia ?? '').isNotEmpty)
-                    _DatoDetalle(
-                      icono: Icons.map_outlined,
-                      titulo: 'Ubicación',
-                      valor: [
-                        establecimiento.ciudad,
-                        establecimiento.provincia,
-                      ]
-                          .whereType<String>()
-                          .where((valor) => valor.isNotEmpty)
-                          .join(', '),
-                    ),
-                  if (establecimiento.esReclamable) ...[
-                    const SizedBox(height: 8),
-                    _ReclamoCard(onTap: _reclamarEstablecimiento),
-                  ],
-                  if (establecimiento.promociones.isNotEmpty) ...[
-                    const SizedBox(height: 26),
-                    Row(
+                    const SizedBox(height: 10),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
                       children: [
-                        const Icon(
-                          Icons.local_offer_rounded,
-                          color: Color(0xFF1769FF),
+                        _EtiquetaCategoria(
+                          texto: establecimiento.categoria.nombre,
                         ),
-                        const SizedBox(width: 7),
-                        Text(
-                          'Promociones activas',
-                          style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                                color: const Color(0xFF102A56),
-                                fontWeight: FontWeight.w900,
-                              ),
+                        _EstadoHorarioChip(
+                          cargando: _cargandoHorario,
+                          estado: _estadoHorario,
+                          texto: _textoEstadoHorario,
                         ),
                       ],
                     ),
+                    if (establecimiento.descripcion.trim().isNotEmpty) ...[
+                      const SizedBox(height: 18),
+                      Text(
+                        establecimiento.descripcion,
+                        style: TextStyle(
+                          color: SkyPalette.of(context).muted,
+                          height: 1.45,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: 22),
+                    Text(
+                      'Información',
+                      style: TextStyle(
+                        color: SkyPalette.of(context).text,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
                     const SizedBox(height: 12),
-                    for (final promocion in establecimiento.promociones)
-                      _PromocionCard(promocion: promocion),
+                    _DatoDetalle(
+                      icono: Icons.location_on_outlined,
+                      titulo: 'Dirección',
+                      valor: establecimiento.direccion,
+                    ),
+                    if (establecimiento.telefonoPublico.trim().isNotEmpty)
+                      _DatoDetalle(
+                        icono: Icons.phone_outlined,
+                        titulo: 'Teléfono',
+                        valor: establecimiento.telefonoPublico,
+                      ),
+                    if ((establecimiento.ciudad ?? '').isNotEmpty ||
+                        (establecimiento.provincia ?? '').isNotEmpty)
+                      _DatoDetalle(
+                        icono: Icons.map_outlined,
+                        titulo: 'Ubicación',
+                        valor:
+                            [establecimiento.ciudad, establecimiento.provincia]
+                                .whereType<String>()
+                                .where((valor) => valor.isNotEmpty)
+                                .join(', '),
+                      ),
+                    if (establecimiento.esReclamable) ...[
+                      const SizedBox(height: 8),
+                      _ReclamoCard(onTap: _reclamarEstablecimiento),
+                    ],
+                    if (establecimiento.promociones.isNotEmpty) ...[
+                      const SizedBox(height: 26),
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.local_offer_rounded,
+                            color: SkyPalette.of(context).interactive,
+                          ),
+                          const SizedBox(width: 7),
+                          Text(
+                            'Promociones activas',
+                            style: Theme.of(context).textTheme.titleLarge
+                                ?.copyWith(
+                                  color: SkyPalette.of(context).text,
+                                  fontWeight: FontWeight.w900,
+                                ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      for (final promocion in establecimiento.promociones)
+                        _PromocionCard(promocion: promocion),
+                    ],
                   ],
-                ],
+                ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -385,20 +386,12 @@ class _ImagenDetalle extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (url == null || url!.isEmpty) {
-      return const DecoratedBox(
+      return DecoratedBox(
         decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [Color(0xFF0B4EA9), Color(0xFF1769FF), Color(0xFF78B7FF)],
-          ),
+          gradient: SkyPalette.of(context).headerGradient,
         ),
-        child: Center(
-          child: Icon(
-            Icons.storefront_rounded,
-            size: 82,
-            color: Colors.white,
-          ),
+        child: const Center(
+          child: Icon(Icons.storefront_rounded, size: 82, color: Colors.white),
         ),
       );
     }
@@ -407,14 +400,12 @@ class _ImagenDetalle extends StatelessWidget {
       url!,
       fit: BoxFit.cover,
       cacheWidth: 900,
-      errorBuilder: (_, _, _) => const ColoredBox(
-        color: Color(0xFF1769FF),
-        child: Center(
-          child: Icon(
-            Icons.storefront_rounded,
-            size: 82,
-            color: Colors.white,
-          ),
+      errorBuilder: (_, _, _) => DecoratedBox(
+        decoration: BoxDecoration(
+          gradient: SkyPalette.of(context).headerGradient,
+        ),
+        child: const Center(
+          child: Icon(Icons.storefront_rounded, size: 82, color: Colors.white),
         ),
       ),
     );
@@ -432,22 +423,22 @@ class _PildoraDistancia extends StatelessWidget {
       margin: const EdgeInsets.only(left: 10),
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
       decoration: BoxDecoration(
-        color: const Color(0xFFEAF2FF),
+        color: SkyPalette.of(context).soft,
         borderRadius: BorderRadius.circular(999),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(
+          Icon(
             Icons.near_me_rounded,
             size: 15,
-            color: Color(0xFF1769FF),
+            color: SkyPalette.of(context).interactive,
           ),
           const SizedBox(width: 4),
           Text(
             distancia,
-            style: const TextStyle(
-              color: Color(0xFF285584),
+            style: TextStyle(
+              color: SkyPalette.of(context).text,
               fontSize: 12,
               fontWeight: FontWeight.w700,
             ),
@@ -468,13 +459,13 @@ class _EtiquetaCategoria extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
       decoration: BoxDecoration(
-        color: const Color(0xFFE8F1FF),
+        color: SkyPalette.of(context).soft,
         borderRadius: BorderRadius.circular(999),
       ),
       child: Text(
         texto,
-        style: const TextStyle(
-          color: Color(0xFF1769FF),
+        style: TextStyle(
+          color: SkyPalette.of(context).interactive,
           fontSize: 12,
           fontWeight: FontWeight.w700,
         ),
@@ -497,12 +488,12 @@ class _EstadoHorarioChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (cargando) {
-      return const _PildoraEstado(
-        key: Key('estado-horario-cargando'),
+      return _PildoraEstado(
+        key: const Key('estado-horario-cargando'),
         icono: Icons.schedule_rounded,
         texto: 'Consultando horario',
-        color: Color(0xFF64748B),
-        fondo: Color(0xFFF1F5F9),
+        color: SkyPalette.of(context).muted,
+        fondo: SkyPalette.of(context).soft,
       );
     }
 
@@ -514,19 +505,15 @@ class _EstadoHorarioChip extends StatelessWidget {
       icono: abierto
           ? Icons.check_circle_rounded
           : cerrado
-              ? Icons.cancel_rounded
-              : Icons.schedule_rounded,
+          ? Icons.cancel_rounded
+          : Icons.schedule_rounded,
       texto: texto,
       color: abierto
-          ? const Color(0xFF15803D)
+          ? SkyPalette.of(context).success
           : cerrado
-              ? const Color(0xFFB91C1C)
-              : const Color(0xFF64748B),
-      fondo: abierto
-          ? const Color(0xFFF0FDF4)
-          : cerrado
-              ? const Color(0xFFFEF2F2)
-              : const Color(0xFFF1F5F9),
+          ? SkyPalette.of(context).error
+          : SkyPalette.of(context).muted,
+      fondo: SkyPalette.of(context).soft,
     );
   }
 }
@@ -589,9 +576,9 @@ class _DatoDetalle extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(13),
       decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFE),
+        color: SkyPalette.of(context).soft,
         borderRadius: BorderRadius.circular(15),
-        border: Border.all(color: const Color(0xFFE5ECF7)),
+        border: Border.all(color: SkyPalette.of(context).border),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -600,10 +587,14 @@ class _DatoDetalle extends StatelessWidget {
             width: 36,
             height: 36,
             decoration: BoxDecoration(
-              color: const Color(0xFFE8F1FF),
+              color: SkyPalette.of(context).surface,
               borderRadius: BorderRadius.circular(11),
             ),
-            child: Icon(icono, color: const Color(0xFF1769FF), size: 19),
+            child: Icon(
+              icono,
+              color: SkyPalette.of(context).interactive,
+              size: 19,
+            ),
           ),
           const SizedBox(width: 11),
           Expanded(
@@ -612,8 +603,8 @@ class _DatoDetalle extends StatelessWidget {
               children: [
                 Text(
                   titulo,
-                  style: const TextStyle(
-                    color: Color(0xFF65758C),
+                  style: TextStyle(
+                    color: SkyPalette.of(context).muted,
                     fontSize: 11.5,
                     fontWeight: FontWeight.w600,
                   ),
@@ -621,8 +612,8 @@ class _DatoDetalle extends StatelessWidget {
                 const SizedBox(height: 3),
                 Text(
                   valor,
-                  style: const TextStyle(
-                    color: Color(0xFF1D2D45),
+                  style: TextStyle(
+                    color: SkyPalette.of(context).text,
                     fontSize: 13.5,
                     fontWeight: FontWeight.w700,
                   ),
@@ -646,35 +637,33 @@ class _ReclamoCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(15),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFFEAF3FF), Color(0xFFF6FAFF)],
-        ),
+        color: SkyPalette.of(context).soft,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFCFE1FA)),
+        border: Border.all(color: SkyPalette.of(context).border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Text(
+          Text(
             '¿Este negocio es tuyo?',
             style: TextStyle(
-              color: Color(0xFF102A56),
+              color: SkyPalette.of(context).text,
               fontSize: 16,
               fontWeight: FontWeight.w900,
             ),
           ),
           const SizedBox(height: 5),
-          const Text(
+          Text(
             'Envía una solicitud para administrarlo y publicar información en Cercly.',
-            style: TextStyle(color: Color(0xFF5B6E88), height: 1.35),
+            style: TextStyle(color: SkyPalette.of(context).muted, height: 1.35),
           ),
           const SizedBox(height: 12),
           OutlinedButton.icon(
             key: const Key('reclamar-establecimiento'),
             onPressed: onTap,
             style: OutlinedButton.styleFrom(
-              foregroundColor: const Color(0xFF1769FF),
-              side: const BorderSide(color: Color(0xFF7EB0FF)),
+              foregroundColor: SkyPalette.of(context).interactive,
+              side: BorderSide(color: SkyPalette.of(context).border),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(13),
               ),
@@ -699,9 +688,9 @@ class _PromocionCard extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: SkyPalette.of(context).surface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE1E9F5)),
+        border: Border.all(color: SkyPalette.of(context).border),
         boxShadow: const [
           BoxShadow(
             color: Color(0x130B4EA9),
@@ -735,8 +724,8 @@ class _PromocionCard extends StatelessWidget {
               children: [
                 Text(
                   promocion.titulo,
-                  style: const TextStyle(
-                    color: Color(0xFF102A56),
+                  style: TextStyle(
+                    color: SkyPalette.of(context).text,
                     fontWeight: FontWeight.w800,
                   ),
                 ),
@@ -746,8 +735,8 @@ class _PromocionCard extends StatelessWidget {
                     promocion.descripcion,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      color: Color(0xFF687991),
+                    style: TextStyle(
+                      color: SkyPalette.of(context).muted,
                       fontSize: 12.5,
                     ),
                   ),
@@ -755,8 +744,8 @@ class _PromocionCard extends StatelessWidget {
                 const SizedBox(height: 7),
                 Text(
                   'Vigente hasta ${_fecha(promocion.fechaFin)}',
-                  style: const TextStyle(
-                    color: Color(0xFF1769FF),
+                  style: TextStyle(
+                    color: SkyPalette.of(context).interactive,
                     fontSize: 11.5,
                     fontWeight: FontWeight.w700,
                   ),
@@ -781,15 +770,11 @@ class _PromoFallback extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const DecoratedBox(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [Color(0xFFE8F1FF), Color(0xFFD9E8FF)],
-        ),
-      ),
+    return DecoratedBox(
+      decoration: BoxDecoration(color: SkyPalette.of(context).soft),
       child: Icon(
         Icons.local_offer_rounded,
-        color: Color(0xFF1769FF),
+        color: SkyPalette.of(context).interactive,
         size: 30,
       ),
     );

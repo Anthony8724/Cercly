@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../../sky/sky_theme.dart';
+
 import '../controllers/explorar_controller.dart';
 
 class FiltrosExplorar extends StatelessWidget {
@@ -9,6 +11,7 @@ class FiltrosExplorar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final sky = SkyPalette.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -93,38 +96,32 @@ class FiltrosExplorar extends StatelessWidget {
                 child: DropdownButtonFormField<int>(
                   key: const Key('filtro-radio'),
                   initialValue: controller.radioMetros,
-                  icon: const Icon(
+                  icon: Icon(
                     Icons.keyboard_arrow_down_rounded,
-                    color: Color(0xFF52647F),
+                    color: sky.muted,
                   ),
                   decoration: InputDecoration(
                     filled: true,
-                    fillColor: Colors.white,
+                    fillColor: sky.inputFill,
                     labelText: 'Radio de búsqueda',
-                    labelStyle: const TextStyle(
-                      color: Color(0xFF6B7A90),
-                      fontSize: 12,
-                    ),
-                    prefixIcon: const Icon(
+                    labelStyle: TextStyle(color: sky.muted, fontSize: 12),
+                    prefixIcon: Icon(
                       Icons.radar_rounded,
-                      color: Color(0xFF24446F),
+                      color: sky.interactive,
                       size: 23,
                     ),
                     contentPadding: const EdgeInsets.fromLTRB(12, 4, 10, 5),
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(13),
-                      borderSide: const BorderSide(color: Color(0xFFCBD7E8)),
+                      borderSide: BorderSide(color: sky.border),
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(13),
-                      borderSide: const BorderSide(
-                        color: Color(0xFF1769FF),
-                        width: 1.4,
-                      ),
+                      borderSide: BorderSide(color: sky.primary, width: 1.4),
                     ),
                   ),
-                  style: const TextStyle(
-                    color: Color(0xFF16233A),
+                  style: TextStyle(
+                    color: sky.text,
                     fontSize: 16,
                     fontWeight: FontWeight.w700,
                   ),
@@ -132,7 +129,13 @@ class FiltrosExplorar extends StatelessWidget {
                       .map(
                         (radio) => DropdownMenuItem(
                           value: radio,
-                          child: Text(_formatearRadio(radio)),
+                          child: Text(
+                            _formatearRadio(radio),
+                            style: TextStyle(
+                              fontFamily: 'Roboto',
+                              color: sky.text,
+                            ),
+                          ),
                         ),
                       )
                       .toList(growable: false),
@@ -147,8 +150,9 @@ class FiltrosExplorar extends StatelessWidget {
               flex: 2,
               child: _BotonPromos(
                 seleccionado: controller.soloPromociones,
-                onTap: () => controller
-                    .cambiarSoloPromociones(!controller.soloPromociones),
+                onTap: () => controller.cambiarSoloPromociones(
+                  !controller.soloPromociones,
+                ),
               ),
             ),
           ],
@@ -202,9 +206,9 @@ class _CategoriaChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final fondo =
-        seleccionado ? const Color(0xFF1769FF) : const Color(0xFFF3F6FB);
-    final color = seleccionado ? Colors.white : const Color(0xFF233A5E);
+    final sky = SkyPalette.of(context);
+    final fondo = seleccionado ? sky.primary : sky.surface;
+    final color = seleccionado ? sky.onPrimary : sky.text;
 
     return Material(
       color: fondo,
@@ -217,11 +221,7 @@ class _CategoriaChip extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(11),
-            border: Border.all(
-              color: seleccionado
-                  ? const Color(0xFF1769FF)
-                  : const Color(0xFFE3EAF5),
-            ),
+            border: Border.all(color: seleccionado ? sky.primary : sky.border),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
@@ -260,8 +260,9 @@ class _SubcategoriaChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final sky = SkyPalette.of(context);
     return Material(
-      color: seleccionado ? const Color(0xFFE6F0FF) : Colors.white,
+      color: seleccionado ? sky.selectedSurface : sky.surface,
       borderRadius: BorderRadius.circular(10),
       child: InkWell(
         onTap: onTap,
@@ -270,18 +271,12 @@ class _SubcategoriaChip extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(10),
-            border: Border.all(
-              color: seleccionado
-                  ? const Color(0xFF84B5FF)
-                  : const Color(0xFFDDE6F2),
-            ),
+            border: Border.all(color: seleccionado ? sky.primary : sky.border),
           ),
           child: Text(
             texto,
             style: TextStyle(
-              color: seleccionado
-                  ? const Color(0xFF0B58D4)
-                  : const Color(0xFF44556F),
+              color: seleccionado ? sky.text : sky.muted,
               fontSize: 11.5,
               fontWeight: FontWeight.w600,
             ),
@@ -300,8 +295,9 @@ class _BotonPromos extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final fondo = seleccionado ? const Color(0xFF1769FF) : Colors.white;
-    final color = seleccionado ? Colors.white : const Color(0xFF1769FF);
+    final sky = SkyPalette.of(context);
+    final fondo = seleccionado ? sky.primary : sky.surface;
+    final color = seleccionado ? sky.onPrimary : sky.interactive;
 
     return Material(
       color: fondo,
@@ -315,9 +311,7 @@ class _BotonPromos extends StatelessWidget {
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(13),
             border: Border.all(
-              color: seleccionado
-                  ? const Color(0xFF1769FF)
-                  : const Color(0xFF7EB0FF),
+              color: seleccionado ? sky.primary : sky.border,
               width: 1.2,
             ),
           ),

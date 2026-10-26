@@ -44,6 +44,7 @@ dependencies:
   shared_preferences: ^2.5.5
 
   http: 1.6.0
+  flutter_svg: ^2.3.0
 
 dev_dependencies:
   flutter_test:
@@ -66,6 +67,15 @@ flutter:
   # included with your application, so that you can use the icons in
   # the material Icons class.
   uses-material-design: true
+
+  assets:
+    - assets/branding/sky/variants/
+
+  fonts:
+    - family: Comfortaa
+      fonts:
+        - asset: assets/branding/sky/fonts/Comfortaa-Bold.otf
+          weight: 700
 
   # To add assets to your application, add an assets section, like this:
   # assets:

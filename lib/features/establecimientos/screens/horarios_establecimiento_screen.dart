@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 
+import '../../../sky/sky_backdrop.dart';
+
+import '../../../sky/sky_theme.dart';
+
 import '../../../shared/ui/cercly_ui.dart';
 
 import '../models/establecimiento_model.dart';
@@ -210,66 +214,73 @@ class _HorariosEstablecimientoScreenState
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: CerclyColors.background,
-      body: Column(
-        children: [
-          CerclyPageHeader(
-            title: 'Horarios de atención',
-            subtitle: widget.establecimiento.nombre,
-            icon: Icons.schedule_rounded,
-            onBack: () => Navigator.of(context).maybePop(),
-          ),
-          Expanded(
-            child: SafeArea(
-              top: false,
-              child: _cargando
-                  ? const Center(child: CircularProgressIndicator())
-                  : _error != null
-                  ? _VistaError(onReintentar: _cargar)
-                  : Stack(
-                      children: [
-                        ListView(
-                          padding: const EdgeInsets.fromLTRB(16, 18, 16, 28),
-                          children: [
-                            const CerclyInfoBanner(
-                              text: 'Activa los días de atención y configura uno o varios turnos para cada día.',
-                              icon: Icons.access_time_rounded,
-                            ),
-                            const SizedBox(height: 16),
-                            for (final dia in EstablecimientoModel.diasSemana)
-                              _construirDia(dia),
-                            const SizedBox(height: 8),
-                            SizedBox(
-                              height: 54,
-                              child: FilledButton.icon(
-                                onPressed: _guardando ? null : _guardar,
-                                style: FilledButton.styleFrom(
-                                  backgroundColor: CerclyColors.blue,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(16),
+      backgroundColor: SkyPalette.of(context).background,
+      body: SkySurface(
+        child: Column(
+          children: [
+            CerclyPageHeader(
+              title: 'Horarios de atención',
+              subtitle: widget.establecimiento.nombre,
+              icon: Icons.schedule_rounded,
+              onBack: () => Navigator.of(context).maybePop(),
+            ),
+            Expanded(
+              child: SafeArea(
+                top: false,
+                child: _cargando
+                    ? const Center(child: CircularProgressIndicator())
+                    : _error != null
+                    ? _VistaError(onReintentar: _cargar)
+                    : Stack(
+                        children: [
+                          ListView(
+                            padding: const EdgeInsets.fromLTRB(16, 18, 16, 28),
+                            children: [
+                              const CerclyInfoBanner(
+                                text: 'Activa los días de atención y configura uno o varios turnos para cada día.',
+                                icon: Icons.access_time_rounded,
+                              ),
+                              const SizedBox(height: 16),
+                              for (final dia in EstablecimientoModel.diasSemana)
+                                _construirDia(dia),
+                              const SizedBox(height: 8),
+                              SizedBox(
+                                height: 54,
+                                child: FilledButton.icon(
+                                  onPressed: _guardando ? null : _guardar,
+                                  style: FilledButton.styleFrom(
+                                    backgroundColor: SkyPalette.of(context)
+                                        .primary,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(16),
+                                    ),
+                                  ),
+                                  icon: const Icon(Icons.save_rounded),
+                                  label: const Text(
+                                    'Guardar horarios',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w900,
+                                    ),
                                   ),
                                 ),
-                                icon: const Icon(Icons.save_rounded),
-                                label: const Text(
-                                  'Guardar horarios',
-                                  style: TextStyle(fontWeight: FontWeight.w900),
+                              ),
+                            ],
+                          ),
+                          if (_guardando)
+                            const Positioned.fill(
+                              child: ColoredBox(
+                                color: Color(0x33031A3A),
+                                child: Center(
+                                  child: CircularProgressIndicator(),
                                 ),
                               ),
                             ),
-                          ],
-                        ),
-                        if (_guardando)
-                          const Positioned.fill(
-                            child: ColoredBox(
-                              color: Color(0x33031A3A),
-                              child: Center(child: CircularProgressIndicator()),
-                            ),
-                          ),
-                      ],
-                    ),
+                        ],
+                      ),
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -291,29 +302,34 @@ class _HorariosEstablecimientoScreenState
             width: 42,
             height: 42,
             decoration: BoxDecoration(
-              color: abierto ? CerclyColors.softBlue : const Color(0xFFF1F4F8),
+              color: abierto
+                  ? SkyPalette.of(context).soft
+                  : const Color(0xFFF1F4F8),
               borderRadius: BorderRadius.circular(13),
             ),
             child: Icon(
               abierto ? Icons.schedule_rounded : Icons.event_busy_rounded,
-              color: abierto ? CerclyColors.blue : CerclyColors.muted,
+              color: abierto
+                  ? SkyPalette.of(context).primary
+                  : SkyPalette.of(context).muted,
             ),
           ),
           title: Text(
             _nombreDia(dia),
-            style: const TextStyle(
-              color: CerclyColors.text,
+            style: TextStyle(
+              color: SkyPalette.of(context).text,
               fontWeight: FontWeight.w900,
             ),
           ),
           subtitle: Text(
             abierto ? '${turnos.length} turno(s)' : 'Cerrado',
-            style: const TextStyle(color: CerclyColors.muted),
+            style: TextStyle(color: SkyPalette.of(context).muted),
           ),
           trailing: Switch(
             value: abierto,
-            activeTrackColor: CerclyColors.blue.withValues(alpha: 0.45),
-            activeThumbColor: CerclyColors.blue,
+            activeTrackColor: SkyPalette.of(context).primary
+                .withValues(alpha: 0.45),
+            activeThumbColor: SkyPalette.of(context).primary,
             onChanged: _guardando
                 ? null
                 : (valor) {
@@ -356,7 +372,7 @@ class _HorariosEstablecimientoScreenState
       child: Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: CerclyColors.softBlue,
+          color: SkyPalette.of(context).soft,
           borderRadius: BorderRadius.circular(15),
           border: Border.all(color: const Color(0xFFCEE0FB)),
         ),
@@ -406,16 +422,16 @@ class _HorariosEstablecimientoScreenState
             ),
             SwitchListTile(
               contentPadding: EdgeInsets.zero,
-              title: const Text(
+              title: Text(
                 'Cierra al día siguiente',
                 style: TextStyle(
-                  color: CerclyColors.text,
+                  color: SkyPalette.of(context).text,
                   fontWeight: FontWeight.w700,
                 ),
               ),
-              subtitle: const Text(
+              subtitle: Text(
                 'Úsalo para negocios que cierran después de la medianoche.',
-                style: TextStyle(color: CerclyColors.muted),
+                style: TextStyle(color: SkyPalette.of(context).muted),
               ),
               value: turno.cierraAlDiaSiguiente,
               onChanged: _guardando
@@ -465,11 +481,11 @@ class _VistaError extends StatelessWidget {
                 size: 48,
               ),
               const SizedBox(height: 12),
-              const Text(
+              Text(
                 'No se pudieron cargar los horarios.',
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                  color: CerclyColors.text,
+                  color: SkyPalette.of(context).text,
                   fontWeight: FontWeight.w800,
                 ),
               ),

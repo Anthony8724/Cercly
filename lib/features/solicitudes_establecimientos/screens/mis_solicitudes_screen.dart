@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 
+import '../../../sky/sky_backdrop.dart';
+
+import '../../../sky/sky_theme.dart';
+
 import '../../../shared/ui/cercly_ui.dart';
 
 import '../models/solicitud_establecimiento_model.dart';
@@ -175,186 +179,192 @@ class _MisSolicitudesScreenState extends State<MisSolicitudesScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: CerclyColors.background,
-      body: Column(
-        children: [
-          CerclyPageHeader(
-            title: 'Mis solicitudes',
-            subtitle: 'Consulta el estado y las respuestas de tus solicitudes',
-            icon: Icons.assignment_rounded,
-            onBack: () => Navigator.of(context).maybePop(),
-            actions: [
-              CerclyHeaderAction(
-                icon: Icons.refresh_rounded,
-                tooltip: 'Actualizar',
-                onPressed: _recargar,
-              ),
-            ],
-          ),
-          Expanded(
-            child: SafeArea(
-              top: false,
-              child: RefreshIndicator(
-                onRefresh: _recargar,
-                child: FutureBuilder<List<SolicitudEstablecimientoDetalle>>(
-                  future: _solicitudesFuture,
-                  builder: (context, snapshot) {
-                    if (snapshot.connectionState == ConnectionState.waiting) {
-                      return const Center(child: CircularProgressIndicator());
-                    }
+      backgroundColor: SkyPalette.of(context).background,
+      body: SkySurface(
+        child: Column(
+          children: [
+            CerclyPageHeader(
+              title: 'Mis solicitudes',
+              subtitle:
+                  'Consulta el estado y las respuestas de tus solicitudes',
+              icon: Icons.assignment_rounded,
+              onBack: () => Navigator.of(context).maybePop(),
+              actions: [
+                CerclyHeaderAction(
+                  icon: Icons.refresh_rounded,
+                  tooltip: 'Actualizar',
+                  onPressed: _recargar,
+                ),
+              ],
+            ),
+            Expanded(
+              child: SafeArea(
+                top: false,
+                child: RefreshIndicator(
+                  onRefresh: _recargar,
+                  child: FutureBuilder<List<SolicitudEstablecimientoDetalle>>(
+                    future: _solicitudesFuture,
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return const Center(child: CircularProgressIndicator());
+                      }
 
-                    if (snapshot.hasError) {
-                      return ListView(
-                        physics: const AlwaysScrollableScrollPhysics(),
-                        padding: const EdgeInsets.fromLTRB(16, 24, 16, 28),
-                        children: [
-                          CerclySectionCard(
-                            child: Column(
-                              children: [
-                                const Icon(
-                                  Icons.error_outline_rounded,
-                                  size: 52,
-                                  color: Colors.red,
-                                ),
-                                const SizedBox(height: 12),
-                                const Text(
-                                  'No se pudieron cargar tus solicitudes.',
-                                  textAlign: TextAlign.center,
-                                  style: TextStyle(
-                                    color: CerclyColors.text,
-                                    fontWeight: FontWeight.w900,
-                                  ),
-                                ),
-                                const SizedBox(height: 8),
-                                Text(
-                                  '${snapshot.error}',
-                                  textAlign: TextAlign.center,
-                                  style: const TextStyle(
-                                    color: CerclyColors.muted,
-                                  ),
-                                ),
-                                const SizedBox(height: 16),
-                                OutlinedButton.icon(
-                                  onPressed: _recargar,
-                                  icon: const Icon(Icons.refresh_rounded),
-                                  label: const Text('Reintentar'),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      );
-                    }
-
-                    final solicitudes =
-                        snapshot.data ?? <SolicitudEstablecimientoDetalle>[];
-
-                    if (solicitudes.isEmpty) {
-                      return ListView(
-                        physics: const AlwaysScrollableScrollPhysics(),
-                        padding: const EdgeInsets.fromLTRB(16, 24, 16, 28),
-                        children: [
-                          CerclySectionCard(
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 18),
+                      if (snapshot.hasError) {
+                        return ListView(
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          padding: const EdgeInsets.fromLTRB(16, 24, 16, 28),
+                          children: [
+                            CerclySectionCard(
                               child: Column(
                                 children: [
-                                  Container(
-                                    width: 72,
-                                    height: 72,
-                                    decoration: const BoxDecoration(
-                                      color: CerclyColors.softBlue,
-                                      shape: BoxShape.circle,
-                                    ),
-                                    child: const Icon(
-                                      Icons.assignment_outlined,
-                                      size: 38,
-                                      color: CerclyColors.blue,
-                                    ),
+                                  const Icon(
+                                    Icons.error_outline_rounded,
+                                    size: 52,
+                                    color: Colors.red,
                                   ),
-                                  const SizedBox(height: 14),
-                                  const Text(
-                                    'Todavía no tienes solicitudes',
+                                  const SizedBox(height: 12),
+                                  Text(
+                                    'No se pudieron cargar tus solicitudes.',
                                     textAlign: TextAlign.center,
                                     style: TextStyle(
-                                      color: CerclyColors.text,
-                                      fontSize: 18,
+                                      color: SkyPalette.of(context).text,
                                       fontWeight: FontWeight.w900,
                                     ),
                                   ),
-                                  const SizedBox(height: 7),
-                                  const Text(
-                                    'Puedes reclamar un establecimiento, solicitar acceso o informar una corrección.',
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    '${snapshot.error}',
                                     textAlign: TextAlign.center,
                                     style: TextStyle(
-                                      color: CerclyColors.muted,
-                                      height: 1.35,
+                                      color: SkyPalette.of(context).muted,
                                     ),
                                   ),
-                                  const SizedBox(height: 18),
-                                  FilledButton.icon(
-                                    onPressed: _abrirNuevaSolicitud,
-                                    style: FilledButton.styleFrom(
-                                      backgroundColor: CerclyColors.blue,
-                                    ),
-                                    icon: const Icon(Icons.add_rounded),
-                                    label: const Text('Nueva solicitud'),
+                                  const SizedBox(height: 16),
+                                  OutlinedButton.icon(
+                                    onPressed: _recargar,
+                                    icon: const Icon(Icons.refresh_rounded),
+                                    label: const Text('Reintentar'),
                                   ),
                                 ],
                               ),
                             ),
+                          ],
+                        );
+                      }
+
+                      final solicitudes =
+                          snapshot.data ?? <SolicitudEstablecimientoDetalle>[];
+
+                      if (solicitudes.isEmpty) {
+                        return ListView(
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          padding: const EdgeInsets.fromLTRB(16, 24, 16, 28),
+                          children: [
+                            CerclySectionCard(
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 18,
+                                ),
+                                child: Column(
+                                  children: [
+                                    Container(
+                                      width: 72,
+                                      height: 72,
+                                      decoration: BoxDecoration(
+                                        color: SkyPalette.of(context).soft,
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: Icon(
+                                        Icons.assignment_outlined,
+                                        size: 38,
+                                        color: SkyPalette.of(context).primary,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 14),
+                                    Text(
+                                      'Todavía no tienes solicitudes',
+                                      textAlign: TextAlign.center,
+                                      style: TextStyle(
+                                        color: SkyPalette.of(context).text,
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.w900,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 7),
+                                    Text(
+                                      'Puedes reclamar un establecimiento, solicitar acceso o informar una corrección.',
+                                      textAlign: TextAlign.center,
+                                      style: TextStyle(
+                                        color: SkyPalette.of(context).muted,
+                                        height: 1.35,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 18),
+                                    FilledButton.icon(
+                                      onPressed: _abrirNuevaSolicitud,
+                                      style: FilledButton.styleFrom(
+                                        backgroundColor: SkyPalette.of(context)
+                                            .primary,
+                                      ),
+                                      icon: const Icon(Icons.add_rounded),
+                                      label: const Text('Nueva solicitud'),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
+                        );
+                      }
+
+                      return ListView(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        padding: const EdgeInsets.fromLTRB(16, 18, 16, 28),
+                        children: [
+                          const CerclySectionTitle(
+                            title: 'Historial de solicitudes',
+                            subtitle: 'Revisa cada solicitud enviada y la respuesta recibida.',
+                            icon: Icons.history_rounded,
+                          ),
+                          const SizedBox(height: 14),
+                          for (final detalle in solicitudes)
+                            _SolicitudCard(
+                              detalle: detalle,
+                              eliminando: _eliminandoId == detalle.solicitud.id,
+                              nombreTipo: _nombreTipo,
+                              nombreEstado: _nombreEstado,
+                              colorEstado: _colorEstado,
+                              iconoEstado: _iconoEstado,
+                              formatearFecha: _formatearFecha,
+                              onEliminar: () => _eliminar(detalle),
+                            ),
+                          const SizedBox(height: 4),
+                          SizedBox(
+                            height: 52,
+                            child: FilledButton.icon(
+                              onPressed: _abrirNuevaSolicitud,
+                              style: FilledButton.styleFrom(
+                                backgroundColor: SkyPalette.of(context).primary,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(15),
+                                ),
+                              ),
+                              icon: const Icon(Icons.add_rounded),
+                              label: const Text(
+                                'Nueva solicitud',
+                                style: TextStyle(fontWeight: FontWeight.w900),
+                              ),
+                            ),
                           ),
                         ],
                       );
-                    }
-
-                    return ListView(
-                      physics: const AlwaysScrollableScrollPhysics(),
-                      padding: const EdgeInsets.fromLTRB(16, 18, 16, 28),
-                      children: [
-                        const CerclySectionTitle(
-                          title: 'Historial de solicitudes',
-                          subtitle: 'Revisa cada solicitud enviada y la respuesta recibida.',
-                          icon: Icons.history_rounded,
-                        ),
-                        const SizedBox(height: 14),
-                        for (final detalle in solicitudes)
-                          _SolicitudCard(
-                            detalle: detalle,
-                            eliminando: _eliminandoId == detalle.solicitud.id,
-                            nombreTipo: _nombreTipo,
-                            nombreEstado: _nombreEstado,
-                            colorEstado: _colorEstado,
-                            iconoEstado: _iconoEstado,
-                            formatearFecha: _formatearFecha,
-                            onEliminar: () => _eliminar(detalle),
-                          ),
-                        const SizedBox(height: 4),
-                        SizedBox(
-                          height: 52,
-                          child: FilledButton.icon(
-                            onPressed: _abrirNuevaSolicitud,
-                            style: FilledButton.styleFrom(
-                              backgroundColor: CerclyColors.blue,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(15),
-                              ),
-                            ),
-                            icon: const Icon(Icons.add_rounded),
-                            label: const Text(
-                              'Nueva solicitud',
-                              style: TextStyle(fontWeight: FontWeight.w900),
-                            ),
-                          ),
-                        ),
-                      ],
-                    );
-                  },
+                    },
+                  ),
                 ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -414,8 +424,8 @@ class _SolicitudCard extends StatelessWidget {
                   children: [
                     Text(
                       detalle.nombreEstablecimiento,
-                      style: const TextStyle(
-                        color: CerclyColors.text,
+                      style: TextStyle(
+                        color: SkyPalette.of(context).text,
                         fontSize: 17,
                         fontWeight: FontWeight.w900,
                       ),
@@ -423,8 +433,8 @@ class _SolicitudCard extends StatelessWidget {
                     const SizedBox(height: 3),
                     Text(
                       nombreTipo(solicitud.tipo),
-                      style: const TextStyle(
-                        color: CerclyColors.muted,
+                      style: TextStyle(
+                        color: SkyPalette.of(context).muted,
                         fontSize: 12.5,
                       ),
                     ),
@@ -449,23 +459,26 @@ class _SolicitudCard extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 13),
+          SizedBox(height: 13),
           Text(
             solicitud.mensaje,
-            style: const TextStyle(color: CerclyColors.muted, height: 1.4),
+            style: TextStyle(color: SkyPalette.of(context).muted, height: 1.4),
           ),
           const SizedBox(height: 10),
           Row(
             children: [
-              const Icon(
+              Icon(
                 Icons.calendar_today_rounded,
                 size: 15,
-                color: CerclyColors.blue,
+                color: SkyPalette.of(context).primary,
               ),
-              const SizedBox(width: 5),
+              SizedBox(width: 5),
               Text(
                 'Enviada: ${formatearFecha(solicitud.creadoEn)}',
-                style: const TextStyle(color: CerclyColors.muted, fontSize: 12),
+                style: TextStyle(
+                  color: SkyPalette.of(context).muted,
+                  fontSize: 12,
+                ),
               ),
             ],
           ),
@@ -475,25 +488,25 @@ class _SolicitudCard extends StatelessWidget {
               width: double.infinity,
               padding: const EdgeInsets.all(13),
               decoration: BoxDecoration(
-                color: CerclyColors.softBlue,
+                color: SkyPalette.of(context).soft,
                 borderRadius: BorderRadius.circular(15),
                 border: Border.all(color: const Color(0xFFCEE0FB)),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
+                  Text(
                     'Respuesta del administrador',
                     style: TextStyle(
-                      color: CerclyColors.text,
+                      color: SkyPalette.of(context).text,
                       fontWeight: FontWeight.w900,
                     ),
                   ),
                   const SizedBox(height: 4),
                   Text(
                     solicitud.motivoRespuesta,
-                    style: const TextStyle(
-                      color: CerclyColors.muted,
+                    style: TextStyle(
+                      color: SkyPalette.of(context).muted,
                       height: 1.35,
                     ),
                   ),

@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 
+import '../../../sky/sky_backdrop.dart';
+
+import '../../../sky/sky_theme.dart';
+
 import '../../../shared/ui/cercly_ui.dart';
 
 import '../../establecimientos/models/establecimiento_model.dart';
@@ -187,191 +191,203 @@ class _PromocionesEstablecimientoScreenState
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: CerclyColors.background,
-      body: Column(
-        children: [
-          CerclyPageHeader(
-            title: 'Promociones',
-            subtitle: widget.establecimiento.nombre,
-            icon: Icons.local_offer_rounded,
-            onBack: () => Navigator.of(context).maybePop(),
-            actions: [
-              CerclyHeaderAction(
-                icon: Icons.add_rounded,
-                tooltip: 'Nueva promoción',
-                onPressed: _abrirRegistro,
-              ),
-            ],
-          ),
-          Expanded(
-            child: SafeArea(
-              top: false,
-              child: RefreshIndicator(
-                onRefresh: _recargar,
-                child: FutureBuilder<List<_PromocionVista>>(
-                  future: _promocionesFuture,
-                  builder: (context, snapshot) {
-                    if (snapshot.connectionState == ConnectionState.waiting) {
-                      return const Center(child: CircularProgressIndicator());
-                    }
+      backgroundColor: SkyPalette.of(context).background,
+      body: SkySurface(
+        child: Column(
+          children: [
+            CerclyPageHeader(
+              title: 'Promociones',
+              subtitle: widget.establecimiento.nombre,
+              icon: Icons.local_offer_rounded,
+              onBack: () => Navigator.of(context).maybePop(),
+              actions: [
+                CerclyHeaderAction(
+                  icon: Icons.add_rounded,
+                  tooltip: 'Nueva promoción',
+                  onPressed: _abrirRegistro,
+                ),
+              ],
+            ),
+            Expanded(
+              child: SafeArea(
+                top: false,
+                child: RefreshIndicator(
+                  onRefresh: _recargar,
+                  child: FutureBuilder<List<_PromocionVista>>(
+                    future: _promocionesFuture,
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return const Center(child: CircularProgressIndicator());
+                      }
 
-                    if (snapshot.hasError) {
-                      return ListView(
-                        physics: const AlwaysScrollableScrollPhysics(),
-                        padding: const EdgeInsets.fromLTRB(16, 24, 16, 28),
-                        children: [
-                          CerclySectionCard(
-                            child: Column(
-                              children: [
-                                const Icon(
-                                  Icons.error_outline_rounded,
-                                  color: Colors.red,
-                                  size: 48,
-                                ),
-                                const SizedBox(height: 12),
-                                const Text(
-                                  'No se pudieron cargar las promociones.',
-                                  textAlign: TextAlign.center,
-                                  style: TextStyle(
-                                    color: CerclyColors.text,
-                                    fontWeight: FontWeight.w800,
-                                  ),
-                                ),
-                                const SizedBox(height: 12),
-                                OutlinedButton.icon(
-                                  onPressed: () {
-                                    setState(_cargar);
-                                  },
-                                  icon: const Icon(Icons.refresh_rounded),
-                                  label: const Text('Reintentar'),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      );
-                    }
-
-                    final promociones = snapshot.data ?? <_PromocionVista>[];
-
-                    if (promociones.isEmpty) {
-                      return ListView(
-                        physics: const AlwaysScrollableScrollPhysics(),
-                        padding: const EdgeInsets.fromLTRB(16, 24, 16, 28),
-                        children: [
-                          CerclySectionCard(
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 18),
+                      if (snapshot.hasError) {
+                        return ListView(
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          padding: const EdgeInsets.fromLTRB(16, 24, 16, 28),
+                          children: [
+                            CerclySectionCard(
                               child: Column(
                                 children: [
-                                  Container(
-                                    width: 70,
-                                    height: 70,
-                                    decoration: const BoxDecoration(
-                                      color: CerclyColors.softBlue,
-                                      shape: BoxShape.circle,
-                                    ),
-                                    child: const Icon(
-                                      Icons.local_offer_outlined,
-                                      size: 36,
-                                      color: CerclyColors.blue,
-                                    ),
+                                  const Icon(
+                                    Icons.error_outline_rounded,
+                                    color: Colors.red,
+                                    size: 48,
                                   ),
-                                  const SizedBox(height: 14),
-                                  const Text(
-                                    'Todavía no existen promociones',
+                                  const SizedBox(height: 12),
+                                  Text(
+                                    'No se pudieron cargar las promociones.',
                                     textAlign: TextAlign.center,
                                     style: TextStyle(
-                                      color: CerclyColors.text,
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.w900,
+                                      color: SkyPalette.of(context).text,
+                                      fontWeight: FontWeight.w800,
                                     ),
                                   ),
-                                  const SizedBox(height: 7),
-                                  const Text(
-                                    'Crea una promoción para destacar tu establecimiento y atraer clientes cercanos.',
-                                    textAlign: TextAlign.center,
-                                    style: TextStyle(
-                                      color: CerclyColors.muted,
-                                      height: 1.35,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 18),
-                                  FilledButton.icon(
-                                    onPressed: _abrirRegistro,
-                                    style: FilledButton.styleFrom(
-                                      backgroundColor: CerclyColors.blue,
-                                    ),
-                                    icon: const Icon(Icons.add_rounded),
-                                    label: const Text(
-                                      'Crear primera promoción',
-                                    ),
+                                  const SizedBox(height: 12),
+                                  OutlinedButton.icon(
+                                    onPressed: () {
+                                      setState(_cargar);
+                                    },
+                                    icon: const Icon(Icons.refresh_rounded),
+                                    label: const Text('Reintentar'),
                                   ),
                                 ],
                               ),
                             ),
-                          ),
-                        ],
-                      );
-                    }
+                          ],
+                        );
+                      }
 
-                    return Stack(
-                      children: [
-                        ListView(
+                      final promociones = snapshot.data ?? <_PromocionVista>[];
+
+                      if (promociones.isEmpty) {
+                        return ListView(
                           physics: const AlwaysScrollableScrollPhysics(),
-                          padding: const EdgeInsets.fromLTRB(16, 18, 16, 28),
+                          padding: const EdgeInsets.fromLTRB(16, 24, 16, 28),
                           children: [
-                            const CerclySectionTitle(
-                              title: 'Promociones del negocio',
-                              subtitle: 'Activa, edita o elimina las promociones publicadas.',
-                              icon: Icons.campaign_rounded,
-                            ),
-                            const SizedBox(height: 14),
-                            for (final vista in promociones)
-                              _TarjetaPromocion(
-                                vista: vista,
-                                procesando: _procesando,
-                                formatearFecha: _formatearFecha,
-                                onEditar: () => _abrirEdicion(vista),
-                                onEliminar: () => _eliminar(vista.promocion),
-                                onCambiarEstado: (valor) =>
-                                    _cambiarEstado(vista.promocion, valor),
-                              ),
-                            const SizedBox(height: 4),
-                            SizedBox(
-                              height: 52,
-                              child: FilledButton.icon(
-                                onPressed: _procesando ? null : _abrirRegistro,
-                                style: FilledButton.styleFrom(
-                                  backgroundColor: CerclyColors.blue,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(15),
-                                  ),
+                            CerclySectionCard(
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 18,
                                 ),
-                                icon: const Icon(Icons.add_rounded),
-                                label: const Text(
-                                  'Nueva promoción',
-                                  style: TextStyle(fontWeight: FontWeight.w900),
+                                child: Column(
+                                  children: [
+                                    Container(
+                                      width: 70,
+                                      height: 70,
+                                      decoration: BoxDecoration(
+                                        color: SkyPalette.of(context).soft,
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: Icon(
+                                        Icons.local_offer_outlined,
+                                        size: 36,
+                                        color: SkyPalette.of(context).primary,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 14),
+                                    Text(
+                                      'Todavía no existen promociones',
+                                      textAlign: TextAlign.center,
+                                      style: TextStyle(
+                                        color: SkyPalette.of(context).text,
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.w900,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 7),
+                                    Text(
+                                      'Crea una promoción para destacar tu establecimiento y atraer clientes cercanos.',
+                                      textAlign: TextAlign.center,
+                                      style: TextStyle(
+                                        color: SkyPalette.of(context).muted,
+                                        height: 1.35,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 18),
+                                    FilledButton.icon(
+                                      onPressed: _abrirRegistro,
+                                      style: FilledButton.styleFrom(
+                                        backgroundColor: SkyPalette.of(context)
+                                            .primary,
+                                      ),
+                                      icon: const Icon(Icons.add_rounded),
+                                      label: const Text(
+                                        'Crear primera promoción',
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
                             ),
                           ],
-                        ),
-                        if (_procesando)
-                          const Positioned.fill(
-                            child: ColoredBox(
-                              color: Color(0x33031A3A),
-                              child: Center(child: CircularProgressIndicator()),
-                            ),
+                        );
+                      }
+
+                      return Stack(
+                        children: [
+                          ListView(
+                            physics: const AlwaysScrollableScrollPhysics(),
+                            padding: const EdgeInsets.fromLTRB(16, 18, 16, 28),
+                            children: [
+                              const CerclySectionTitle(
+                                title: 'Promociones del negocio',
+                                subtitle: 'Activa, edita o elimina las promociones publicadas.',
+                                icon: Icons.campaign_rounded,
+                              ),
+                              const SizedBox(height: 14),
+                              for (final vista in promociones)
+                                _TarjetaPromocion(
+                                  vista: vista,
+                                  procesando: _procesando,
+                                  formatearFecha: _formatearFecha,
+                                  onEditar: () => _abrirEdicion(vista),
+                                  onEliminar: () => _eliminar(vista.promocion),
+                                  onCambiarEstado: (valor) =>
+                                      _cambiarEstado(vista.promocion, valor),
+                                ),
+                              const SizedBox(height: 4),
+                              SizedBox(
+                                height: 52,
+                                child: FilledButton.icon(
+                                  onPressed: _procesando
+                                      ? null
+                                      : _abrirRegistro,
+                                  style: FilledButton.styleFrom(
+                                    backgroundColor: SkyPalette.of(context)
+                                        .primary,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(15),
+                                    ),
+                                  ),
+                                  icon: const Icon(Icons.add_rounded),
+                                  label: const Text(
+                                    'Nueva promoción',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w900,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
-                      ],
-                    );
-                  },
+                          if (_procesando)
+                            const Positioned.fill(
+                              child: ColoredBox(
+                                color: Color(0x33031A3A),
+                                child: Center(
+                                  child: CircularProgressIndicator(),
+                                ),
+                              ),
+                            ),
+                        ],
+                      );
+                    },
+                  ),
                 ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -402,9 +418,9 @@ class _TarjetaPromocion extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 14),
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: SkyPalette.of(context).surface,
         borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: CerclyColors.border),
+        border: Border.all(color: SkyPalette.of(context).border),
         boxShadow: const [
           BoxShadow(
             color: Color(0x12031A3A),
@@ -421,14 +437,14 @@ class _TarjetaPromocion extends StatelessWidget {
               vista.urlImagen!,
               height: 190,
               fit: BoxFit.cover,
-              errorBuilder: (_, _, _) => const SizedBox(
+              errorBuilder: (_, _, _) => SizedBox(
                 height: 120,
                 child: ColoredBox(
-                  color: CerclyColors.softBlue,
+                  color: SkyPalette.of(context).soft,
                   child: Center(
                     child: Icon(
                       Icons.broken_image_rounded,
-                      color: CerclyColors.blue,
+                      color: SkyPalette.of(context).primary,
                       size: 42,
                     ),
                   ),
@@ -436,14 +452,14 @@ class _TarjetaPromocion extends StatelessWidget {
               ),
             )
           else
-            const SizedBox(
+            SizedBox(
               height: 120,
               child: ColoredBox(
-                color: CerclyColors.softBlue,
+                color: SkyPalette.of(context).soft,
                 child: Center(
                   child: Icon(
                     Icons.local_offer_rounded,
-                    color: CerclyColors.blue,
+                    color: SkyPalette.of(context).primary,
                     size: 42,
                   ),
                 ),
@@ -460,8 +476,8 @@ class _TarjetaPromocion extends StatelessWidget {
                     Expanded(
                       child: Text(
                         promocion.titulo,
-                        style: const TextStyle(
-                          color: CerclyColors.text,
+                        style: TextStyle(
+                          color: SkyPalette.of(context).text,
                           fontSize: 19,
                           fontWeight: FontWeight.w900,
                         ),
@@ -484,7 +500,7 @@ class _TarjetaPromocion extends StatelessWidget {
                         style: TextStyle(
                           color: promocion.activa
                               ? const Color(0xFF218B4C)
-                              : CerclyColors.muted,
+                              : SkyPalette.of(context).muted,
                           fontSize: 11,
                           fontWeight: FontWeight.w900,
                         ),
@@ -496,8 +512,8 @@ class _TarjetaPromocion extends StatelessWidget {
                   const SizedBox(height: 7),
                   Text(
                     promocion.descripcion,
-                    style: const TextStyle(
-                      color: CerclyColors.muted,
+                    style: TextStyle(
+                      color: SkyPalette.of(context).muted,
                       height: 1.35,
                     ),
                   ),
@@ -505,17 +521,17 @@ class _TarjetaPromocion extends StatelessWidget {
                 const SizedBox(height: 13),
                 Row(
                   children: [
-                    const Icon(
+                    Icon(
                       Icons.calendar_month_rounded,
                       size: 17,
-                      color: CerclyColors.blue,
+                      color: SkyPalette.of(context).primary,
                     ),
                     const SizedBox(width: 6),
                     Expanded(
                       child: Text(
                         '${formatearFecha(promocion.fechaInicio)} - ${formatearFecha(promocion.fechaFin)}',
-                        style: const TextStyle(
-                          color: CerclyColors.muted,
+                        style: TextStyle(
+                          color: SkyPalette.of(context).muted,
                           fontSize: 12.5,
                         ),
                       ),
@@ -525,16 +541,16 @@ class _TarjetaPromocion extends StatelessWidget {
                 const SizedBox(height: 7),
                 Row(
                   children: [
-                    const Icon(
+                    Icon(
                       Icons.radar_rounded,
                       size: 17,
-                      color: CerclyColors.blue,
+                      color: SkyPalette.of(context).primary,
                     ),
                     const SizedBox(width: 6),
                     Text(
                       'Radio de alerta: ${promocion.radioAlertaMetros} m',
-                      style: const TextStyle(
-                        color: CerclyColors.muted,
+                      style: TextStyle(
+                        color: SkyPalette.of(context).muted,
                         fontSize: 12.5,
                       ),
                     ),
@@ -546,10 +562,10 @@ class _TarjetaPromocion extends StatelessWidget {
                     Expanded(
                       child: SwitchListTile(
                         contentPadding: EdgeInsets.zero,
-                        title: const Text(
+                        title: Text(
                           'Publicación',
                           style: TextStyle(
-                            color: CerclyColors.text,
+                            color: SkyPalette.of(context).text,
                             fontWeight: FontWeight.w800,
                           ),
                         ),
@@ -557,8 +573,8 @@ class _TarjetaPromocion extends StatelessWidget {
                           promocion.activa
                               ? 'Visible para los usuarios'
                               : 'Oculta temporalmente',
-                          style: const TextStyle(
-                            color: CerclyColors.muted,
+                          style: TextStyle(
+                            color: SkyPalette.of(context).muted,
                             fontSize: 12,
                           ),
                         ),
@@ -570,9 +586,9 @@ class _TarjetaPromocion extends StatelessWidget {
                       key: Key('editar-promocion-${promocion.id}'),
                       onPressed: procesando ? null : onEditar,
                       tooltip: 'Editar',
-                      icon: const Icon(
+                      icon: Icon(
                         Icons.edit_rounded,
-                        color: CerclyColors.blue,
+                        color: SkyPalette.of(context).primary,
                       ),
                     ),
                     IconButton(

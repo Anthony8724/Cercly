@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../sky/sky_theme.dart';
+
 class CerclyColors {
   const CerclyColors._();
 
@@ -31,21 +33,15 @@ class CerclyPageHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final sky = SkyPalette.of(context);
     return Container(
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Color(0xFF3F7FE8), Color(0xFF174FAD), CerclyColors.navy],
-        ),
-        borderRadius: BorderRadius.vertical(bottom: Radius.circular(28)),
+      decoration: BoxDecoration(
+        gradient: sky.headerGradient,
+        borderRadius: const BorderRadius.vertical(bottom: Radius.circular(28)),
       ),
-      child: Stack(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          const Positioned(top: 18, right: 34, child: _Star(size: 5)),
-          const Positioned(top: 52, right: 88, child: _Star(size: 3)),
-          const Positioned(bottom: 26, right: 18, child: _Star(size: 4)),
-          const Positioned(bottom: 18, left: 92, child: _Star(size: 3)),
           SafeArea(
             bottom: false,
             child: Padding(
@@ -155,13 +151,14 @@ class CerclySectionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final sky = SkyPalette.of(context);
     return Container(
       margin: margin,
       padding: padding,
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: sky.surface,
         borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: CerclyColors.border),
+        border: Border.all(color: sky.border),
         boxShadow: const [
           BoxShadow(
             color: Color(0x12031A3A),
@@ -189,6 +186,7 @@ class CerclySectionTitle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final sky = SkyPalette.of(context);
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -197,10 +195,10 @@ class CerclySectionTitle extends StatelessWidget {
             width: 40,
             height: 40,
             decoration: BoxDecoration(
-              color: CerclyColors.softBlue,
+              color: sky.soft,
               borderRadius: BorderRadius.circular(13),
             ),
-            child: Icon(icon, color: CerclyColors.blue, size: 21),
+            child: Icon(icon, color: sky.primary, size: 21),
           ),
           const SizedBox(width: 11),
         ],
@@ -210,8 +208,8 @@ class CerclySectionTitle extends StatelessWidget {
             children: [
               Text(
                 title,
-                style: const TextStyle(
-                  color: CerclyColors.text,
+                style: TextStyle(
+                  color: sky.text,
                   fontSize: 18,
                   fontWeight: FontWeight.w900,
                 ),
@@ -220,8 +218,8 @@ class CerclySectionTitle extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(
                   subtitle!,
-                  style: const TextStyle(
-                    color: CerclyColors.muted,
+                  style: TextStyle(
+                    color: sky.muted,
                     fontSize: 13,
                     height: 1.35,
                   ),
@@ -247,23 +245,24 @@ class CerclyInfoBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final sky = SkyPalette.of(context);
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: CerclyColors.softBlue,
+        color: sky.soft,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFBFD8FF)),
+        border: Border.all(color: sky.border),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, color: CerclyColors.blue, size: 21),
+          Icon(icon, color: sky.primary, size: 21),
           const SizedBox(width: 10),
           Expanded(
             child: Text(
               text,
-              style: const TextStyle(
-                color: CerclyColors.text,
+              style: TextStyle(
+                color: sky.text,
                 height: 1.35,
                 fontWeight: FontWeight.w600,
               ),
@@ -302,24 +301,6 @@ class _HeaderButton extends StatelessWidget {
             child: Icon(icon, color: Colors.white, size: 21),
           ),
         ),
-      ),
-    );
-  }
-}
-
-class _Star extends StatelessWidget {
-  const _Star({required this.size});
-
-  final double size;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.75),
-        shape: BoxShape.circle,
       ),
     );
   }

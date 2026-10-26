@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 
+import '../../../sky/sky_theme.dart';
+
 import '../../establecimientos/models/establecimiento_publico_model.dart';
 import '../../promociones/models/promocion_destacada_model.dart';
 import '../../promociones/services/promocion_publica_service.dart';
 
-typedef CargarPromocionesExplorar = Future<List<PromocionDestacadaModel>> Function();
+typedef CargarPromocionesExplorar =
+    Future<List<PromocionDestacadaModel>> Function();
 
 class PromocionesExplorar extends StatefulWidget {
   const PromocionesExplorar({
@@ -118,6 +121,7 @@ class _PromocionesExplorarState extends State<PromocionesExplorar> {
 
   @override
   Widget build(BuildContext context) {
+    final sky = SkyPalette.of(context);
     if (_cargando) {
       return const Padding(
         padding: EdgeInsets.symmetric(vertical: 14),
@@ -139,8 +143,9 @@ class _PromocionesExplorarState extends State<PromocionesExplorar> {
 
     final ahora = DateTime.now();
     final promociones = _promociones
-        .where((promocion) =>
-            promocion.activa && promocion.estaVigenteEn(ahora))
+        .where(
+          (promocion) => promocion.activa && promocion.estaVigenteEn(ahora),
+        )
         .toList(growable: false);
 
     if (promociones.isEmpty) return const SizedBox.shrink();
@@ -151,17 +156,13 @@ class _PromocionesExplorarState extends State<PromocionesExplorar> {
         const SizedBox(height: 14),
         Row(
           children: [
-            const Icon(
-              Icons.star_rounded,
-              color: Color(0xFF1769FF),
-              size: 23,
-            ),
+            Icon(Icons.star_rounded, color: sky.primary, size: 23),
             const SizedBox(width: 5),
-            const Expanded(
+            Expanded(
               child: Text(
                 'Promociones cerca de ti',
                 style: TextStyle(
-                  color: Color(0xFF102A56),
+                  color: sky.text,
                   fontSize: 18,
                   height: 1,
                   fontWeight: FontWeight.w900,
@@ -173,7 +174,7 @@ class _PromocionesExplorarState extends State<PromocionesExplorar> {
               key: const Key('ver-todas-promociones'),
               onPressed: widget.onVerTodas,
               style: TextButton.styleFrom(
-                foregroundColor: const Color(0xFF1769FF),
+                foregroundColor: sky.primary,
                 padding: const EdgeInsets.symmetric(horizontal: 4),
                 visualDensity: VisualDensity.compact,
               ),
@@ -202,8 +203,9 @@ class _PromocionesExplorarState extends State<PromocionesExplorar> {
             separatorBuilder: (_, _) => const SizedBox(width: 10),
             itemBuilder: (context, index) {
               final promocion = promociones[index];
-              final establecimiento =
-                  _establecimientoCargado(promocion.establecimientoId);
+              final establecimiento = _establecimientoCargado(
+                promocion.establecimientoId,
+              );
 
               return _TarjetaPromocion(
                 key: Key('promocion-${promocion.id}'),
@@ -235,6 +237,7 @@ class _TarjetaPromocion extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final sky = SkyPalette.of(context);
     final nombreEstablecimiento =
         establecimiento?.nombre ?? promocion.establecimientoNombre;
     final distancia = establecimiento?.distanciaFormateada.isNotEmpty == true
@@ -244,7 +247,7 @@ class _TarjetaPromocion extends StatelessWidget {
     return SizedBox(
       width: 148,
       child: Material(
-        color: Colors.white,
+        color: sky.surface,
         elevation: 1,
         shadowColor: const Color(0x241769FF),
         borderRadius: BorderRadius.circular(13),
@@ -307,8 +310,8 @@ class _TarjetaPromocion extends StatelessWidget {
                         promocion.titulo,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          color: Color(0xFF102A56),
+                        style: TextStyle(
+                          color: sky.text,
                           fontSize: 12.5,
                           height: 1.05,
                           fontWeight: FontWeight.w800,
@@ -319,8 +322,8 @@ class _TarjetaPromocion extends StatelessWidget {
                         nombreEstablecimiento,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          color: Color(0xFF71819A),
+                        style: TextStyle(
+                          color: sky.muted,
                           fontSize: 10.5,
                           height: 1.05,
                         ),
@@ -329,16 +332,16 @@ class _TarjetaPromocion extends StatelessWidget {
                       if (distancia.isNotEmpty)
                         Row(
                           children: [
-                            const Icon(
+                            Icon(
                               Icons.location_on_rounded,
-                              color: Color(0xFF5E7BA5),
+                              color: sky.muted,
                               size: 13,
                             ),
                             const SizedBox(width: 2),
                             Text(
                               'a $distancia',
-                              style: const TextStyle(
-                                color: Color(0xFF5E6F89),
+                              style: TextStyle(
+                                color: sky.muted,
                                 fontSize: 10.5,
                                 fontWeight: FontWeight.w600,
                               ),
@@ -361,8 +364,9 @@ class _TarjetaPromocion extends StatelessWidget {
     final porcentaje = RegExp(r'\b\d{1,2}\s*%').firstMatch(contenido)?.group(0);
     if (porcentaje != null) return porcentaje.replaceAll(' ', '');
 
-    final dosPorUno =
-        RegExp(r'\b2\s*[xX]\s*1\b').firstMatch(contenido)?.group(0);
+    final dosPorUno = RegExp(r'\b2\s*[xX]\s*1\b')
+        .firstMatch(contenido)
+        ?.group(0);
     if (dosPorUno != null) {
       return dosPorUno.replaceAll(' ', '').toLowerCase();
     }
@@ -371,11 +375,7 @@ class _TarjetaPromocion extends StatelessWidget {
   }
 
   static Color _colorEtiqueta(int semilla) {
-    const colores = [
-      Color(0xFFF04452),
-      Color(0xFFCF2CC9),
-      Color(0xFF1769FF),
-    ];
+    const colores = [Color(0xFFF04452), Color(0xFFCF2CC9), Color(0xFF1769FF)];
     return colores[semilla.abs() % colores.length];
   }
 }
@@ -429,20 +429,19 @@ class _SinImagen extends StatelessWidget {
   const _SinImagen();
 
   @override
-  Widget build(BuildContext context) => const DecoratedBox(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [Color(0xFFEAF2FF), Color(0xFFD8E8FF)],
-          ),
+  Widget build(BuildContext context) {
+    final sky = SkyPalette.of(context);
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [sky.soft, sky.border],
         ),
-        child: Center(
-          child: Icon(
-            Icons.local_offer_outlined,
-            color: Color(0xFF1769FF),
-            size: 32,
-          ),
-        ),
-      );
+      ),
+      child: Center(
+        child: Icon(Icons.local_offer_outlined, color: sky.primary, size: 32),
+      ),
+    );
+  }
 }

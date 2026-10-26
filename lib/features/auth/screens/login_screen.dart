@@ -1,6 +1,11 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+
+import '../../../sky/sky_theme.dart';
+import '../../../sky/sky_logo.dart';
+import '../../../sky/sky_backdrop.dart';
+
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../services/auth_service.dart';
@@ -226,8 +231,9 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final sky = SkyPalette.of(context);
     return Scaffold(
-      backgroundColor: const Color(0xFFF6F9FE),
+      backgroundColor: sky.background,
       appBar: AppBar(
         foregroundColor: Colors.white,
         title: const Text(
@@ -235,298 +241,291 @@ class _LoginScreenState extends State<LoginScreen> {
           style: TextStyle(fontWeight: FontWeight.w800),
         ),
         elevation: 0,
-        flexibleSpace: const DecoratedBox(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [Color(0xFF02142F), Color(0xFF0B5DD8)],
-            ),
-          ),
+        flexibleSpace: DecoratedBox(
+          decoration: BoxDecoration(gradient: sky.headerGradient),
         ),
       ),
-      body: SafeArea(
-        child: Center(
-          child: SizedBox(
-            width: 560,
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(18, 18, 18, 28),
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    const _LoginHero(),
-                    const SizedBox(height: 18),
-                    Container(
-                      padding: const EdgeInsets.all(18),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(22),
-                        boxShadow: const [
-                          BoxShadow(
-                            color: Color(0x180B4EA9),
-                            blurRadius: 18,
-                            offset: Offset(0, 6),
-                          ),
-                        ],
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          const Text(
-                            '¡Hola de nuevo!',
-                            style: TextStyle(
-                              color: Color(0xFF102A56),
-                              fontSize: 23,
-                              fontWeight: FontWeight.w900,
+      body: SkySurface(
+        intensity: .42,
+        child: SafeArea(
+          child: Center(
+            child: SizedBox(
+              width: 560,
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(18, 18, 18, 28),
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      const _LoginHero(),
+                      const SizedBox(height: 18),
+                      Container(
+                        padding: const EdgeInsets.all(18),
+                        decoration: BoxDecoration(
+                          color: sky.surface,
+                          borderRadius: BorderRadius.circular(22),
+                          boxShadow: const [
+                            BoxShadow(
+                              color: Color(0x180B4EA9),
+                              blurRadius: 18,
+                              offset: Offset(0, 6),
                             ),
-                          ),
-                          const SizedBox(height: 5),
-                          const Text(
-                            'Inicia sesión para continuar en Cercly.',
-                            style: TextStyle(
-                              color: Color(0xFF65758C),
-                              fontSize: 13,
+                          ],
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            Text(
+                              '¡Hola de nuevo!',
+                              style: TextStyle(
+                                color: sky.text,
+                                fontSize: 23,
+                                fontWeight: FontWeight.w900,
+                              ),
                             ),
-                          ),
-                          const SizedBox(height: 20),
-                          TextFormField(
-                            controller: _emailController,
-                            keyboardType: TextInputType.emailAddress,
-                            autofillHints: const [AutofillHints.email],
-                            decoration: _inputDecoration(
-                              label: 'Correo electrónico',
-                              icono: Icons.mail_outline_rounded,
+                            const SizedBox(height: 5),
+                            Text(
+                              'Inicia sesión para continuar en Cercly.',
+                              style: TextStyle(color: sky.muted, fontSize: 13),
                             ),
-                            validator: validarCorreo,
-                          ),
-                          const SizedBox(height: 14),
-                          TextFormField(
-                            controller: _passwordController,
-                            obscureText: _hidePassword,
-                            autofillHints: const [AutofillHints.password],
-                            decoration:
-                                _inputDecoration(
-                                  label: 'Contraseña',
-                                  icono: Icons.lock_outline_rounded,
-                                ).copyWith(
-                                  suffixIcon: IconButton(
-                                    tooltip: _hidePassword
-                                        ? 'Mostrar contraseña'
-                                        : 'Ocultar contraseña',
-                                    onPressed: () {
-                                      setState(() {
-                                        _hidePassword = !_hidePassword;
-                                      });
-                                    },
-                                    icon: Icon(
-                                      _hidePassword
-                                          ? Icons.visibility_outlined
-                                          : Icons.visibility_off_outlined,
-                                      color: const Color(0xFF65758C),
+                            const SizedBox(height: 20),
+                            TextFormField(
+                              controller: _emailController,
+                              keyboardType: TextInputType.emailAddress,
+                              autofillHints: const [AutofillHints.email],
+                              decoration: _inputDecoration(
+                                label: 'Correo electrónico',
+                                icono: Icons.mail_outline_rounded,
+                              ),
+                              validator: validarCorreo,
+                            ),
+                            const SizedBox(height: 14),
+                            TextFormField(
+                              controller: _passwordController,
+                              obscureText: _hidePassword,
+                              autofillHints: const [AutofillHints.password],
+                              decoration:
+                                  _inputDecoration(
+                                    label: 'Contraseña',
+                                    icono: Icons.lock_outline_rounded,
+                                  ).copyWith(
+                                    suffixIcon: IconButton(
+                                      tooltip: _hidePassword
+                                          ? 'Mostrar contraseña'
+                                          : 'Ocultar contraseña',
+                                      onPressed: () {
+                                        setState(() {
+                                          _hidePassword = !_hidePassword;
+                                        });
+                                      },
+                                      icon: Icon(
+                                        _hidePassword
+                                            ? Icons.visibility_outlined
+                                            : Icons.visibility_off_outlined,
+                                        color: sky.muted,
+                                      ),
                                     ),
                                   ),
-                                ),
-                            validator: (value) {
-                              if (value == null || value.isEmpty) {
-                                return 'Ingresa tu contraseña';
-                              }
+                              validator: (value) {
+                                if (value == null || value.isEmpty) {
+                                  return 'Ingresa tu contraseña';
+                                }
 
-                              return null;
-                            },
-                          ),
-                          const SizedBox(height: 22),
-                          SizedBox(
-                            height: 52,
-                            child: FilledButton(
+                                return null;
+                              },
+                            ),
+                            const SizedBox(height: 22),
+                            SizedBox(
+                              height: 52,
+                              child: FilledButton(
+                                onPressed: (_isLoading || _oauthPending)
+                                    ? null
+                                    : _signIn,
+                                style: FilledButton.styleFrom(
+                                  backgroundColor: sky.primary,
+                                  foregroundColor: Colors.white,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(15),
+                                  ),
+                                ),
+                                child: _isLoading
+                                    ? const SizedBox(
+                                        width: 23,
+                                        height: 23,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2.5,
+                                          color: Colors.white,
+                                        ),
+                                      )
+                                    : const Text(
+                                        'Iniciar sesión',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.w800,
+                                          fontSize: 15,
+                                        ),
+                                      ),
+                              ),
+                            ),
+                            TextButton(
                               onPressed: (_isLoading || _oauthPending)
                                   ? null
-                                  : _signIn,
-                              style: FilledButton.styleFrom(
-                                backgroundColor: const Color(0xFF1769FF),
-                                foregroundColor: Colors.white,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(15),
-                                ),
-                              ),
-                              child: _isLoading
-                                  ? const SizedBox(
-                                      width: 23,
-                                      height: 23,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2.5,
-                                        color: Colors.white,
-                                      ),
-                                    )
-                                  : const Text(
-                                      'Iniciar sesión',
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.w800,
-                                        fontSize: 15,
+                                  : () => Navigator.of(context).push(
+                                      MaterialPageRoute<void>(
+                                        builder: (_) => PasswordScreen(
+                                          service: widget.service,
+                                        ),
                                       ),
                                     ),
+                              child: const Text('¿Olvidaste tu contraseña?'),
                             ),
-                          ),
-                          TextButton(
-                            onPressed: (_isLoading || _oauthPending)
-                                ? null
-                                : () => Navigator.of(context).push(
-                                    MaterialPageRoute<void>(
-                                      builder: (_) => PasswordScreen(
-                                        service: widget.service,
-                                      ),
+                            const SizedBox(height: 12),
+                            Row(
+                              children: [
+                                Expanded(child: Divider()),
+                                Padding(
+                                  padding: EdgeInsets.symmetric(horizontal: 12),
+                                  child: Text(
+                                    'O continúa con',
+                                    style: TextStyle(
+                                      color: sky.muted,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
                                     ),
                                   ),
-                            child: const Text('¿Olvidaste tu contraseña?'),
-                          ),
-                          const SizedBox(height: 12),
-                          const Row(
-                            children: [
-                              Expanded(child: Divider()),
+                                ),
+                                Expanded(child: Divider()),
+                              ],
+                            ),
+                            const SizedBox(height: 16),
+                            for (final metodo in MetodoAcceso.values)
                               Padding(
-                                padding: EdgeInsets.symmetric(horizontal: 12),
-                                child: Text(
-                                  'O continúa con',
-                                  style: TextStyle(
-                                    color: Color(0xFF64748B),
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ),
-                              Expanded(child: Divider()),
-                            ],
-                          ),
-                          const SizedBox(height: 16),
-                          for (final metodo in MetodoAcceso.values)
-                            Padding(
-                              padding: const EdgeInsets.only(bottom: 10),
-                              child: SizedBox(
-                                height: 54,
-                                child: OutlinedButton(
-                                  onPressed:
-                                      _isLoading ||
-                                          _oauthPending ||
-                                          !(widget.service?.options ??
-                                                  const AuthOptions())
-                                              .disponible(metodo)
-                                      ? null
-                                      : () => _provider(metodo),
-                                  style: OutlinedButton.styleFrom(
-                                    backgroundColor: Colors.white,
-                                    disabledBackgroundColor: Colors.white,
-                                    side: const BorderSide(
-                                      color: Color(0xFFDCE5F2),
+                                padding: const EdgeInsets.only(bottom: 10),
+                                child: SizedBox(
+                                  height: 54,
+                                  child: OutlinedButton(
+                                    onPressed:
+                                        _isLoading ||
+                                            _oauthPending ||
+                                            !(widget.service?.options ??
+                                                    const AuthOptions())
+                                                .disponible(metodo)
+                                        ? null
+                                        : () => _provider(metodo),
+                                    style: OutlinedButton.styleFrom(
+                                      backgroundColor: sky.surface,
+                                      disabledBackgroundColor: sky.surface,
+                                      side: BorderSide(color: sky.border),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(14),
+                                      ),
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 12,
+                                      ),
                                     ),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(14),
-                                    ),
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 12,
-                                    ),
-                                  ),
-                                  child: Row(
-                                    children: [
-                                      Container(
-                                        width: 32,
-                                        height: 32,
-                                        alignment: Alignment.center,
-                                        decoration: BoxDecoration(
-                                          color: const Color(0xFFF0F5FF),
-                                          borderRadius: BorderRadius.circular(
-                                            9,
+                                    child: Row(
+                                      children: [
+                                        Container(
+                                          width: 32,
+                                          height: 32,
+                                          alignment: Alignment.center,
+                                          decoration: BoxDecoration(
+                                            color: sky.soft,
+                                            borderRadius: BorderRadius.circular(
+                                              9,
+                                            ),
                                           ),
-                                        ),
-                                        child: metodo == MetodoAcceso.google
-                                            ? const Text(
-                                                'G',
-                                                style: TextStyle(
-                                                  color: Color(0xFF4285F4),
-                                                  fontSize: 20,
-                                                  fontWeight: FontWeight.w900,
+                                          child: metodo == MetodoAcceso.google
+                                              ? const Text(
+                                                  'G',
+                                                  style: TextStyle(
+                                                    color: Color(0xFF4285F4),
+                                                    fontSize: 20,
+                                                    fontWeight: FontWeight.w900,
+                                                  ),
+                                                )
+                                              : Icon(
+                                                  switch (metodo) {
+                                                    MetodoAcceso.microsoft =>
+                                                      Icons.window_rounded,
+                                                    MetodoAcceso.facebook =>
+                                                      Icons.facebook_rounded,
+                                                    MetodoAcceso.celular =>
+                                                      Icons
+                                                          .phone_android_rounded,
+                                                    MetodoAcceso.google =>
+                                                      Icons.language_rounded,
+                                                  },
+                                                  color:
+                                                      metodo ==
+                                                          MetodoAcceso.facebook
+                                                      ? const Color(0xFF1877F2)
+                                                      : const Color(0xFF1769FF),
+                                                  size: 22,
                                                 ),
-                                              )
-                                            : Icon(
-                                                switch (metodo) {
-                                                  MetodoAcceso.microsoft =>
-                                                    Icons.window_rounded,
-                                                  MetodoAcceso.facebook =>
-                                                    Icons.facebook_rounded,
-                                                  MetodoAcceso.celular =>
-                                                    Icons.phone_android_rounded,
-                                                  MetodoAcceso.google =>
-                                                    Icons.language_rounded,
-                                                },
-                                                color:
-                                                    metodo ==
-                                                        MetodoAcceso.facebook
-                                                    ? const Color(0xFF1877F2)
-                                                    : const Color(0xFF1769FF),
-                                                size: 22,
-                                              ),
-                                      ),
-                                      const SizedBox(width: 12),
-                                      Expanded(
-                                        child: Text(
-                                          _nombreMetodo(metodo),
-                                          style: const TextStyle(
-                                            color: Color(0xFF18345F),
-                                            fontWeight: FontWeight.w700,
-                                            fontSize: 14,
+                                        ),
+                                        const SizedBox(width: 12),
+                                        Expanded(
+                                          child: Text(
+                                            _nombreMetodo(metodo),
+                                            style: TextStyle(
+                                              color: sky.text,
+                                              fontWeight: FontWeight.w700,
+                                              fontSize: 14,
+                                            ),
                                           ),
                                         ),
-                                      ),
-                                      if (!(widget.service?.options ??
-                                              const AuthOptions())
-                                          .disponible(metodo))
-                                        const Text(
-                                          'Próximamente',
-                                          style: TextStyle(
-                                            color: Color(0xFF8A97AA),
-                                            fontSize: 11,
+                                        if (!(widget.service?.options ??
+                                                const AuthOptions())
+                                            .disponible(metodo))
+                                          Text(
+                                            'Próximamente',
+                                            style: TextStyle(
+                                              color: sky.muted,
+                                              fontSize: 11,
+                                            ),
+                                          )
+                                        else
+                                          Icon(
+                                            Icons.arrow_forward_ios_rounded,
+                                            size: 14,
+                                            color: sky.primary,
                                           ),
-                                        )
-                                      else
-                                        const Icon(
-                                          Icons.arrow_forward_ios_rounded,
-                                          size: 14,
-                                          color: Color(0xFF1769FF),
-                                        ),
-                                    ],
+                                      ],
+                                    ),
                                   ),
                                 ),
                               ),
-                            ),
-                          if (_oauthPending)
+                            if (_oauthPending)
+                              TextButton(
+                                onPressed: _isLoading
+                                    ? null
+                                    : () => _cancelOAuth(),
+                                child: const Text('Cancelar intento'),
+                              ),
+                            if (_providerMessage != null)
+                              Semantics(
+                                liveRegion: true,
+                                child: Text(_providerMessage!),
+                              ),
+                            const SizedBox(height: 10),
                             TextButton(
-                              onPressed: _isLoading
+                              onPressed: (_isLoading || _oauthPending)
                                   ? null
-                                  : () => _cancelOAuth(),
-                              child: const Text('Cancelar intento'),
+                                  : _openRegister,
+                              style: TextButton.styleFrom(
+                                foregroundColor: sky.primary,
+                              ),
+                              child: const Text(
+                                '¿No tienes una cuenta? Crear cuenta',
+                                style: TextStyle(fontWeight: FontWeight.w700),
+                              ),
                             ),
-                          if (_providerMessage != null)
-                            Semantics(
-                              liveRegion: true,
-                              child: Text(_providerMessage!),
-                            ),
-                          const SizedBox(height: 10),
-                          TextButton(
-                            onPressed: (_isLoading || _oauthPending)
-                                ? null
-                                : _openRegister,
-                            style: TextButton.styleFrom(
-                              foregroundColor: const Color(0xFF1769FF),
-                            ),
-                            child: const Text(
-                              '¿No tienes una cuenta? Crear cuenta',
-                              style: TextStyle(fontWeight: FontWeight.w700),
-                            ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -547,27 +546,28 @@ class _LoginScreenState extends State<LoginScreen> {
     required String label,
     required IconData icono,
   }) {
+    final sky = SkyPalette.of(context);
     return InputDecoration(
       labelText: label,
-      prefixIcon: Icon(icono, color: const Color(0xFF1769FF)),
+      prefixIcon: Icon(icono, color: sky.primary),
       filled: true,
-      fillColor: const Color(0xFFF8FAFE),
-      labelStyle: const TextStyle(color: Color(0xFF65758C)),
+      fillColor: sky.inputFill,
+      labelStyle: TextStyle(color: sky.muted),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),
-        borderSide: const BorderSide(color: Color(0xFFDCE5F2)),
+        borderSide: BorderSide(color: sky.border),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),
-        borderSide: const BorderSide(color: Color(0xFF1769FF), width: 1.5),
+        borderSide: BorderSide(color: sky.primary, width: 1.5),
       ),
       errorBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),
-        borderSide: const BorderSide(color: Color(0xFFDC2626)),
+        borderSide: BorderSide(color: sky.error),
       ),
       focusedErrorBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),
-        borderSide: const BorderSide(color: Color(0xFFDC2626), width: 1.5),
+        borderSide: BorderSide(color: sky.error, width: 1.5),
       ),
     );
   }
@@ -581,47 +581,26 @@ class _LoginHero extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Color(0xFF031633), Color(0xFF0B5DD8)],
-        ),
+        gradient: SkyPalette.of(context).headerGradient,
         borderRadius: BorderRadius.circular(22),
       ),
       child: const Row(
         children: [
-          CircleAvatar(
-            radius: 30,
-            backgroundColor: Color(0x22FFFFFF),
-            child: Icon(
-              Icons.location_on_rounded,
-              color: Colors.white,
-              size: 34,
-            ),
-          ),
+          SkyMark(size: 60),
           SizedBox(width: 14),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  'Cercly',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 28,
-                    height: 1,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
+                SkyWordmark(size: 28, onDark: true),
                 SizedBox(height: 5),
                 Text(
-                  'Tu mundo más cerca',
+                  'Descubre lugares cerca de ti',
                   style: TextStyle(color: Color(0xFFDCEBFF), fontSize: 12),
                 ),
               ],
             ),
           ),
-          Icon(Icons.auto_awesome_rounded, color: Color(0xFF8CCBFF)),
         ],
       ),
     );
