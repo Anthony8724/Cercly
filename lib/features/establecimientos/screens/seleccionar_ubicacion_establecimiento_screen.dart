@@ -170,7 +170,10 @@ class _SeleccionarUbicacionEstablecimientoScreenState
                         if (widget.mostrarTiles)
                           TileLayer(
                             urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                            userAgentPackageName: 'com.cercly.cercly',
+                            userAgentPackageName: const String.fromEnvironment(
+                              'CERCLY_MAP_USER_AGENT',
+                              defaultValue: 'com.cercly.cercly',
+                            ),
                           ),
                         if (_seleccion != null)
                           MarkerLayer(
@@ -201,11 +204,6 @@ class _SeleccionarUbicacionEstablecimientoScreenState
                               ),
                             ],
                           ),
-                        RichAttributionWidget(
-                          attributions: const [
-                            TextSourceAttribution('OpenStreetMap contributors'),
-                          ],
-                        ),
                       ],
                     ),
                   ),
@@ -274,6 +272,19 @@ class _SeleccionarUbicacionEstablecimientoScreenState
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 6),
+                            child: Text(
+                              '© OpenStreetMap contributors',
+                              key: const Key('atribucion-openstreetmap'),
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                color: SkyPalette.of(context).muted,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
                           if (_esPuntoValido(_seleccion))
                             Padding(
                               padding: const EdgeInsets.only(bottom: 8),

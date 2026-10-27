@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../../../sky/sky_theme.dart';
 
 import '../controllers/explorar_controller.dart';
+import '../widgets/promociones_explorar.dart';
 import 'explorar_screen.dart';
 import 'mapa_establecimientos_screen.dart';
 
@@ -17,6 +18,8 @@ class NavegacionPrincipalScreen extends StatefulWidget {
     this.controller,
     this.inicializarController = true,
     this.mostrarTilesMapa = true,
+    this.cargarPromociones,
+    this.crearDetalle,
     super.key,
   });
 
@@ -27,6 +30,8 @@ class NavegacionPrincipalScreen extends StatefulWidget {
   final ExplorarController? controller;
   final bool inicializarController;
   final bool mostrarTilesMapa;
+  final CargarPromocionesExplorar? cargarPromociones;
+  final CrearDetalleEstablecimiento? crearDetalle;
 
   @override
   State<NavegacionPrincipalScreen> createState() =>
@@ -65,10 +70,13 @@ class _NavegacionPrincipalScreenState extends State<NavegacionPrincipalScreen> {
           ExplorarScreen(
             controller: _controller,
             onPerfil: () => setState(() => _indice = 2),
+            cargarPromociones: widget.cargarPromociones,
+            crearDetalle: widget.crearDetalle,
           ),
           MapaEstablecimientosScreen(
             controller: _controller,
             mostrarTiles: widget.mostrarTilesMapa,
+            crearDetalle: widget.crearDetalle,
           ),
           widget.terceraOpcionBuilder(context),
         ],
@@ -125,6 +133,7 @@ class _NavegacionPrincipalScreenState extends State<NavegacionPrincipalScreen> {
                   label: 'Mapa',
                 ),
                 NavigationDestination(
+                  key: const Key('tab-cuenta'),
                   icon: Icon(widget.terceraOpcionIcon),
                   selectedIcon: Icon(widget.terceraOpcionSelectedIcon),
                   label: widget.terceraOpcionLabel,

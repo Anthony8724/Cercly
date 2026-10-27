@@ -17,10 +17,30 @@ import '../../solicitudes_establecimientos/screens/nueva_solicitud_screen.dart';
 import '../models/establecimiento_model.dart';
 import '../models/turno_horario.dart';
 
+typedef EnviarSolicitudDemoLocal = Future<String> Function({
+  required String nombre,
+  required String categoriaId,
+  required String descripcion,
+  required String direccion,
+  required String telefono,
+  required double latitud,
+  required double longitud,
+  List<Map<String, dynamic>> horarios,
+});
+
 class RegistroEstablecimientoScreen extends StatefulWidget {
-  const RegistroEstablecimientoScreen({super.key, this.service});
+  const RegistroEstablecimientoScreen({
+    super.key,
+    this.service,
+    this.soloEvaluacion = false,
+    this.enviarSolicitudDemoLocal,
+    this.mostrarTiles = true,
+  });
 
   final RegistroEstablecimientoRepository? service;
+  final bool soloEvaluacion;
+  final EnviarSolicitudDemoLocal? enviarSolicitudDemoLocal;
+  final bool mostrarTiles;
 
   @override
   State<RegistroEstablecimientoScreen> createState() =>
@@ -237,6 +257,7 @@ class _RegistroEstablecimientoScreenState
         builder: (_) => SeleccionarUbicacionEstablecimientoScreen(
           latitudInicial: _latitudSeleccionada,
           longitudInicial: _longitudSeleccionada,
+          mostrarTiles: widget.mostrarTiles,
         ),
       ),
     );
@@ -247,6 +268,14 @@ class _RegistroEstablecimientoScreenState
   }
 
   Future<void> _guardar() async {
+    if (widget.soloEvaluacion && widget.enviarSolicitudDemoLocal == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No hay un repositorio local de demo disponible.'),
+        ),
+      );
+      return;
+    }
     if (_guardando || !_formKey.currentState!.validate()) {
       return;
     }
@@ -269,13 +298,14 @@ class _RegistroEstablecimientoScreenState
       return;
     }
 
-    final usuario = Supabase.instance.client.auth.currentUser;
-
-    if (usuario == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Debes iniciar sesión nuevamente.')),
-      );
-      return;
+    if (!widget.soloEvaluacion) {
+      final usuario = Supabase.instance.client.auth.currentUser;
+      if (usuario == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Debes iniciar sesión nuevamente.')),
+        );
+        return;
+      }
     }
 
     setState(() {
@@ -358,24 +388,42 @@ class _RegistroEstablecimientoScreenState
         if (decision?['accion'] != 'continuar') return;
       }
 
-      await _service.crearSolicitudRegistro(
-        nombre: _nombreController.text,
-        descripcion: _descripcionController.text,
-        categoriaId: _categoriaId!,
-        direccion: _direccionController.text,
-        telefono: _telefonoController.text,
-        latitud: latitud,
-        longitud: longitud,
-        horarios: _horariosParaSolicitud(),
-      );
+      final horarios = _horariosParaSolicitud();
+      if (widget.soloEvaluacion) {
+        await widget.enviarSolicitudDemoLocal!(
+          nombre: _nombreController.text,
+          descripcion: _descripcionController.text,
+          categoriaId: _categoriaId!,
+          direccion: _direccionController.text,
+          telefono: _telefonoController.text,
+          latitud: latitud,
+          longitud: longitud,
+          horarios: horarios,
+        );
+      } else {
+        await _service.crearSolicitudRegistro(
+          nombre: _nombreController.text,
+          descripcion: _descripcionController.text,
+          categoriaId: _categoriaId!,
+          direccion: _direccionController.text,
+          telefono: _telefonoController.text,
+          latitud: latitud,
+          longitud: longitud,
+          horarios: horarios,
+        );
+      }
 
       if (!mounted) {
         return;
       }
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Establecimiento enviado para revisión correctamente.'),
+        SnackBar(
+          content: Text(
+            widget.soloEvaluacion
+                ? 'Solicitud simulada en memoria local. No se envió a Cercly ni a Supabase.'
+                : 'Establecimiento enviado para revisión correctamente.',
+          ),
         ),
       );
 
@@ -462,8 +510,10 @@ class _RegistroEstablecimientoScreenState
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        const CerclyInfoBanner(
-                          text: 'El establecimiento será revisado antes de aparecer públicamente en Cercly.',
+                        CerclyInfoBanner(
+                          text: widget.soloEvaluacion
+                              ? 'MODO DEMO: la solicitud se simula solo en la memoria de esta app; no se contacta con Cercly ni Supabase.'
+                              : 'El establecimiento será revisado antes de aparecer públicamente en Cercly.',
                           icon: Icons.verified_user_outlined,
                         ),
                         const SizedBox(height: 16),
@@ -785,7 +835,13 @@ class _RegistroEstablecimientoScreenState
                         SizedBox(
                           height: 54,
                           child: FilledButton.icon(
-                            onPressed: _guardando ? null : _guardar,
+                            key: const Key('enviar-solicitud-establecimiento'),
+                            onPressed:
+                                _guardando ||
+                                    (widget.soloEvaluacion &&
+                                        widget.enviarSolicitudDemoLocal == null)
+                                ? null
+                                : _guardar,
                             style: FilledButton.styleFrom(
                               backgroundColor: SkyPalette.of(context).primary,
                               shape: RoundedRectangleBorder(
@@ -805,6 +861,8 @@ class _RegistroEstablecimientoScreenState
                             label: Text(
                               _guardando
                                   ? 'Guardando...'
+                                  : widget.soloEvaluacion
+                                  ? 'Simular solicitud local'
                                   : 'Enviar para revisión',
                               style: const TextStyle(
                                 fontWeight: FontWeight.w900,

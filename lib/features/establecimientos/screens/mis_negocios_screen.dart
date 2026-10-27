@@ -11,30 +11,53 @@ import '../services/establecimiento_service.dart';
 import 'registro_establecimiento_screen.dart';
 
 class MisNegociosScreen extends StatefulWidget {
-  const MisNegociosScreen({super.key});
+  const MisNegociosScreen({
+    super.key,
+    this.cargarNegocios,
+    this.registroService,
+    this.registroScreenBuilder,
+    this.reclamoScreenBuilder,
+    this.solicitudesScreenBuilder,
+  });
+
+  final Future<List<EstablecimientoModel>> Function()? cargarNegocios;
+  final RegistroEstablecimientoRepository? registroService;
+  final WidgetBuilder? registroScreenBuilder;
+  final WidgetBuilder? reclamoScreenBuilder;
+  final WidgetBuilder? solicitudesScreenBuilder;
 
   @override
   State<MisNegociosScreen> createState() => _MisNegociosScreenState();
 }
 
 class _MisNegociosScreenState extends State<MisNegociosScreen> {
-  final _service = EstablecimientoService();
+  late final EstablecimientoService? _service;
   late Future<List<EstablecimientoModel>> _negocios;
 
   @override
   void initState() {
     super.initState();
-    _negocios = _service.listarEstablecimientosDelUsuario();
+    _service = widget.cargarNegocios == null ? EstablecimientoService() : null;
+    _negocios = _cargarNegocios();
   }
 
+  Future<List<EstablecimientoModel>> _cargarNegocios() =>
+      widget.cargarNegocios?.call() ??
+      _service!.listarEstablecimientosDelUsuario();
+
   Future<void> _recargar() async {
-    setState(() => _negocios = _service.listarEstablecimientosDelUsuario());
+    setState(() => _negocios = _cargarNegocios());
     await _negocios;
   }
 
   Future<void> _abrirRegistro() async {
     final creado = await Navigator.of(context).push<bool>(
-      MaterialPageRoute(builder: (_) => const RegistroEstablecimientoScreen()),
+      MaterialPageRoute(
+        builder:
+            widget.registroScreenBuilder ??
+            (_) =>
+                RegistroEstablecimientoScreen(service: widget.registroService),
+      ),
     );
     if (creado == true && mounted) await _recargar();
   }
@@ -42,9 +65,11 @@ class _MisNegociosScreenState extends State<MisNegociosScreen> {
   void _abrirReclamo() {
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => const NuevaSolicitudScreen(
-          tipoInicial: SolicitudEstablecimientoModel.tipoReclamar,
-        ),
+        builder:
+            widget.reclamoScreenBuilder ??
+            (_) => const NuevaSolicitudScreen(
+              tipoInicial: SolicitudEstablecimientoModel.tipoReclamar,
+            ),
       ),
     );
   }
@@ -89,7 +114,9 @@ class _MisNegociosScreenState extends State<MisNegociosScreen> {
                       OutlinedButton.icon(
                         onPressed: () => Navigator.of(context).push(
                           MaterialPageRoute(
-                            builder: (_) => const MisSolicitudesScreen(),
+                            builder:
+                                widget.solicitudesScreenBuilder ??
+                                (_) => const MisSolicitudesScreen(),
                           ),
                         ),
                         icon: const Icon(Icons.assignment_outlined),

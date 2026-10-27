@@ -14,17 +14,24 @@ import '../widgets/promociones_explorar.dart';
 import '../widgets/tarjeta_establecimiento_publico.dart';
 import 'detalle_establecimiento_screen.dart';
 
+typedef CrearDetalleEstablecimiento = Widget Function(
+  BuildContext context,
+  EstablecimientoPublicoModel establecimiento,
+);
+
 class ExplorarScreen extends StatelessWidget {
   const ExplorarScreen({
     required this.controller,
     this.onPerfil,
     this.cargarPromociones,
+    this.crearDetalle,
     super.key,
   });
 
   final ExplorarController controller;
   final VoidCallback? onPerfil;
   final CargarPromocionesExplorar? cargarPromociones;
+  final CrearDetalleEstablecimiento? crearDetalle;
 
   void _abrirDetalle(
     BuildContext context,
@@ -32,7 +39,8 @@ class ExplorarScreen extends StatelessWidget {
   ) {
     Navigator.of(context).push(
       MaterialPageRoute<void>(
-        builder: (_) =>
+        builder: (routeContext) =>
+            crearDetalle?.call(routeContext, establecimiento) ??
             DetalleEstablecimientoScreen(establecimiento: establecimiento),
       ),
     );

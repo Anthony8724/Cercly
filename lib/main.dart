@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'config/supabase_options.dart';
+import 'evaluation/cercly_ui_evaluation_app.dart';
 import 'features/auth/screens/auth_gate.dart';
 import 'features/auth/screens/auth_recovery_host.dart';
 import 'features/notificaciones/widgets/monitor_proximidad_app.dart';
@@ -12,6 +13,22 @@ import 'sky/sky_theme.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  const uiEvaluation = bool.fromEnvironment('CERCLY_UI_EVALUATION');
+  const demoRelease = bool.fromEnvironment('CERCLY_DEMO_RELEASE');
+  if (demoRelease && !uiEvaluation) {
+    runApp(const EvaluationConfigurationRejectedApp());
+    return;
+  }
+  if (uiEvaluation) {
+    if (SupabaseOptions.url.isNotEmpty ||
+        SupabaseOptions.publishableKey.isNotEmpty) {
+      runApp(const EvaluationConfigurationRejectedApp());
+      return;
+    }
+    runApp(const CerclyUiEvaluationApp());
+    return;
+  }
 
   if (!SupabaseOptions.isConfigured) {
     runApp(const ConfiguracionFaltanteApp());
@@ -24,6 +41,27 @@ Future<void> main() async {
   );
 
   runApp(const CerclyApp());
+}
+
+class EvaluationConfigurationRejectedApp extends StatelessWidget {
+  const EvaluationConfigurationRejectedApp({super.key});
+
+  @override
+  Widget build(BuildContext context) => const MaterialApp(
+    home: Scaffold(
+      body: SafeArea(
+        child: Center(
+          child: Padding(
+            padding: EdgeInsets.all(24),
+            child: Text(
+              'Evaluación bloqueada: esta compilación contiene configuración de Supabase. Compila sin SUPABASE_URL ni SUPABASE_PUBLISHABLE_KEY.',
+              textAlign: TextAlign.center,
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
 }
 
 class CerclyApp extends StatefulWidget {

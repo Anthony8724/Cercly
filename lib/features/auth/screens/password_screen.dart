@@ -9,10 +9,12 @@ class PasswordScreen extends StatefulWidget {
     this.service,
     this.recovery = false,
     this.onComplete,
+    this.onSubmit,
   });
   final AuthService? service;
   final bool recovery;
   final VoidCallback? onComplete;
+  final Future<void> Function(String value)? onSubmit;
   @override
   State<PasswordScreen> createState() => _PasswordScreenState();
 }
@@ -35,11 +37,16 @@ class _PasswordScreenState extends State<PasswordScreen> {
       _message = null;
     });
     try {
-      final service = widget.service ?? AuthService();
-      if (widget.recovery) {
-        await service.updatePassword(_value.text);
+      final onSubmit = widget.onSubmit;
+      if (onSubmit != null) {
+        await onSubmit(_value.text);
       } else {
-        await service.resetPassword(_value.text);
+        final service = widget.service ?? AuthService();
+        if (widget.recovery) {
+          await service.updatePassword(_value.text);
+        } else {
+          await service.resetPassword(_value.text);
+        }
       }
       if (!mounted) return;
       _value.clear();

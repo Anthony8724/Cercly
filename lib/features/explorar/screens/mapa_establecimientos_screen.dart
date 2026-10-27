@@ -9,16 +9,19 @@ import '../controllers/explorar_controller.dart';
 import '../models/ubicacion_usuario.dart';
 import '../widgets/filtros_explorar.dart';
 import 'detalle_establecimiento_screen.dart';
+import 'explorar_screen.dart' show CrearDetalleEstablecimiento;
 
 class MapaEstablecimientosScreen extends StatelessWidget {
   const MapaEstablecimientosScreen({
     required this.controller,
     this.mostrarTiles = true,
+    this.crearDetalle,
     super.key,
   });
 
   final ExplorarController controller;
   final bool mostrarTiles;
+  final CrearDetalleEstablecimiento? crearDetalle;
 
   @override
   Widget build(BuildContext context) {
@@ -49,7 +52,11 @@ class MapaEstablecimientosScreen extends StatelessWidget {
                             if (mostrarTiles)
                               TileLayer(
                                 urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                                userAgentPackageName: 'com.cercly.cercly',
+                                userAgentPackageName:
+                                    const String.fromEnvironment(
+                                      'CERCLY_MAP_USER_AGENT',
+                                      defaultValue: 'com.cercly.cercly',
+                                    ),
                               ),
                             MarkerLayer(
                               markers: [
@@ -84,12 +91,34 @@ class MapaEstablecimientosScreen extends StatelessWidget {
                                   ),
                               ],
                             ),
-                            RichAttributionWidget(
-                              attributions: const [
-                                TextSourceAttribution(
-                                  'OpenStreetMap contributors',
+                            Align(
+                              alignment: Alignment.bottomLeft,
+                              child: Padding(
+                                padding: const EdgeInsets.all(8),
+                                child: DecoratedBox(
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withValues(alpha: .9),
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: const Padding(
+                                    padding: EdgeInsets.symmetric(
+                                      horizontal: 7,
+                                      vertical: 4,
+                                    ),
+                                    child: Text(
+                                      '© OpenStreetMap contributors',
+                                      key: Key(
+                                        'atribucion-openstreetmap-explorar',
+                                      ),
+                                      style: TextStyle(
+                                        color: Color(0xFF253041),
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ),
                                 ),
-                              ],
+                              ),
                             ),
                           ],
                         ),
@@ -224,9 +253,11 @@ class MapaEstablecimientosScreen extends StatelessWidget {
                     Navigator.pop(context);
                     Navigator.of(context).push(
                       MaterialPageRoute<void>(
-                        builder: (_) => DetalleEstablecimientoScreen(
-                          establecimiento: establecimiento,
-                        ),
+                        builder: (routeContext) =>
+                            crearDetalle?.call(routeContext, establecimiento) ??
+                            DetalleEstablecimientoScreen(
+                              establecimiento: establecimiento,
+                            ),
                       ),
                     );
                   },

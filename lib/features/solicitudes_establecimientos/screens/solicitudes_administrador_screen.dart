@@ -952,7 +952,10 @@ class _VistaMapaSolicitud extends StatelessWidget {
           children: [
             TileLayer(
               urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-              userAgentPackageName: 'com.cercly.cercly',
+              userAgentPackageName: const String.fromEnvironment(
+                'CERCLY_MAP_USER_AGENT',
+                defaultValue: 'com.cercly.cercly',
+              ),
             ),
             MarkerLayer(
               markers: [
@@ -968,10 +971,28 @@ class _VistaMapaSolicitud extends StatelessWidget {
                 ),
               ],
             ),
-            RichAttributionWidget(
-              attributions: const [
-                TextSourceAttribution('OpenStreetMap contributors'),
-              ],
+            Align(
+              alignment: Alignment.bottomLeft,
+              child: Padding(
+                padding: const EdgeInsets.all(6),
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: .9),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                    child: Text(
+                      '© OpenStreetMap contributors',
+                      style: TextStyle(
+                        color: Color(0xFF253041),
+                        fontSize: 9,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
             ),
           ],
         ),

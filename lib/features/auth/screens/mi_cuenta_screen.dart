@@ -15,11 +15,15 @@ class MiCuentaScreen extends StatelessWidget {
     this.authService,
     this.correo,
     this.cerrarSesion,
+    this.negociosScreenBuilder,
+    this.mostrarConfiguracion = true,
   });
 
   final AuthService? authService;
   final String? correo;
   final Future<void> Function()? cerrarSesion;
+  final WidgetBuilder? negociosScreenBuilder;
+  final bool mostrarConfiguracion;
 
   @override
   Widget build(BuildContext context) {
@@ -157,22 +161,25 @@ class MiCuentaScreen extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 12),
-                OutlinedButton.icon(
-                  key: const Key('abrir-configuracion-cuenta'),
-                  onPressed: () => Navigator.of(context).push(
-                    MaterialPageRoute<void>(
-                      builder: (_) => const ConfiguracionCuentaScreen(),
+                if (mostrarConfiguracion)
+                  OutlinedButton.icon(
+                    key: const Key('abrir-configuracion-cuenta'),
+                    onPressed: () => Navigator.of(context).push(
+                      MaterialPageRoute<void>(
+                        builder: (_) => const ConfiguracionCuentaScreen(),
+                      ),
                     ),
+                    icon: const Icon(Icons.settings_outlined),
+                    label: const Text('Configuración'),
                   ),
-                  icon: const Icon(Icons.settings_outlined),
-                  label: const Text('Configuración'),
-                ),
                 const SizedBox(height: 12),
                 OutlinedButton.icon(
                   key: const Key('abrir-mis-negocios'),
                   onPressed: () => Navigator.of(context).push(
                     MaterialPageRoute<void>(
-                      builder: (_) => const MisNegociosScreen(),
+                      builder:
+                          negociosScreenBuilder ??
+                          (_) => const MisNegociosScreen(),
                     ),
                   ),
                   icon: const Icon(Icons.storefront_outlined),

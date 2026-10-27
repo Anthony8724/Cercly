@@ -7,9 +7,14 @@ import '../../../sky/sky_theme.dart';
 import 'register_screen.dart';
 
 class SeleccionTipoCuentaScreen extends StatelessWidget {
-  const SeleccionTipoCuentaScreen({super.key, this.devolverResultado = false});
+  const SeleccionTipoCuentaScreen({
+    super.key,
+    this.devolverResultado = false,
+    this.registrarCuenta,
+  });
 
   final bool devolverResultado;
+  final RegistrarCuenta? registrarCuenta;
 
   Future<void> _abrirRegistro(
     BuildContext context,
@@ -19,6 +24,7 @@ class SeleccionTipoCuentaScreen extends StatelessWidget {
       MaterialPageRoute<bool>(
         builder: (_) => RegisterScreen(
           tipoCuenta: tipoCuenta,
+          registrarCuenta: registrarCuenta,
           devolverResultado: devolverResultado,
         ),
       ),
