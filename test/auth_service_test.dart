@@ -132,21 +132,39 @@ void main() {
       expect(requests.length, count);
     },
   );
-  test('proveedores cerrados por defecto sin red', () async {
-    final service = AuthService();
-    for (final method in MetodoAcceso.values.where(
-      (m) => m != MetodoAcceso.celular,
-    )) {
+  test(
+    'Google habilitado por defecto; proveedores sin configuración cerrados',
+    () async {
+      final providers = <OAuthProvider>[];
+      final service = AuthService(
+        oauthLauncher:
+            (
+              provider, {
+              redirectTo,
+              scopes,
+              authScreenLaunchMode = LaunchMode.platformDefault,
+            }) async {
+              providers.add(provider);
+              expect(redirectTo, AuthOptions.redirect());
+              return true;
+            },
+      );
+      expect(await service.signInWithProvider(MetodoAcceso.google), isTrue);
+      expect(providers, [OAuthProvider.google]);
+      for (final method in MetodoAcceso.values.where(
+        (m) => m != MetodoAcceso.celular && m != MetodoAcceso.google,
+      )) {
+        await expectLater(
+          service.signInWithProvider(method),
+          throwsA(isA<AuthException>()),
+        );
+      }
       await expectLater(
-        service.signInWithProvider(method),
+        service.requestPhoneOtp('+593991234567'),
         throwsA(isA<AuthException>()),
       );
-    }
-    await expectLater(
-      service.requestPhoneOtp('+593991234567'),
-      throwsA(isA<AuthException>()),
-    );
-  });
+    },
+  );
   test('redirecciones Android y web eliminan credenciales del callback', () {
     expect(
       AuthOptions.redirect(web: false),

@@ -25,18 +25,23 @@ class LoginScreen extends StatefulWidget {
     this.iniciarSesion,
     this.service,
     this.devolverResultado = false,
+    this.registroBuilder,
+    this.recuperacionBuilder,
   });
 
   final AuthService? service;
   final IniciarSesion? iniciarSesion;
   final bool devolverResultado;
+  final WidgetBuilder? registroBuilder;
+  final WidgetBuilder? recuperacionBuilder;
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> {
+class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
   final _formKey = GlobalKey<FormState>();
+  final _scrollController = ScrollController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
 
@@ -48,11 +53,45 @@ class _LoginScreenState extends State<LoginScreen> {
   int _oauthAttempt = 0;
   bool _isLoading = false;
   bool _hidePassword = true;
+  bool _keyboardVisible = false;
+
+  bool get _hasVisibleKeyboard => WidgetsBinding
+      .instance
+      .platformDispatcher
+      .views
+      .any((view) => view.viewInsets.bottom > 0);
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _keyboardVisible = _hasVisibleKeyboard;
+  }
+
+  @override
+  void didChangeMetrics() {
+    final visible = _hasVisibleKeyboard;
+    if (_keyboardVisible && !visible) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted || !_scrollController.hasClients || _hasVisibleKeyboard) {
+          return;
+        }
+        _scrollController.animateTo(
+          0,
+          duration: const Duration(milliseconds: 180),
+          curve: Curves.easeOutCubic,
+        );
+      });
+    }
+    _keyboardVisible = visible;
+  }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _oauthTimer?.cancel();
     _oauthSubscription?.cancel();
+    _scrollController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
@@ -218,9 +257,11 @@ class _LoginScreenState extends State<LoginScreen> {
     final cuentaCreada = await Navigator.push<bool>(
       context,
       MaterialPageRoute<bool>(
-        builder: (_) => SeleccionTipoCuentaScreen(
-          devolverResultado: widget.devolverResultado,
-        ),
+        builder:
+            widget.registroBuilder ??
+            (_) => SeleccionTipoCuentaScreen(
+              devolverResultado: widget.devolverResultado,
+            ),
       ),
     );
 
@@ -252,6 +293,9 @@ class _LoginScreenState extends State<LoginScreen> {
             child: SizedBox(
               width: 560,
               child: SingleChildScrollView(
+                controller: _scrollController,
+                keyboardDismissBehavior:
+                    ScrollViewKeyboardDismissBehavior.onDrag,
                 padding: const EdgeInsets.fromLTRB(18, 18, 18, 28),
                 child: Form(
                   key: _formKey,
@@ -372,9 +416,11 @@ class _LoginScreenState extends State<LoginScreen> {
                                   ? null
                                   : () => Navigator.of(context).push(
                                       MaterialPageRoute<void>(
-                                        builder: (_) => PasswordScreen(
-                                          service: widget.service,
-                                        ),
+                                        builder:
+                                            widget.recuperacionBuilder ??
+                                            (_) => PasswordScreen(
+                                              service: widget.service,
+                                            ),
                                       ),
                                     ),
                               child: const Text('¿Olvidaste tu contraseña?'),

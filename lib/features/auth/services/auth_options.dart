@@ -4,7 +4,10 @@ enum MetodoAcceso { google, microsoft, facebook, celular }
 
 class AuthOptions {
   const AuthOptions({
-    this.google = const bool.fromEnvironment('AUTH_GOOGLE_ENABLED'),
+    this.google = const bool.fromEnvironment(
+      'AUTH_GOOGLE_ENABLED',
+      defaultValue: true,
+    ),
     this.microsoft = const bool.fromEnvironment('AUTH_MICROSOFT_ENABLED'),
     this.facebook = const bool.fromEnvironment('AUTH_FACEBOOK_ENABLED'),
     this.celular = const bool.fromEnvironment('AUTH_PHONE_ENABLED'),
