@@ -4,10 +4,10 @@ insert into auth.users(id,email,raw_user_meta_data) values
  ('b7200000-0000-0000-0000-000000000001','policy-owner@cercly.test','{}'),
  ('b7200000-0000-0000-0000-000000000002','policy-target@cercly.test','{}'),
  ('b7200000-0000-0000-0000-000000000003','policy-admin@cercly.test','{}');
-insert into auth.sessions(id,user_id) values
- ('b7200000-0000-0000-0000-000000000001','b7200000-0000-0000-0000-000000000001'),
- ('b7200000-0000-0000-0000-000000000002','b7200000-0000-0000-0000-000000000002'),
- ('b7200000-0000-0000-0000-000000000003','b7200000-0000-0000-0000-000000000003');
+insert into auth.sessions(id,user_id,created_at) values
+ ('b7200000-0000-0000-0000-000000000001','b7200000-0000-0000-0000-000000000001',now()),
+ ('b7200000-0000-0000-0000-000000000002','b7200000-0000-0000-0000-000000000002',now()),
+ ('b7200000-0000-0000-0000-000000000003','b7200000-0000-0000-0000-000000000003',now());
 update public.usuarios set rol='propietario' where id='b7200000-0000-0000-0000-000000000002';
 update public.usuarios set rol='administrador' where id='b7200000-0000-0000-0000-000000000003';
 insert into public.establecimientos(id,propietario_id,categoria_id,nombre,direccion,latitud,longitud,estado,publicable)
