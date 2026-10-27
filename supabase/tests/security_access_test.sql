@@ -1,6 +1,6 @@
 -- Solo base local desechable; fixtures sintéticos y rollback.
 begin;
-select plan(57);
+select plan(58);
 insert into auth.users(id,email,raw_user_meta_data) values
  ('b4000000-0000-0000-0000-000000000001','admin-b4@cercly.test','{}'),
  ('b4000000-0000-0000-0000-000000000002','user-b4@cercly.test','{"rol":"administrador","tipo_cuenta":"propietario"}'),
@@ -20,10 +20,8 @@ select throws_ok($test$select public.responder_solicitud_establecimiento('b43000
 select throws_ok($test$insert into public.usuarios(id,nombre,rol) values (auth.uid(),'Ataque','administrador')$test$, '42501', null, 'no inserta perfil privilegiado');
 select throws_ok($test$update public.usuarios set id=gen_random_uuid() where id=auth.uid()$test$, '42501', null, 'no cambia identidad');
 select throws_ok($test$update public.usuarios set creado_en=now() where id=auth.uid()$test$, '42501', null, 'no cambia fecha del perfil');
-select lives_ok($test$insert into public.establecimientos(id,propietario_id,categoria_id,nombre,direccion,latitud,longitud) select 'b4100000-0000-0000-0000-000000000002',auth.uid(),id,'Pendiente B4','Tulcán',0.8,-77.7 from public.categorias where activa limit 1$test$, 'puede crear borrador pendiente');
-select ok((select rol='usuario' from public.usuarios where id=auth.uid()), 'crear pendiente no concede propietario');
-select lives_ok($test$insert into public.promociones(id,establecimiento_id,titulo,fecha_inicio,fecha_fin)
-values ('b4200000-0000-0000-0000-000000000002','b4100000-0000-0000-0000-000000000002','Borrador privado',now()-interval '1 hour',now()+interval '1 day')$test$, 'prepara promocion en su borrador');
+select throws_ok($test$insert into public.establecimientos(id,propietario_id,categoria_id,nombre,direccion,latitud,longitud) select 'b4100000-0000-0000-0000-000000000002',auth.uid(),id,'Pendiente B4','Tulcán',0.8,-77.7 from public.categorias where activa limit 1$test$, '42501', null, 'nuevo establecimiento debe entrar por solicitud revisable');
+select ok((select rol='usuario' from public.usuarios where id=auth.uid()), 'la solicitud pendiente no concede propietario');
 reset role;
 select set_config('request.jwt.claim.sub','',true);
 set local role anon;
@@ -33,8 +31,10 @@ reset role;
 set local role authenticated;
 select set_config('request.jwt.claim.sub','b4000000-0000-0000-0000-000000000002',true);
 
-select throws_ok($test$update public.establecimientos set estado='aprobado' where id='b4100000-0000-0000-0000-000000000002'$test$, 'P0001', null, 'no puede aprobar su borrador');
-select throws_ok($test$update public.establecimientos set publicable=true where id='b4100000-0000-0000-0000-000000000002'$test$, 'P0001', null, 'no puede publicar su borrador');
+select lives_ok($test$update public.establecimientos set estado='aprobado' where id='b4100000-0000-0000-0000-000000000002'$test$,'no puede aprobar una ficha por actualización directa');
+select is((select count(*)::integer from public.establecimientos where id='b4100000-0000-0000-0000-000000000002'),0,'no se crea ficha pública antes de la aprobación por solicitud');
+select lives_ok($test$update public.establecimientos set publicable=true where id='b4100000-0000-0000-0000-000000000002'$test$,'no puede publicar una ficha por actualización directa');
+select is((select count(*)::integer from public.establecimientos where id='b4100000-0000-0000-0000-000000000002'),0,'no hay ficha publicable antes de la aprobación');
 select throws_ok($test$insert into public.establecimientos(propietario_id,categoria_id,nombre,direccion,latitud,longitud,verificado_en,verificado_por) select auth.uid(),id,'Verificación falsa','Tulcán',0.8,-77.7,now(),auth.uid() from public.categorias where activa limit 1$test$, '42501', null, 'no puede falsificar verificacion al insertar');
 select throws_ok($test$insert into public.promociones(establecimiento_id,titulo,fecha_inicio,fecha_fin) values ('b4100000-0000-0000-0000-000000000001','Ataque',now(),now()+interval '1 day')$test$, '42501', null, 'no crea promociones de otro negocio');
 select lives_ok($test$insert into public.solicitudes_establecimientos(id,solicitante_id,establecimiento_id,tipo,mensaje) values ('b4300000-0000-0000-0000-000000000001',auth.uid(),'b4100000-0000-0000-0000-000000000001','acceso','Solicito acceso autorizado')$test$, 'solicitud propia pendiente admitida');
@@ -49,8 +49,8 @@ select lives_ok($test$insert into public.establecimientos(propietario_id,categor
 select auth.uid(),id,'Alta autorizada','Tulcán',0.8,-77.7,'aprobado',now(),auth.uid() from public.categorias where activa limit 1$test$,'administrador conserva alta verificada');
 select is((select rol::text from public.usuarios where id=auth.uid()),'administrador','trigger no degrada administrador propietario');
 
-select lives_ok($test$update public.establecimientos set estado='aprobado',publicable=true where id='b4100000-0000-0000-0000-000000000002'$test$, 'administrador aprueba establecimiento');
-select ok((select rol='propietario' from public.usuarios where id='b4000000-0000-0000-0000-000000000002'), 'aprobacion concede propietario');
+select is((select count(*)::integer from public.establecimientos where id='b4100000-0000-0000-0000-000000000002'),0,'la ficha no existe hasta una solicitud de registro aprobada');
+select ok((select rol='usuario' from public.usuarios where id='b4000000-0000-0000-0000-000000000002'), 'no recibe rol propietario sin solicitud de registro aprobada');
 select lives_ok($test$select public.responder_solicitud_establecimiento('b4300000-0000-0000-0000-000000000001','aprobada','')$test$, 'RPC administrativo aprueba acceso');
 select ok((select activo from public.miembros_establecimiento where usuario_id='b4000000-0000-0000-0000-000000000002' and establecimiento_id='b4100000-0000-0000-0000-000000000001'), 'aprobacion crea colaborador activo');
 select throws_ok($test$select public.responder_solicitud_establecimiento('b4300000-0000-0000-0000-000000000001','aprobada','')$test$, 'P0001', null, 'no responde dos veces');

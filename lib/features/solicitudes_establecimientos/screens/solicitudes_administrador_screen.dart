@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
 
 import '../../../sky/sky_backdrop.dart';
 import '../../../sky/sky_theme.dart';
 
 import '../models/solicitud_establecimiento_model.dart';
 import '../services/solicitud_establecimiento_service.dart';
+import '../../establecimientos/services/establecimiento_service.dart';
 
 class SolicitudesAdministradorScreen extends StatefulWidget {
   const SolicitudesAdministradorScreen({super.key});
@@ -18,8 +21,10 @@ class _SolicitudesAdministradorScreenState
     extends State<SolicitudesAdministradorScreen> {
   final SolicitudEstablecimientoService _service =
       SolicitudEstablecimientoService();
+  final EstablecimientoService _establecimientos = EstablecimientoService();
 
   late Future<List<SolicitudEstablecimientoDetalle>> _solicitudesFuture;
+  late Future<List<Map<String, dynamic>>> _categoriasFuture;
 
   String _estadoSeleccionado = SolicitudEstablecimientoModel.estadoPendiente;
 
@@ -28,6 +33,7 @@ class _SolicitudesAdministradorScreenState
   @override
   void initState() {
     super.initState();
+    _categoriasFuture = _establecimientos.listarCategoriasParaRevision();
     _cargar();
   }
 
@@ -139,6 +145,39 @@ class _SolicitudesAdministradorScreenState
                   etiqueta: 'Dirección',
                   valor: detalle.direccionEstablecimiento,
                 ),
+                if (solicitud.tipo ==
+                    SolicitudEstablecimientoModel.tipoRegistro) ...[
+                  _categoriaSolicitud(detalle),
+                  _Detalle(
+                    etiqueta: 'Descripción',
+                    valor:
+                        detalle.datosPropuestos['descripcion'] as String? ??
+                        'Sin descripción',
+                  ),
+                  _Detalle(
+                    etiqueta: 'Contacto comercial',
+                    valor:
+                        detalle.datosPropuestos['telefono_publico']
+                            as String? ??
+                        'Sin contacto',
+                  ),
+                  _Detalle(
+                    etiqueta: 'Coordenadas',
+                    valor:
+                        '${detalle.datosPropuestos['latitud']}, ${detalle.datosPropuestos['longitud']}',
+                  ),
+                  if (detalle.datosPropuestos['latitud'] is num &&
+                      detalle.datosPropuestos['longitud'] is num) ...[
+                    const SizedBox(height: 10),
+                    _VistaMapaSolicitud(
+                      latitud: (detalle.datosPropuestos['latitud'] as num)
+                          .toDouble(),
+                      longitud: (detalle.datosPropuestos['longitud'] as num)
+                          .toDouble(),
+                    ),
+                  ],
+                  _coincidenciasRegistro(detalle),
+                ],
                 _Detalle(
                   etiqueta: 'Tipo de solicitud',
                   valor: _nombreTipo(solicitud.tipo),
@@ -180,12 +219,102 @@ class _SolicitudesAdministradorScreenState
     );
   }
 
+  Widget _coincidenciasRegistro(SolicitudEstablecimientoDetalle detalle) {
+    final datos = detalle.datosPropuestos;
+    final latitud = datos['latitud'];
+    final longitud = datos['longitud'];
+    if (latitud is! num || longitud is! num) return const SizedBox.shrink();
+
+    return FutureBuilder<List<Map<String, dynamic>>>(
+      future: _establecimientos.buscarCoincidenciasCercanas(
+        nombre: datos['nombre'] as String? ?? '',
+        latitud: latitud.toDouble(),
+        longitud: longitud.toDouble(),
+      ),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Padding(
+            padding: EdgeInsets.symmetric(vertical: 12),
+            child: LinearProgressIndicator(),
+          );
+        }
+        if (snapshot.hasError) {
+          return const Text('No se pudieron consultar posibles coincidencias.');
+        }
+        final coincidencias = snapshot.data ?? [];
+        if (coincidencias.isEmpty) {
+          return const Padding(
+            padding: EdgeInsets.only(top: 12),
+            child: Text('Sin coincidencias publicadas en un radio de 500 m.'),
+          );
+        }
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const SizedBox(height: 16),
+            const Text(
+              'Posibles duplicados cercanos',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+            for (final coincidencia in coincidencias)
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                dense: true,
+                title: Text(
+                  coincidencia['nombre'] as String? ?? 'Establecimiento',
+                ),
+                subtitle: Text(
+                  '${coincidencia['direccion'] ?? 'Sin dirección'} · '
+                  '${(coincidencia['distancia_metros'] as double).round()} m',
+                ),
+              ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _categoriaSolicitud(SolicitudEstablecimientoDetalle detalle) {
+    final categoriaId = detalle.datosPropuestos['categoria_id'] as String?;
+    return FutureBuilder<List<Map<String, dynamic>>>(
+      future: _categoriasFuture,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const _Detalle(etiqueta: 'Categoría', valor: 'Cargando…');
+        }
+        if (snapshot.hasError) {
+          return const _Detalle(
+            etiqueta: 'Categoría',
+            valor: 'No se pudo verificar la categoría',
+          );
+        }
+        final filas = snapshot.data ?? [];
+        final fila = filas.where((item) => item['id'] == categoriaId);
+        if (fila.isEmpty) {
+          return const _Detalle(
+            etiqueta: 'Categoría',
+            valor: 'Categoría no disponible',
+          );
+        }
+        final categoria = fila.first;
+        final nombre = categoria['nombre'] as String? ?? 'Sin nombre';
+        final activa = categoria['activa'] as bool? ?? false;
+        return _Detalle(
+          etiqueta: 'Categoría',
+          valor: activa ? nombre : '$nombre (inactiva)',
+        );
+      },
+    );
+  }
+
   String _nombreTipo(String tipo) {
     switch (tipo) {
       case SolicitudEstablecimientoModel.tipoAcceso:
         return 'Solicitar acceso';
       case SolicitudEstablecimientoModel.tipoCorreccion:
         return 'Solicitar corrección';
+      case SolicitudEstablecimientoModel.tipoRegistro:
+        return 'Registrar nuevo establecimiento';
       default:
         return 'Reclamar establecimiento';
     }
@@ -801,6 +930,52 @@ class _DialogoRespuestaState extends State<_DialogoRespuesta> {
           child: Text(widget.aprobando ? 'Aprobar' : 'Rechazar'),
         ),
       ],
+    );
+  }
+}
+
+class _VistaMapaSolicitud extends StatelessWidget {
+  const _VistaMapaSolicitud({required this.latitud, required this.longitud});
+
+  final double latitud;
+  final double longitud;
+
+  @override
+  Widget build(BuildContext context) {
+    final punto = LatLng(latitud, longitud);
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(16),
+      child: SizedBox(
+        height: 190,
+        child: FlutterMap(
+          options: MapOptions(initialCenter: punto, initialZoom: 16),
+          children: [
+            TileLayer(
+              urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+              userAgentPackageName: 'com.cercly.cercly',
+            ),
+            MarkerLayer(
+              markers: [
+                Marker(
+                  point: punto,
+                  width: 42,
+                  height: 42,
+                  child: const Icon(
+                    Icons.location_on,
+                    color: Colors.red,
+                    size: 40,
+                  ),
+                ),
+              ],
+            ),
+            RichAttributionWidget(
+              attributions: const [
+                TextSourceAttribution('OpenStreetMap contributors'),
+              ],
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

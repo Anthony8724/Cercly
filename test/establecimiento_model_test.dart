@@ -36,18 +36,6 @@ EstablecimientoModel crearEstablecimiento({
 }
 
 void main() {
-  test('prepara un establecimiento pendiente para Supabase', () {
-    final datos = crearEstablecimiento().toSupabaseParaCrear();
-
-    expect(datos['estado'], 'pendiente');
-    expect(datos['propietario_id'], '00000000-0000-0000-0000-000000000001');
-    expect(datos['categoria_id'], '00000000-0000-0000-0000-000000000002');
-    expect(datos['latitud'], 0.8119);
-    expect(datos['longitud'], -77.7173);
-    expect(datos.containsKey('creado_en'), isFalse);
-    expect(datos.containsKey('actualizado_en'), isFalse);
-  });
-
   test('prepara solo los campos editables de información general', () {
     final establecimiento = crearEstablecimiento(
       nombre: ' Café actualizado ',
@@ -69,13 +57,15 @@ void main() {
     expect(datos.containsKey('longitud'), isFalse);
   });
 
-  test('un establecimiento aprobado vuelve a pendiente al editar información', () {
-    final datos = crearEstablecimiento(
-      estado: 'aprobado',
-    ).toSupabaseParaActualizarInformacion();
+  test(
+    'un establecimiento aprobado vuelve a pendiente al editar información',
+    () {
+      final datos = crearEstablecimiento(estado: 'aprobado')
+          .toSupabaseParaActualizarInformacion();
 
-    expect(datos['estado'], 'pendiente');
-  });
+      expect(datos['estado'], 'pendiente');
+    },
+  );
 
   test('permite leer un OSM sin propietario desde Supabase', () {
     final establecimiento = EstablecimientoModel.fromSupabase({
@@ -94,12 +84,6 @@ void main() {
 
     expect(establecimiento.propietarioId, isEmpty);
     expect(establecimiento.nombre, 'Negocio OSM');
-  });
-
-  test('no permite crear en Cercly un establecimiento sin propietario', () {
-    final establecimiento = crearEstablecimiento(propietarioId: '');
-
-    expect(establecimiento.toSupabaseParaCrear, throwsArgumentError);
   });
 
   test('rechaza un nombre vacío', () {

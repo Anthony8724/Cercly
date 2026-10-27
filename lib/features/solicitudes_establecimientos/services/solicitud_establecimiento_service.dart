@@ -30,12 +30,14 @@ class SolicitudEstablecimientoDetalle {
     required this.nombreSolicitante,
     required this.nombreEstablecimiento,
     required this.direccionEstablecimiento,
+    this.datosPropuestos = const {},
   });
 
   final SolicitudEstablecimientoModel solicitud;
   final String nombreSolicitante;
   final String nombreEstablecimiento;
   final String direccionEstablecimiento;
+  final Map<String, dynamic> datosPropuestos;
 
   factory SolicitudEstablecimientoDetalle.fromSupabase(
     Map<String, dynamic> datos,
@@ -50,9 +52,17 @@ class SolicitudEstablecimientoDetalle {
           solicitante?['nombre'] as String? ?? 'Usuario desconocido',
       nombreEstablecimiento:
           establecimiento?['nombre'] as String? ??
-          'Establecimiento desconocido',
+          (datos['datos_propuestos'] as Map<String, dynamic>?)?['nombre']
+              as String? ??
+          'Establecimiento nuevo',
       direccionEstablecimiento:
-          establecimiento?['direccion'] as String? ?? 'Sin dirección',
+          establecimiento?['direccion'] as String? ??
+          (datos['datos_propuestos'] as Map<String, dynamic>?)?['direccion']
+              as String? ??
+          'Sin dirección',
+      datosPropuestos: Map<String, dynamic>.from(
+        datos['datos_propuestos'] as Map? ?? const {},
+      ),
     );
   }
 }

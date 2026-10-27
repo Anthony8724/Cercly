@@ -14,11 +14,13 @@ class SeleccionarUbicacionEstablecimientoScreen extends StatefulWidget {
   const SeleccionarUbicacionEstablecimientoScreen({
     this.latitudInicial,
     this.longitudInicial,
+    this.mostrarTiles = true,
     super.key,
   });
 
   final double? latitudInicial;
   final double? longitudInicial;
+  final bool mostrarTiles;
 
   @override
   State<SeleccionarUbicacionEstablecimientoScreen> createState() =>
@@ -30,6 +32,7 @@ class _SeleccionarUbicacionEstablecimientoScreenState
   static const _centroTulcan = LatLng(0.8119, -77.7173);
 
   final _mapController = MapController();
+  final _mapKey = GlobalKey();
   final _ubicacionService = GeolocatorUbicacionService();
 
   LatLng? _seleccion;
@@ -42,9 +45,19 @@ class _SeleccionarUbicacionEstablecimientoScreenState
     final latitud = widget.latitudInicial;
     final longitud = widget.longitudInicial;
     if (latitud != null && longitud != null) {
-      _seleccion = LatLng(latitud, longitud);
+      final inicial = LatLng(latitud, longitud);
+      if (_esPuntoValido(inicial)) _seleccion = inicial;
     }
   }
+
+  bool _esPuntoValido(LatLng? punto) =>
+      punto != null &&
+      punto.latitude.isFinite &&
+      punto.longitude.isFinite &&
+      punto.latitude >= -90 &&
+      punto.latitude <= 90 &&
+      punto.longitude >= -180 &&
+      punto.longitude <= 180;
 
   @override
   void dispose() {
@@ -80,6 +93,12 @@ class _SeleccionarUbicacionEstablecimientoScreenState
     }
 
     final punto = LatLng(ubicacion.latitud, ubicacion.longitud);
+    if (!_esPuntoValido(punto)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('La ubicación recibida no es válida.')),
+      );
+      return;
+    }
     setState(() {
       _seleccion = punto;
     });
@@ -89,11 +108,11 @@ class _SeleccionarUbicacionEstablecimientoScreenState
 
   void _confirmar() {
     final seleccion = _seleccion;
-    if (seleccion == null) return;
+    if (!_esPuntoValido(seleccion)) return;
 
     Navigator.of(context).pop(
       UbicacionUsuario(
-        latitud: seleccion.latitude,
+        latitud: seleccion!.latitude,
         longitud: seleccion.longitude,
       ),
     );
@@ -109,9 +128,10 @@ class _SeleccionarUbicacionEstablecimientoScreenState
         children: [
           CerclyPageHeader(
             title: 'Seleccionar ubicación',
-            subtitle: 'Marca el punto exacto donde se encuentra tu negocio',
+            subtitle: 'Selecciona el punto del negocio en el mapa',
             icon: Icons.map_rounded,
             onBack: () => Navigator.of(context).maybePop(),
+            compact: true,
           ),
           Expanded(
             child: SafeArea(
@@ -120,22 +140,38 @@ class _SeleccionarUbicacionEstablecimientoScreenState
                 children: [
                   Positioned.fill(
                     child: FlutterMap(
+                      key: _mapKey,
                       mapController: _mapController,
                       options: MapOptions(
                         initialCenter: centroInicial,
                         initialZoom: _seleccion == null ? 14 : 17,
                         onTap: (_, punto) {
+                          if (!_esPuntoValido(punto)) return;
                           setState(() {
                             _seleccion = punto;
                           });
+                          _mapController.move(
+                            punto,
+                            _mapController.camera.zoom,
+                          );
+                        },
+                        onPositionChanged: (camera, hasGesture) {
+                          if (!hasGesture) return;
+                          final centro = camera.center;
+                          if (!_esPuntoValido(centro)) return;
+                          if (_seleccion?.latitude == centro.latitude &&
+                              _seleccion?.longitude == centro.longitude) {
+                            return;
+                          }
+                          setState(() => _seleccion = centro);
                         },
                       ),
                       children: [
-                        TileLayer(
-                          urlTemplate:
-                              'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                          userAgentPackageName: 'com.cercly.cercly',
-                        ),
+                        if (widget.mostrarTiles)
+                          TileLayer(
+                            urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                            userAgentPackageName: 'com.cercly.cercly',
+                          ),
                         if (_seleccion != null)
                           MarkerLayer(
                             markers: [
@@ -144,7 +180,24 @@ class _SeleccionarUbicacionEstablecimientoScreenState
                                 width: 64,
                                 height: 64,
                                 alignment: Alignment.topCenter,
-                                child: const _MarcadorNegocio(),
+                                child: GestureDetector(
+                                  key: const Key('marcador-arrastrable'),
+                                  onPanUpdate: (details) {
+                                    final box =
+                                        _mapKey.currentContext
+                                                ?.findRenderObject()
+                                            as RenderBox?;
+                                    if (box == null) return;
+                                    final local = box.globalToLocal(
+                                      details.globalPosition,
+                                    );
+                                    final punto = _mapController.camera
+                                        .offsetToCrs(local);
+                                    if (!_esPuntoValido(punto)) return;
+                                    setState(() => _seleccion = punto);
+                                  },
+                                  child: const _MarcadorNegocio(),
+                                ),
                               ),
                             ],
                           ),
@@ -186,7 +239,7 @@ class _SeleccionarUbicacionEstablecimientoScreenState
                             const SizedBox(width: 10),
                             Expanded(
                               child: Text(
-                                'Toca el mapa exactamente donde se encuentra tu negocio.',
+                                'Toca el mapa o arrastra el marcador hasta el negocio. Tu GPS solo sirve como referencia.',
                                 style: TextStyle(
                                   color: SkyPalette.of(context).text,
                                   fontWeight: FontWeight.w700,
@@ -204,7 +257,9 @@ class _SeleccionarUbicacionEstablecimientoScreenState
                     right: 14,
                     bottom: 14,
                     child: Container(
-                      padding: const EdgeInsets.all(14),
+                      padding: EdgeInsets.all(
+                        MediaQuery.sizeOf(context).height < 700 ? 10 : 14,
+                      ),
                       decoration: BoxDecoration(
                         color: SkyPalette.of(context).surface,
                         borderRadius: BorderRadius.circular(22),
@@ -219,6 +274,47 @@ class _SeleccionarUbicacionEstablecimientoScreenState
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
+                          if (_esPuntoValido(_seleccion))
+                            Padding(
+                              padding: const EdgeInsets.only(bottom: 8),
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    Icons.pin_drop_outlined,
+                                    size: 18,
+                                    color: SkyPalette.of(context).interactive,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      'Lat. ${_seleccion!.latitude.toStringAsFixed(6)}  ·  Lon. ${_seleccion!.longitude.toStringAsFixed(6)}',
+                                      key: const Key(
+                                        'coordenadas-seleccionadas',
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(
+                                        color: SkyPalette.of(context).text,
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            )
+                          else
+                            Padding(
+                              padding: const EdgeInsets.only(bottom: 8),
+                              child: Text(
+                                'Toca el mapa o usa GPS para elegir un punto.',
+                                key: const Key('sin-punto-seleccionado'),
+                                style: TextStyle(
+                                  color: SkyPalette.of(context).muted,
+                                  fontSize: 13,
+                                ),
+                              ),
+                            ),
                           SizedBox(
                             width: double.infinity,
                             child: OutlinedButton.icon(
@@ -246,7 +342,10 @@ class _SeleccionarUbicacionEstablecimientoScreenState
                             width: double.infinity,
                             height: 50,
                             child: FilledButton.icon(
-                              onPressed: _seleccion == null ? null : _confirmar,
+                              key: const Key('confirmar-ubicacion'),
+                              onPressed: _esPuntoValido(_seleccion)
+                                  ? _confirmar
+                                  : null,
                               style: FilledButton.styleFrom(
                                 backgroundColor: SkyPalette.of(context).primary,
                                 shape: RoundedRectangleBorder(
@@ -255,7 +354,7 @@ class _SeleccionarUbicacionEstablecimientoScreenState
                               ),
                               icon: const Icon(Icons.check_circle_rounded),
                               label: Text(
-                                _seleccion == null
+                                !_esPuntoValido(_seleccion)
                                     ? 'Selecciona un punto'
                                     : 'Confirmar ubicación',
                                 style: const TextStyle(

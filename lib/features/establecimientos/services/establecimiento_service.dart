@@ -1,13 +1,173 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'dart:math' as math;
+
 import '../models/establecimiento_model.dart';
 
-class EstablecimientoService {
+abstract interface class RegistroEstablecimientoRepository {
+  Future<List<Map<String, dynamic>>> listarCategoriasActivas();
+
+  Future<List<Map<String, dynamic>>> buscarCoincidenciasCercanas({
+    required String nombre,
+    required double latitud,
+    required double longitud,
+  });
+
+  Future<String> crearSolicitudRegistro({
+    required String nombre,
+    required String categoriaId,
+    required String descripcion,
+    required String direccion,
+    required String telefono,
+    required double latitud,
+    required double longitud,
+    List<Map<String, dynamic>> horarios = const [],
+  });
+}
+
+class EstablecimientoService implements RegistroEstablecimientoRepository {
   EstablecimientoService({SupabaseClient? supabase})
     : _supabase = supabase ?? Supabase.instance.client;
 
   final SupabaseClient _supabase;
 
+  @override
+  Future<String> crearSolicitudRegistro({
+    required String nombre,
+    required String categoriaId,
+    required String descripcion,
+    required String direccion,
+    required String telefono,
+    required double latitud,
+    required double longitud,
+    List<Map<String, dynamic>> horarios = const [],
+  }) async {
+    final usuario = _supabase.auth.currentUser;
+    if (usuario == null) throw StateError('Debes iniciar sesión.');
+    if (nombre.trim().length < 2 || nombre.trim().length > 120) {
+      throw ArgumentError('El nombre debe tener entre 2 y 120 caracteres.');
+    }
+    if (categoriaId.trim().isEmpty || direccion.trim().isEmpty) {
+      throw ArgumentError('Completa la categoría y la dirección.');
+    }
+    if (!latitud.isFinite ||
+        latitud < -90 ||
+        latitud > 90 ||
+        !longitud.isFinite ||
+        longitud < -180 ||
+        longitud > 180) {
+      throw ArgumentError('La ubicación debe tener coordenadas válidas.');
+    }
+    final respuesta = await _supabase
+        .from('solicitudes_establecimientos')
+        .insert({
+          'solicitante_id': usuario.id,
+          'tipo': 'registro',
+          'mensaje': 'Solicitud para registrar un nuevo establecimiento.',
+          'datos_propuestos': {
+            'nombre': nombre.trim(),
+            'categoria_id': categoriaId,
+            'descripcion': descripcion.trim(),
+            'direccion': direccion.trim(),
+            'telefono_publico': telefono.trim(),
+            'latitud': latitud,
+            'longitud': longitud,
+            'horarios': horarios,
+          },
+        })
+        .select('id')
+        .single();
+    return respuesta['id'] as String;
+  }
+
+  @override
+  Future<List<Map<String, dynamic>>> buscarCoincidenciasCercanas({
+    required String nombre,
+    required double latitud,
+    required double longitud,
+  }) async {
+    const radioMetros = 500.0;
+    final latDelta = radioMetros / 111320;
+    final lonDelta =
+        radioMetros /
+        (111320 * math.cos(latitud * math.pi / 180).abs().clamp(0.01, 1));
+    final filas = await _supabase
+        .from('establecimientos')
+        .select(
+          'id,nombre,direccion,latitud,longitud,fuente,estado_reclamo,propietario_id',
+        )
+        .gte('latitud', latitud - latDelta)
+        .lte('latitud', latitud + latDelta)
+        .gte('longitud', longitud - lonDelta)
+        .lte('longitud', longitud + lonDelta)
+        .eq('estado', 'aprobado')
+        .eq('publicable', true)
+        .limit(100);
+
+    final nombreNormalizado = _normalizar(nombre);
+    final coincidencias = <Map<String, dynamic>>[];
+    for (final fila in filas) {
+      final candidato = _normalizar(fila['nombre'] as String? ?? '');
+      final tokens = nombreNormalizado
+          .split(' ')
+          .where((t) => t.length > 2)
+          .toSet();
+      final tokensCandidato = candidato
+          .split(' ')
+          .where((t) => t.length > 2)
+          .toSet();
+      final similar =
+          candidato == nombreNormalizado ||
+          candidato.contains(nombreNormalizado) ||
+          nombreNormalizado.contains(candidato) ||
+          (tokens.isNotEmpty &&
+              tokens.intersection(tokensCandidato).length / tokens.length >=
+                  .6);
+      if (!similar) continue;
+      final distancia = _distanciaMetros(
+        latitud,
+        longitud,
+        (fila['latitud'] as num).toDouble(),
+        (fila['longitud'] as num).toDouble(),
+      );
+      if (distancia <= radioMetros) {
+        coincidencias.add({...fila, 'distancia_metros': distancia});
+      }
+    }
+    coincidencias.sort(
+      (a, b) => (a['distancia_metros'] as double).compareTo(
+        b['distancia_metros'] as double,
+      ),
+    );
+    return coincidencias;
+  }
+
+  String _normalizar(String valor) => valor
+      .toLowerCase()
+      .trim()
+      .replaceAll(RegExp(r'[áàäâ]'), 'a')
+      .replaceAll(RegExp(r'[éèëê]'), 'e')
+      .replaceAll(RegExp(r'[íìïî]'), 'i')
+      .replaceAll(RegExp(r'[óòöô]'), 'o')
+      .replaceAll(RegExp(r'[úùüû]'), 'u')
+      .replaceAll('ñ', 'n')
+      .replaceAll(RegExp(r'[^a-z0-9]+'), ' ')
+      .replaceAll(RegExp(r'\s+'), ' ');
+
+  double _distanciaMetros(double lat1, double lon1, double lat2, double lon2) {
+    const radio = 6371000.0;
+    final dLat = (lat2 - lat1) * math.pi / 180;
+    final dLon = (lon2 - lon1) * math.pi / 180;
+    final a =
+        math.sin(dLat / 2) * math.sin(dLat / 2) +
+        math.cos(lat1 * math.pi / 180) *
+            math.cos(lat2 * math.pi / 180) *
+            math.sin(dLon / 2) *
+            math.sin(dLon / 2);
+    return radio * 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a));
+  }
+
+  @override
   Future<List<Map<String, dynamic>>> listarCategoriasActivas() async {
     final respuesta = await _supabase
         .from('categorias')
@@ -15,6 +175,14 @@ class EstablecimientoService {
         .eq('activa', true)
         .order('orden');
 
+    return List<Map<String, dynamic>>.from(respuesta);
+  }
+
+  Future<List<Map<String, dynamic>>> listarCategoriasParaRevision() async {
+    final respuesta = await _supabase
+        .from('categorias')
+        .select('id, nombre, activa')
+        .order('orden');
     return List<Map<String, dynamic>>.from(respuesta);
   }
 
@@ -177,46 +345,6 @@ class EstablecimientoService {
       establecimientoId: establecimientoId,
       nuevoEstado: 'rechazado',
     );
-  }
-
-  Future<String> crear(EstablecimientoModel establecimiento) async {
-    final usuario = _supabase.auth.currentUser;
-
-    if (usuario == null) {
-      throw StateError(
-        'Debes iniciar sesión para registrar un establecimiento.',
-      );
-    }
-
-    if (usuario.id != establecimiento.propietarioId) {
-      throw StateError(
-        'No puedes registrar un establecimiento para otro usuario.',
-      );
-    }
-
-    final respuesta = await _supabase
-        .from('establecimientos')
-        .insert(establecimiento.toSupabaseParaCrear())
-        .select('id')
-        .single();
-
-    final establecimientoId = respuesta['id'] as String;
-    final horarios = establecimiento.horariosParaSupabase(establecimientoId);
-
-    try {
-      if (horarios.isNotEmpty) {
-        await _supabase.from('horarios_establecimiento').insert(horarios);
-      }
-
-      return establecimientoId;
-    } catch (_) {
-      await _supabase
-          .from('establecimientos')
-          .delete()
-          .eq('id', establecimientoId);
-
-      rethrow;
-    }
   }
 
   Future<void> actualizarInformacion(

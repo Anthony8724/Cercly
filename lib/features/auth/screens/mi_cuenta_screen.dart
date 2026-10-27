@@ -7,7 +7,7 @@ import '../../../sky/sky_backdrop.dart';
 import '../services/auth_service.dart';
 import 'account_mode_selector.dart';
 import 'account_settings_screen.dart';
-import '../../solicitudes_establecimientos/screens/mis_solicitudes_screen.dart';
+import '../../establecimientos/screens/mis_negocios_screen.dart';
 
 class MiCuentaScreen extends StatelessWidget {
   const MiCuentaScreen({
@@ -169,13 +169,14 @@ class MiCuentaScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 12),
                 OutlinedButton.icon(
+                  key: const Key('abrir-mis-negocios'),
                   onPressed: () => Navigator.of(context).push(
                     MaterialPageRoute<void>(
-                      builder: (_) => const MisSolicitudesScreen(),
+                      builder: (_) => const MisNegociosScreen(),
                     ),
                   ),
                   icon: const Icon(Icons.storefront_outlined),
-                  label: const Text('Mis solicitudes de negocios'),
+                  label: const Text('Mis negocios'),
                 ),
                 const SizedBox(height: 24),
                 SizedBox(

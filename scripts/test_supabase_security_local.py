@@ -128,6 +128,8 @@ def main():
             '20261026033929_politica_eliminacion_revision.sql',
             '20261026064908_capacidad_superadministrador.sql',
             '20261026072156_aislar_operaciones_propietario_y_auditar_superadmin.sql',
+            '20261027001121_registrar_nuevo_establecimiento.sql',
+            '20261027001217_configurar_solicitud_registro_establecimiento.sql',
         )
         pending = [ROOT / 'supabase/migrations' / n for n in pending_names]
         if any(p.name > pending_names[-1] for p in migrations):

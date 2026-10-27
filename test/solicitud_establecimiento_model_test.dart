@@ -29,6 +29,19 @@ void main() {
     expect(datos.containsKey('creado_en'), isFalse);
   });
 
+  test('serializa un registro nuevo sin crear una ficha previamente', () {
+    final registro = SolicitudEstablecimientoModel(
+      id: '',
+      solicitanteId: '00000000-0000-0000-0000-000000000001',
+      mensaje: 'Solicitud para registrar un nuevo establecimiento.',
+      tipo: SolicitudEstablecimientoModel.tipoRegistro,
+    );
+
+    final datos = registro.toSupabaseParaCrear();
+    expect(datos['tipo'], 'registro');
+    expect(datos.containsKey('establecimiento_id'), isFalse);
+  });
+
   test('identifica una solicitud pendiente', () {
     final solicitud = crearSolicitud();
 

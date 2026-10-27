@@ -10,13 +10,17 @@ import '../../../shared/ui/cercly_ui.dart';
 
 import '../../explorar/models/ubicacion_usuario.dart';
 import '../../explorar/services/ubicacion_service.dart';
-import '../models/establecimiento_model.dart';
-import '../models/turno_horario.dart';
 import '../services/establecimiento_service.dart';
 import 'seleccionar_ubicacion_establecimiento_screen.dart';
+import '../../solicitudes_establecimientos/models/solicitud_establecimiento_model.dart';
+import '../../solicitudes_establecimientos/screens/nueva_solicitud_screen.dart';
+import '../models/establecimiento_model.dart';
+import '../models/turno_horario.dart';
 
 class RegistroEstablecimientoScreen extends StatefulWidget {
-  const RegistroEstablecimientoScreen({super.key});
+  const RegistroEstablecimientoScreen({super.key, this.service});
+
+  final RegistroEstablecimientoRepository? service;
 
   @override
   State<RegistroEstablecimientoScreen> createState() =>
@@ -26,7 +30,7 @@ class RegistroEstablecimientoScreen extends StatefulWidget {
 class _RegistroEstablecimientoScreenState
     extends State<RegistroEstablecimientoScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _service = EstablecimientoService();
+  late final RegistroEstablecimientoRepository _service;
   final _ubicacionService = GeolocatorUbicacionService();
 
   final _nombreController = TextEditingController();
@@ -37,6 +41,9 @@ class _RegistroEstablecimientoScreenState
   late Future<List<Map<String, dynamic>>> _categoriasFuture;
 
   String? _categoriaId;
+  final Map<int, TurnoHorario?> _horariosSemana = {
+    for (var dia = 1; dia <= 7; dia++) dia: null,
+  };
   double? _latitudSeleccionada;
   double? _longitudSeleccionada;
   String? _origenUbicacion;
@@ -46,6 +53,7 @@ class _RegistroEstablecimientoScreenState
   @override
   void initState() {
     super.initState();
+    _service = widget.service ?? EstablecimientoService();
     _categoriasFuture = _service.listarCategoriasActivas();
   }
 
@@ -56,12 +64,6 @@ class _RegistroEstablecimientoScreenState
     _direccionController.dispose();
     _telefonoController.dispose();
     super.dispose();
-  }
-
-  Map<String, List<TurnoHorario>> _crearHorarioInicial() {
-    return {
-      for (final dia in EstablecimientoModel.diasSemana) dia: <TurnoHorario>[],
-    };
   }
 
   String? _validarObligatorio(String? valor) {
@@ -86,6 +88,107 @@ class _RegistroEstablecimientoScreenState
     }
 
     return null;
+  }
+
+  List<Map<String, dynamic>> _horariosParaSolicitud() => [
+    for (final entrada in _horariosSemana.entries)
+      if (entrada.value != null)
+        {
+          'dia_semana': entrada.key,
+          'apertura_minutos': entrada.value!.aperturaMinutos,
+          'cierre_minutos': entrada.value!.cierreMinutos,
+          'cierra_al_dia_siguiente': entrada.value!.cierraAlDiaSiguiente,
+        },
+  ];
+
+  Future<void> _editarHora(int dia, bool apertura) async {
+    final actual = _horariosSemana[dia];
+    if (actual == null) return;
+    final minutos = apertura ? actual.aperturaMinutos : actual.cierreMinutos;
+    final elegida = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay(hour: minutos ~/ 60, minute: minutos % 60),
+    );
+    if (!mounted || elegida == null) return;
+    final nuevoMinuto = elegida.hour * 60 + elegida.minute;
+    final nuevoInicio = apertura ? nuevoMinuto : actual.aperturaMinutos;
+    final nuevoCierre = apertura ? actual.cierreMinutos : nuevoMinuto;
+    if (nuevoCierre <= nuevoInicio) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('El cierre debe ser posterior a la apertura.'),
+        ),
+      );
+      return;
+    }
+    setState(() {
+      _horariosSemana[dia] = TurnoHorario(
+        aperturaMinutos: nuevoInicio,
+        cierreMinutos: nuevoCierre,
+      );
+    });
+  }
+
+  String _hora(int minutos) =>
+      '${(minutos ~/ 60).toString().padLeft(2, '0')}:${(minutos % 60).toString().padLeft(2, '0')}';
+
+  Widget _filaHorario(int dia, String codigo) {
+    const nombres = {
+      'lunes': 'Lunes',
+      'martes': 'Martes',
+      'miercoles': 'Miércoles',
+      'jueves': 'Jueves',
+      'viernes': 'Viernes',
+      'sabado': 'Sábado',
+      'domingo': 'Domingo',
+    };
+    final turno = _horariosSemana[dia];
+    return Column(
+      children: [
+        Material(
+          color: Colors.transparent,
+          child: SwitchListTile.adaptive(
+            contentPadding: EdgeInsets.zero,
+            title: Text(nombres[codigo] ?? codigo),
+            subtitle: Text(turno == null ? 'Cerrado / sin horario' : 'Abierto'),
+            value: turno != null,
+            onChanged: _guardando
+                ? null
+                : (abierto) => setState(() {
+                    _horariosSemana[dia] = abierto
+                        ? TurnoHorario(
+                            aperturaMinutos: 540,
+                            cierreMinutos: 1020,
+                          )
+                        : null;
+                  }),
+          ),
+        ),
+        if (turno != null)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: _guardando ? null : () => _editarHora(dia, true),
+                    child: Text('Abre ${_hora(turno.aperturaMinutos)}'),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: _guardando
+                        ? null
+                        : () => _editarHora(dia, false),
+                    child: Text('Cierra ${_hora(turno.cierreMinutos)}'),
+                  ),
+                ),
+              ],
+            ),
+          ),
+      ],
+    );
   }
 
   void _establecerUbicacion(UbicacionUsuario ubicacion, String origen) {
@@ -180,21 +283,91 @@ class _RegistroEstablecimientoScreenState
     });
 
     try {
-      final establecimiento = EstablecimientoModel(
-        id: '',
-        propietarioId: usuario.id,
+      final coincidencias = await _service.buscarCoincidenciasCercanas(
+        nombre: _nombreController.text,
+        latitud: latitud,
+        longitud: longitud,
+      );
+      if (!mounted) return;
+      if (coincidencias.isNotEmpty) {
+        final decision = await showDialog<Map<String, dynamic>>(
+          context: context,
+          builder: (dialogContext) => AlertDialog(
+            title: const Text('¿Ya aparece en Cercly?'),
+            content: SizedBox(
+              width: 420,
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const Text(
+                      'Encontramos negocios cercanos con nombres similares. Revisa si alguno corresponde a este negocio.',
+                    ),
+                    const SizedBox(height: 12),
+                    for (final coincidencia in coincidencias) ...[
+                      ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        title: Text(coincidencia['nombre'] as String),
+                        subtitle: Text(
+                          '${coincidencia['direccion']} · ${(coincidencia['distancia_metros'] as double).round()} m',
+                        ),
+                      ),
+                      if (coincidencia['fuente'] == 'osm' &&
+                          coincidencia['estado_reclamo'] == 'no_reclamado' &&
+                          coincidencia['propietario_id'] == null)
+                        OutlinedButton.icon(
+                          onPressed: () => Navigator.of(dialogContext).pop({
+                            'accion': 'reclamar',
+                            'id': coincidencia['id'],
+                          }),
+                          icon: const Icon(Icons.verified_user_outlined),
+                          label: const Text('Reclamar este establecimiento'),
+                        ),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(),
+                child: const Text('Revisar después'),
+              ),
+              FilledButton(
+                onPressed: () =>
+                    Navigator.of(dialogContext).pop({'accion': 'continuar'}),
+                child: const Text('Es otro negocio, continuar'),
+              ),
+            ],
+          ),
+        );
+        if (!mounted) return;
+        if (decision?['accion'] == 'reclamar') {
+          await Navigator.of(context).push<bool>(
+            MaterialPageRoute<bool>(
+              builder: (_) => NuevaSolicitudScreen(
+                tipoInicial: SolicitudEstablecimientoModel.tipoReclamar,
+                establecimientoIdInicial: decision!['id'] as String,
+                bloquearTipo: true,
+              ),
+            ),
+          );
+          return;
+        }
+        if (decision?['accion'] != 'continuar') return;
+      }
+
+      await _service.crearSolicitudRegistro(
         nombre: _nombreController.text,
         descripcion: _descripcionController.text,
         categoriaId: _categoriaId!,
         direccion: _direccionController.text,
+        telefono: _telefonoController.text,
         latitud: latitud,
         longitud: longitud,
-        telefonoPublico: _telefonoController.text,
-        horario: _crearHorarioInicial(),
-        zonaHoraria: 'America/Guayaquil',
+        horarios: _horariosParaSolicitud(),
       );
-
-      await _service.crear(establecimiento);
 
       if (!mounted) {
         return;
@@ -267,15 +440,23 @@ class _RegistroEstablecimientoScreenState
           children: [
             CerclyPageHeader(
               title: 'Registrar establecimiento',
-              subtitle: 'Agrega tu negocio a Cercly y envíalo para revisión',
+              subtitle: 'Envía tu negocio para revisión',
               icon: Icons.add_business_rounded,
               onBack: () => Navigator.of(context).maybePop(),
+              compact: true,
             ),
             Expanded(
               child: SafeArea(
                 top: false,
                 child: SingleChildScrollView(
-                  padding: const EdgeInsets.fromLTRB(16, 18, 16, 28),
+                  keyboardDismissBehavior:
+                      ScrollViewKeyboardDismissBehavior.onDrag,
+                  padding: EdgeInsets.fromLTRB(
+                    16,
+                    14,
+                    16,
+                    MediaQuery.viewInsetsOf(context).bottom + 24,
+                  ),
                   child: Form(
                     key: _formKey,
                     child: Column(
@@ -299,21 +480,23 @@ class _RegistroEstablecimientoScreenState
                               TextFormField(
                                 controller: _nombreController,
                                 decoration: const InputDecoration(
-                                  labelText: 'Nombre',
+                                  labelText: 'Nombre comercial (obligatorio)',
                                   prefixIcon: Icon(Icons.store_rounded),
                                 ),
                                 textInputAction: TextInputAction.next,
+                                scrollPadding: const EdgeInsets.all(24),
                                 validator: _validarNombre,
                               ),
                               const SizedBox(height: 16),
                               TextFormField(
                                 controller: _descripcionController,
                                 decoration: const InputDecoration(
-                                  labelText: 'Descripción',
+                                  labelText: 'Descripción (opcional)',
                                   prefixIcon: Icon(Icons.description_rounded),
                                 ),
                                 maxLength: 1000,
                                 maxLines: 4,
+                                scrollPadding: const EdgeInsets.all(24),
                               ),
                               const SizedBox(height: 16),
                               FutureBuilder<List<Map<String, dynamic>>>(
@@ -381,8 +564,9 @@ class _RegistroEstablecimientoScreenState
 
                                   return DropdownButtonFormField<String>(
                                     initialValue: _categoriaId,
+                                    isExpanded: true,
                                     decoration: const InputDecoration(
-                                      labelText: 'Categoría',
+                                      labelText: 'Categoría (obligatoria)',
                                       prefixIcon: Icon(Icons.category_rounded),
                                     ),
                                     items: categorias.map((categoria) {
@@ -413,11 +597,14 @@ class _RegistroEstablecimientoScreenState
                               TextFormField(
                                 controller: _direccionController,
                                 decoration: const InputDecoration(
-                                  labelText: 'Dirección',
+                                  labelText: 'Dirección (obligatoria)',
                                   prefixIcon: Icon(Icons.location_on_rounded),
+                                  helperText: 'Referencia: Bolívar y Sucre, junto al parque',
+                                  helperMaxLines: 2,
                                 ),
                                 maxLength: 250,
                                 textInputAction: TextInputAction.next,
+                                scrollPadding: const EdgeInsets.all(24),
                                 validator: _validarObligatorio,
                               ),
                               const SizedBox(height: 16),
@@ -430,7 +617,24 @@ class _RegistroEstablecimientoScreenState
                                 maxLength: 20,
                                 keyboardType: TextInputType.phone,
                                 textInputAction: TextInputAction.next,
+                                scrollPadding: const EdgeInsets.all(24),
                               ),
+                              const SizedBox(height: 18),
+                              const CerclySectionTitle(
+                                title: 'Horarios (opcional)',
+                                subtitle: 'Añade los días y horas de atención si ya los conoces.',
+                                icon: Icons.schedule_rounded,
+                              ),
+                              const SizedBox(height: 8),
+                              for (
+                                var indice = 0;
+                                indice < EstablecimientoModel.diasSemana.length;
+                                indice++
+                              )
+                                _filaHorario(
+                                  indice + 1,
+                                  EstablecimientoModel.diasSemana[indice],
+                                ),
                             ],
                           ),
                         ),
@@ -441,7 +645,7 @@ class _RegistroEstablecimientoScreenState
                             children: [
                               const CerclySectionTitle(
                                 title: 'Ubicación del negocio',
-                                subtitle: 'Usa el GPS si estás en el establecimiento o marca el punto exacto en el mapa.',
+                                subtitle: 'Ubica el negocio en el mapa. El GPS es opcional y solo sirve como referencia.',
                                 icon: Icons.location_on_rounded,
                               ),
                               const SizedBox(height: 18),

@@ -2,7 +2,7 @@ class SolicitudEstablecimientoModel {
   SolicitudEstablecimientoModel({
     required this.id,
     required this.solicitanteId,
-    required this.establecimientoId,
+    this.establecimientoId,
     required this.mensaje,
     required this.tipo,
     this.estado = estadoPendiente,
@@ -12,10 +12,6 @@ class SolicitudEstablecimientoModel {
   }) {
     if (solicitanteId.trim().isEmpty) {
       throw ArgumentError('El solicitante es obligatorio.');
-    }
-
-    if (establecimientoId.trim().isEmpty) {
-      throw ArgumentError('El establecimiento es obligatorio.');
     }
 
     if (!estadosPermitidos.contains(estado)) {
@@ -40,16 +36,18 @@ class SolicitudEstablecimientoModel {
   static const String tipoReclamar = 'reclamar';
   static const String tipoAcceso = 'acceso';
   static const String tipoCorreccion = 'correccion';
+  static const String tipoRegistro = 'registro';
 
   static const Set<String> tiposPermitidos = {
     tipoReclamar,
     tipoAcceso,
     tipoCorreccion,
+    tipoRegistro,
   };
 
   final String id;
   final String solicitanteId;
-  final String establecimientoId;
+  final String? establecimientoId;
   final String mensaje;
   final String tipo;
   final String estado;
@@ -64,7 +62,7 @@ class SolicitudEstablecimientoModel {
   Map<String, dynamic> toSupabaseParaCrear() {
     return {
       'solicitante_id': solicitanteId,
-      'establecimiento_id': establecimientoId,
+      if (establecimientoId != null) 'establecimiento_id': establecimientoId,
       'mensaje': mensaje.trim(),
       'tipo': tipo,
     };
@@ -80,7 +78,7 @@ class SolicitudEstablecimientoModel {
     return SolicitudEstablecimientoModel(
       id: datos['id'] as String,
       solicitanteId: datos['solicitante_id'] as String,
-      establecimientoId: datos['establecimiento_id'] as String,
+      establecimientoId: datos['establecimiento_id'] as String?,
       mensaje: datos['mensaje'] as String? ?? '',
       tipo: datos['tipo'] as String? ?? tipoReclamar,
       estado: datos['estado'] as String? ?? estadoPendiente,

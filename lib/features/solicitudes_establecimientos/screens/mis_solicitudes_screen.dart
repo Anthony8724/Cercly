@@ -124,6 +124,8 @@ class _MisSolicitudesScreenState extends State<MisSolicitudesScreen> {
         return 'Solicitud de acceso';
       case SolicitudEstablecimientoModel.tipoCorreccion:
         return 'Corrección de información';
+      case SolicitudEstablecimientoModel.tipoRegistro:
+        return 'Registro de establecimiento';
       default:
         return 'Reclamo de establecimiento';
     }

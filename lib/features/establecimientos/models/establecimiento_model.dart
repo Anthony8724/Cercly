@@ -62,27 +62,6 @@ class EstablecimientoModel {
   final String zonaHoraria;
   final String estado;
 
-  Map<String, dynamic> toSupabaseParaCrear() {
-    if (propietarioId.trim().isEmpty) {
-      throw ArgumentError(
-        'Un establecimiento creado en Cercly debe tener propietario.',
-      );
-    }
-
-    return {
-      'propietario_id': propietarioId,
-      'categoria_id': categoriaId,
-      'nombre': nombre.trim(),
-      'descripcion': descripcion.trim(),
-      'direccion': direccion.trim(),
-      'latitud': latitud,
-      'longitud': longitud,
-      'telefono_publico': telefonoPublico.trim(),
-      'zona_horaria': zonaHoraria.trim(),
-      'estado': 'pendiente',
-    };
-  }
-
   Map<String, dynamic> toSupabaseParaActualizarInformacion() {
     return {
       'nombre': nombre.trim(),

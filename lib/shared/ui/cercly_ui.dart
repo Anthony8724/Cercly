@@ -22,6 +22,7 @@ class CerclyPageHeader extends StatelessWidget {
     this.icon = Icons.auto_awesome_rounded,
     this.onBack,
     this.actions = const [],
+    this.compact = false,
     super.key,
   });
 
@@ -30,6 +31,7 @@ class CerclyPageHeader extends StatelessWidget {
   final IconData icon;
   final VoidCallback? onBack;
   final List<Widget> actions;
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
@@ -45,7 +47,12 @@ class CerclyPageHeader extends StatelessWidget {
           SafeArea(
             bottom: false,
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 22),
+              padding: EdgeInsets.fromLTRB(
+                16,
+                compact ? 8 : 12,
+                16,
+                compact ? 14 : 22,
+              ),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
@@ -58,8 +65,8 @@ class CerclyPageHeader extends StatelessWidget {
                     const SizedBox(width: 12),
                   ],
                   Container(
-                    width: 46,
-                    height: 46,
+                    width: compact ? 40 : 46,
+                    height: compact ? 40 : 46,
                     decoration: BoxDecoration(
                       color: Colors.white.withValues(alpha: 0.16),
                       borderRadius: BorderRadius.circular(15),
@@ -67,7 +74,11 @@ class CerclyPageHeader extends StatelessWidget {
                         color: Colors.white.withValues(alpha: 0.18),
                       ),
                     ),
-                    child: Icon(icon, color: Colors.white, size: 24),
+                    child: Icon(
+                      icon,
+                      color: Colors.white,
+                      size: compact ? 21 : 24,
+                    ),
                   ),
                   const SizedBox(width: 13),
                   Expanded(
@@ -79,9 +90,9 @@ class CerclyPageHeader extends StatelessWidget {
                           title,
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
+                          style: TextStyle(
                             color: Colors.white,
-                            fontSize: 23,
+                            fontSize: compact ? 21 : 23,
                             height: 1.05,
                             fontWeight: FontWeight.w900,
                             letterSpacing: -0.4,
