@@ -242,6 +242,12 @@ otp_expiry = 3600
 # admin_email = "admin@email.com"
 # sender_name = "Admin"
 
+# Supabase's default magic-link email does not expose the numeric OTP expected by
+# the web account-deletion verification flow. Keep the one-time code visible.
+[auth.email.template.magic_link]
+subject = "Código de acceso a Cercly"
+content_path = "./supabase/templates/magic_link_otp.html"
+
 # Uncomment to customize email template
 # [auth.email.template.invite]
 # subject = "You have been invited"
