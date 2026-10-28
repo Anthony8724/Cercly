@@ -53,11 +53,12 @@ class _UbicacionDenegada implements UbicacionService {
   Future<bool> abrirAjustesUbicacion() async => true;
 
   @override
-  Future<ResultadoUbicacion> obtenerUbicacion() async =>
-      const ResultadoUbicacion(
-        estado: EstadoUbicacion.permisoDenegado,
-        mensaje: 'Permiso denegado',
-      );
+  Future<ResultadoUbicacion> obtenerUbicacion({
+    bool solicitarPermiso = false,
+  }) async => const ResultadoUbicacion(
+    estado: EstadoUbicacion.permisoDenegado,
+    mensaje: 'Permiso denegado',
+  );
 }
 
 ExplorarController _controllerPrueba() => ExplorarController(

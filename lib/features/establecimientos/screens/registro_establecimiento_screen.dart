@@ -226,7 +226,9 @@ class _RegistroEstablecimientoScreenState
       _obteniendoUbicacion = true;
     });
 
-    final resultado = await _ubicacionService.obtenerUbicacion();
+    final resultado = await _ubicacionService.obtenerUbicacion(
+      solicitarPermiso: true,
+    );
 
     if (!mounted) return;
 
@@ -695,7 +697,7 @@ class _RegistroEstablecimientoScreenState
                             children: [
                               const CerclySectionTitle(
                                 title: 'Ubicación del negocio',
-                                subtitle: 'Ubica el negocio en el mapa. El GPS es opcional y solo sirve como referencia.',
+                                subtitle: 'Si eliges usar GPS, Cercly consultará tu ubicación precisa una vez para marcar el negocio. Esa coordenada se guardará en su ficha y puede mostrarse a otras personas. También puedes elegir el punto manualmente.',
                                 icon: Icons.location_on_rounded,
                               ),
                               const SizedBox(height: 18),

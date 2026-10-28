@@ -124,13 +124,19 @@ class ExplorarScreen extends StatelessWidget {
 
   List<Widget> _contenido(BuildContext context) {
     if (controller.estadoUbicacion != EstadoUbicacion.disponible) {
-      return const [
+      return [
         SliverFillRemaining(
           hasScrollBody: false,
           child: _MensajeCentral(
             icono: Icons.explore_outlined,
             titulo: 'Activa tu ubicación para comenzar',
-            descripcion: 'Cercly usa tu posición solamente para buscar lugares cercanos.',
+            descripcion: 'Si eliges continuar, Cercly pedirá ubicación precisa para mostrar lugares cercanos y comprobar promociones para alertas locales mientras la app está abierta. Las búsquedas cercanas envían las coordenadas a Supabase. No usamos ubicación en segundo plano. Puedes seguir sin activar esta función y revocar el permiso en los ajustes de Android.',
+            accion: FilledButton.icon(
+              key: const Key('aceptar-uso-ubicacion'),
+              onPressed: controller.solicitarUbicacion,
+              icon: const Icon(Icons.my_location_rounded),
+              label: const Text('Usar ubicación y buscar cerca'),
+            ),
           ),
         ),
       ];

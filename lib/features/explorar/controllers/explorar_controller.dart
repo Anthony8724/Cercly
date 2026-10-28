@@ -8,6 +8,7 @@ import '../../categorias/services/categoria_publica_service.dart';
 import '../../establecimientos/models/establecimiento_publico_model.dart';
 import '../../establecimientos/services/establecimiento_publico_service.dart';
 import '../models/ubicacion_usuario.dart';
+import '../services/consentimiento_ubicacion.dart';
 import '../services/ubicacion_service.dart';
 
 class ExplorarController extends ChangeNotifier {
@@ -48,7 +49,7 @@ class ExplorarController extends ChangeNotifier {
   Timer? _temporizadorBusqueda;
 
   Future<void> inicializar() async {
-    await Future.wait([cargarCategorias(), solicitarUbicacion()]);
+    await cargarCategorias();
   }
 
   Future<void> cargarCategorias() async {
@@ -69,10 +70,22 @@ class ExplorarController extends ChangeNotifier {
     mensajeUbicacion = null;
     notifyListeners();
 
-    final resultado = await _ubicacionService.obtenerUbicacion();
+    final resultado = await _ubicacionService.obtenerUbicacion(
+      solicitarPermiso: true,
+    );
     estadoUbicacion = resultado.estado;
     ubicacion = resultado.ubicacion;
     mensajeUbicacion = resultado.mensaje;
+    if (ubicacion != null) {
+      try {
+        await ConsentimientoUbicacion.aceptar();
+      } catch (_) {
+        // La búsqueda solicitada por el usuario no depende de guardar el opt-in.
+      }
+    } else if (resultado.estado == EstadoUbicacion.permisoDenegado ||
+        resultado.estado == EstadoUbicacion.permisoDenegadoPermanentemente) {
+      await ConsentimientoUbicacion.revocar();
+    }
     notifyListeners();
 
     if (ubicacion != null) {

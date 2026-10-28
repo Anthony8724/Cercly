@@ -44,6 +44,8 @@ class UbicacionFalsa implements UbicacionService {
   UbicacionFalsa(this.resultado);
 
   ResultadoUbicacion resultado;
+  int solicitudes = 0;
+  bool? pidioPermiso;
 
   @override
   Future<bool> abrirAjustesAplicacion() async => true;
@@ -52,7 +54,13 @@ class UbicacionFalsa implements UbicacionService {
   Future<bool> abrirAjustesUbicacion() async => true;
 
   @override
-  Future<ResultadoUbicacion> obtenerUbicacion() async => resultado;
+  Future<ResultadoUbicacion> obtenerUbicacion({
+    bool solicitarPermiso = false,
+  }) async {
+    solicitudes++;
+    pidioPermiso = solicitarPermiso;
+    return resultado;
+  }
 }
 
 class EstablecimientoServiceFalso implements EstablecimientoCercanoRepository {
@@ -121,6 +129,7 @@ class CategoriaServiceFalso implements CategoriaPublicaRepository {
 
 ExplorarController crearController({
   EstablecimientoServiceFalso? establecimientos,
+  UbicacionFalsa? ubicacion,
   ResultadoUbicacion resultadoUbicacion = const ResultadoUbicacion(
     estado: EstadoUbicacion.disponible,
     ubicacion: UbicacionUsuario(latitud: 0.8116, longitud: -77.7172),
@@ -129,19 +138,49 @@ ExplorarController crearController({
   return ExplorarController(
     establecimientoService: establecimientos ?? EstablecimientoServiceFalso(),
     categoriaService: CategoriaServiceFalso(),
-    ubicacionService: UbicacionFalsa(resultadoUbicacion),
+    ubicacionService: ubicacion ?? UbicacionFalsa(resultadoUbicacion),
   );
 }
 
 void main() {
   group('ExplorarController', () {
+    test('al inicializar carga categorías sin consultar GPS', () async {
+      final ubicacion = UbicacionFalsa(
+        const ResultadoUbicacion(
+          estado: EstadoUbicacion.disponible,
+          ubicacion: UbicacionUsuario(latitud: 0.8116, longitud: -77.7172),
+        ),
+      );
+      final controller = ExplorarController(
+        establecimientoService: EstablecimientoServiceFalso(),
+        categoriaService: CategoriaServiceFalso(),
+        ubicacionService: ubicacion,
+      );
+
+      await controller.inicializar();
+
+      expect(ubicacion.solicitudes, 0);
+      expect(controller.estadoUbicacion, EstadoUbicacion.inicial);
+      controller.dispose();
+    });
+
     test('envía radio, categoría, subcategoría, promociones y búsqueda al servicio', () async {
       final servicio = EstablecimientoServiceFalso(
         respuesta: [establecimiento()],
       );
-      final controller = crearController(establecimientos: servicio);
+      final ubicacion = UbicacionFalsa(
+        const ResultadoUbicacion(
+          estado: EstadoUbicacion.disponible,
+          ubicacion: UbicacionUsuario(latitud: 0.8116, longitud: -77.7172),
+        ),
+      );
+      final controller = crearController(
+        establecimientos: servicio,
+        ubicacion: ubicacion,
+      );
 
       await controller.solicitarUbicacion();
+      expect(ubicacion.pidioPermiso, isTrue);
       await controller.cambiarRadio(2000);
       await controller.cambiarCategoria('categoria-1');
       await controller.cambiarSubcategoria('subcategoria-1');
@@ -328,10 +367,12 @@ void main() {
 
       await tester.pumpWidget(
         MaterialApp(
-          home: Scaffold(body: ExplorarScreen(
-            controller: controller,
-            cargarPromociones: () async => [],
-          )),
+          home: Scaffold(
+            body: ExplorarScreen(
+              controller: controller,
+              cargarPromociones: () async => [],
+            ),
+          ),
         ),
       );
       await tester.pump();
@@ -428,9 +469,7 @@ void main() {
       );
       await tester.pump();
 
-      final botonReclamar = find.byKey(
-        const Key('reclamar-establecimiento'),
-      );
+      final botonReclamar = find.byKey(const Key('reclamar-establecimiento'));
       expect(botonReclamar, findsOneWidget);
 
       await tester.ensureVisible(botonReclamar);

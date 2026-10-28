@@ -3,7 +3,7 @@ import 'package:geolocator/geolocator.dart';
 import '../models/ubicacion_usuario.dart';
 
 abstract class UbicacionService {
-  Future<ResultadoUbicacion> obtenerUbicacion();
+  Future<ResultadoUbicacion> obtenerUbicacion({bool solicitarPermiso = false});
 
   Future<bool> abrirAjustesUbicacion();
 
@@ -12,7 +12,9 @@ abstract class UbicacionService {
 
 class GeolocatorUbicacionService implements UbicacionService {
   @override
-  Future<ResultadoUbicacion> obtenerUbicacion() async {
+  Future<ResultadoUbicacion> obtenerUbicacion({
+    bool solicitarPermiso = false,
+  }) async {
     try {
       if (!await Geolocator.isLocationServiceEnabled()) {
         return const ResultadoUbicacion(
@@ -22,7 +24,7 @@ class GeolocatorUbicacionService implements UbicacionService {
       }
 
       var permiso = await Geolocator.checkPermission();
-      if (permiso == LocationPermission.denied) {
+      if (permiso == LocationPermission.denied && solicitarPermiso) {
         permiso = await Geolocator.requestPermission();
       }
 

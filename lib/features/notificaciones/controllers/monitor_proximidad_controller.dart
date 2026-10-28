@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import '../../explorar/models/ubicacion_usuario.dart';
+import '../../explorar/services/consentimiento_ubicacion.dart';
 import '../../explorar/services/ubicacion_service.dart';
 import '../../promociones/services/promocion_publica_service.dart';
 import '../services/control_notificaciones_promocion.dart';
@@ -32,12 +33,27 @@ class MonitorProximidadController {
   final Duration intervalo;
 
   Timer? _temporizador;
+  StreamSubscription<bool>? _consentimientoSuscripcion;
   bool _consultando = false;
   bool _historialCargado = false;
   bool _disposed = false;
 
   Future<void> iniciar() async {
     if (_disposed || _temporizador != null) return;
+    if (!await ConsentimientoUbicacion.estaAceptado()) {
+      _consentimientoSuscripcion ??= ConsentimientoUbicacion.cambios.listen((
+        aceptado,
+      ) {
+        if (aceptado) {
+          unawaited(iniciar());
+        } else {
+          pausar();
+        }
+      });
+      return;
+    }
+    await _consentimientoSuscripcion?.cancel();
+    _consentimientoSuscripcion = null;
     try {
       await _notificaciones.inicializar();
       await _asegurarHistorialCargado();
@@ -126,5 +142,6 @@ class MonitorProximidadController {
   void dispose() {
     _disposed = true;
     pausar();
+    unawaited(_consentimientoSuscripcion?.cancel());
   }
 }

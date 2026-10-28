@@ -7,6 +7,7 @@ import 'package:cercly/features/notificaciones/services/notificacion_local_servi
 import 'package:cercly/features/promociones/models/promocion_destacada_model.dart';
 import 'package:cercly/features/promociones/services/promocion_publica_service.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 final instanteBase = DateTime(2026, 9, 14, 12);
 
@@ -39,6 +40,7 @@ class _UbicacionFalsa implements UbicacionService {
   _UbicacionFalsa(this.resultado);
 
   final ResultadoUbicacion resultado;
+  int solicitudes = 0;
 
   @override
   Future<bool> abrirAjustesAplicacion() async => true;
@@ -47,7 +49,12 @@ class _UbicacionFalsa implements UbicacionService {
   Future<bool> abrirAjustesUbicacion() async => true;
 
   @override
-  Future<ResultadoUbicacion> obtenerUbicacion() async => resultado;
+  Future<ResultadoUbicacion> obtenerUbicacion({
+    bool solicitarPermiso = false,
+  }) async {
+    solicitudes++;
+    return resultado;
+  }
 }
 
 class _PromocionesFalsas implements PromocionesCercanasRepository {
@@ -71,9 +78,10 @@ class _NotificacionesFalsas implements NotificacionPromocionGateway {
 
   final bool permitir;
   final mostradas = <PromocionDestacadaModel>[];
+  int inicializaciones = 0;
 
   @override
-  Future<void> inicializar() async {}
+  Future<void> inicializar() async => inicializaciones++;
 
   @override
   Future<bool> mostrarPromocion(PromocionDestacadaModel promocion) async {
@@ -226,6 +234,26 @@ void main() {
   });
 
   group('MonitorProximidadController', () {
+    test('no consulta ubicación hasta aceptar el aviso de cercanía', () async {
+      SharedPreferences.setMockInitialValues({});
+      final ubicacion = _UbicacionFalsa(
+        const ResultadoUbicacion(estado: EstadoUbicacion.permisoDenegado),
+      );
+      final notificaciones = _NotificacionesFalsas();
+      final controller = MonitorProximidadController(
+        ubicacionService: ubicacion,
+        promocionesService: _PromocionesFalsas([]),
+        notificaciones: notificaciones,
+        historial: _HistorialFalso(),
+      );
+
+      await controller.iniciar();
+
+      expect(ubicacion.solicitudes, 0);
+      expect(notificaciones.inicializaciones, 0);
+      controller.dispose();
+    });
+
     test('consulta ubicación, promociones y envía notificables', () async {
       final promociones = _PromocionesFalsas([promocion()]);
       final notificaciones = _NotificacionesFalsas();

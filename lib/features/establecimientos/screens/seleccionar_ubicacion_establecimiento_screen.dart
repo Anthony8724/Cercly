@@ -72,7 +72,9 @@ class _SeleccionarUbicacionEstablecimientoScreenState
       _buscandoUbicacion = true;
     });
 
-    final resultado = await _ubicacionService.obtenerUbicacion();
+    final resultado = await _ubicacionService.obtenerUbicacion(
+      solicitarPermiso: true,
+    );
 
     if (!mounted) return;
 
@@ -318,7 +320,7 @@ class _SeleccionarUbicacionEstablecimientoScreenState
                             Padding(
                               padding: const EdgeInsets.only(bottom: 8),
                               child: Text(
-                                'Toca el mapa o usa GPS para elegir un punto.',
+                                'Toca el mapa para elegir un punto sin compartir la ubicación del dispositivo. Si eliges GPS, Cercly consultará tu ubicación precisa una vez para marcar el establecimiento; esa coordenada puede mostrarse en su ficha pública.',
                                 key: const Key('sin-punto-seleccionado'),
                                 style: TextStyle(
                                   color: SkyPalette.of(context).muted,

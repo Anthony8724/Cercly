@@ -135,7 +135,10 @@ class _EvaluationNavigationState extends State<_EvaluationNavigation> {
   @override
   void initState() {
     super.initState();
-    unawaited(_controller.inicializar());
+    _controller.ubicacion = _centroTulcan;
+    _controller.estadoUbicacion = EstadoUbicacion.disponible;
+    unawaited(_controller.cargarCategorias());
+    unawaited(_controller.buscar());
   }
 
   @override
@@ -206,7 +209,9 @@ class _EvaluationHubState extends State<_EvaluationHub> {
   Future<void> _probarGps() async {
     if (_probandoGps) return;
     setState(() => _probandoGps = true);
-    final result = await GeolocatorUbicacionService().obtenerUbicacion();
+    final result = await GeolocatorUbicacionService().obtenerUbicacion(
+      solicitarPermiso: true,
+    );
     if (!mounted) return;
     setState(() {
       _probandoGps = false;
@@ -388,12 +393,13 @@ class _DemoLocationService implements UbicacionService {
   const _DemoLocationService();
 
   @override
-  Future<ResultadoUbicacion> obtenerUbicacion() async =>
-      const ResultadoUbicacion(
-        estado: EstadoUbicacion.disponible,
-        ubicacion: _centroTulcan,
-        mensaje: 'Ubicación ficticia de demostración.',
-      );
+  Future<ResultadoUbicacion> obtenerUbicacion({
+    bool solicitarPermiso = false,
+  }) async => const ResultadoUbicacion(
+    estado: EstadoUbicacion.disponible,
+    ubicacion: _centroTulcan,
+    mensaje: 'Ubicación ficticia de demostración.',
+  );
 
   @override
   Future<bool> abrirAjustesAplicacion() async => false;

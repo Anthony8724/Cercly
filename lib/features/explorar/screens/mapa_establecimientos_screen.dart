@@ -382,7 +382,7 @@ class _SinUbicacion extends StatelessWidget {
               ),
               const SizedBox(height: 8),
               Text(
-                controller.mensajeUbicacion ?? 'Activa tu ubicación para mostrar los establecimientos cercanos.',
+                controller.mensajeUbicacion ?? 'Si eliges continuar, Cercly pedirá ubicación precisa para centrar el mapa, mostrar lugares cercanos y comprobar promociones para alertas locales mientras la app está abierta. Las búsquedas envían las coordenadas a Supabase; no usamos ubicación en segundo plano. Puedes seguir sin activar esta función y revocar el permiso en los ajustes de Android.',
                 textAlign: TextAlign.center,
                 style: TextStyle(color: sky.muted, height: 1.35),
               ),
@@ -400,7 +400,7 @@ class _SinUbicacion extends StatelessWidget {
                   ),
                 ),
                 icon: const Icon(Icons.my_location_rounded),
-                label: Text(cargando ? 'Buscando…' : 'Usar mi ubicación'),
+                label: Text(cargando ? 'Buscando…' : 'Usar ubicación y buscar'),
               ),
             ],
           ),
