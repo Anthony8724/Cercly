@@ -141,3 +141,11 @@ skills-lock.json
 # APK generados localmente
 /*.apk
 /releases/
+
+# Archivos privados, respaldos locales y artefactos de distribucion
+**/.env*
+/respaldos/
+*.respaldo
+*.pre-auditoria
+*.aab
+*.apk

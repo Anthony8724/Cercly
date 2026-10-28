@@ -1,4 +1,5 @@
 import java.util.Base64
+import java.util.Properties
 
 plugins {
     id("com.android.application")
@@ -54,9 +55,47 @@ android {
         }
     }
 
+    val releaseKeyPropertiesFile = rootProject.file("key.properties")
+    val releaseTaskRequested = gradle.startParameter.taskNames.any {
+        it.contains("release", ignoreCase = true)
+    }
+    val releaseSigningConfig = if (releaseKeyPropertiesFile.isFile) {
+        val releaseKeyProperties = Properties().apply {
+            releaseKeyPropertiesFile.inputStream().use { load(it) }
+        }
+        val requiredReleaseKeyProperties = listOf(
+            "storeFile",
+            "storePassword",
+            "keyAlias",
+            "keyPassword",
+        )
+        val missingReleaseKeyProperties = requiredReleaseKeyProperties.filter {
+            releaseKeyProperties.getProperty(it).isNullOrBlank()
+        }
+        if (missingReleaseKeyProperties.isNotEmpty()) {
+            throw GradleException(
+                "Faltan propiedades de firma release en android/key.properties: " +
+                    missingReleaseKeyProperties.joinToString(", "),
+            )
+        }
+        signingConfigs.create("release") {
+            storeFile = rootProject.file(releaseKeyProperties.getProperty("storeFile"))
+            storePassword = releaseKeyProperties.getProperty("storePassword")
+            keyAlias = releaseKeyProperties.getProperty("keyAlias")
+            keyPassword = releaseKeyProperties.getProperty("keyPassword")
+        }
+    } else {
+        if (releaseTaskRequested) {
+            throw GradleException(
+                "Falta android/key.properties. Configura la clave privada de carga antes de compilar release.",
+            )
+        }
+        null
+    }
+
     buildTypes {
         release {
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = releaseSigningConfig
         }
     }
 }
