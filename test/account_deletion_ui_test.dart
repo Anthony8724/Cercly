@@ -38,6 +38,35 @@ Future<void> openDeletion(
 }
 
 void main() {
+  testWidgets('Configuración abre política, contacto y eliminación web', (
+    tester,
+  ) async {
+    final opened = <Uri>[];
+    await tester.pumpWidget(
+      MaterialApp(
+        home: ConfiguracionCuentaScreen(
+          abrirEnlace: (uri) async {
+            opened.add(uri);
+            return true;
+          },
+        ),
+      ),
+    );
+
+    expect(find.byKey(const Key('abrir-politica-privacidad')), findsOneWidget);
+    expect(find.text('Política de privacidad'), findsOneWidget);
+    expect(find.byKey(const Key('abrir-contacto-cercly')), findsOneWidget);
+    expect(find.byKey(const Key('abrir-eliminacion-web')), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('abrir-contacto-cercly')));
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('abrir-eliminacion-web')));
+    await tester.pump();
+
+    expect(opened[0].toString(), endsWith('/privacidad#responsable'));
+    expect(opened[1].toString(), endsWith('/eliminar-cuenta'));
+  });
+
   testWidgets('Perfil → Configuración → Cuenta muestra consecuencias', (
     tester,
   ) async {

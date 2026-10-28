@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../sky/sky_logo.dart';
 import '../../../sky/sky_backdrop.dart';
@@ -345,6 +346,20 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                         ),
                                       ),
                               ),
+                            ),
+                            const SizedBox(height: 8),
+                            TextButton.icon(
+                              key: const Key(
+                                'abrir-politica-privacidad-registro',
+                              ),
+                              onPressed: () => launchUrl(
+                                Uri.parse(
+                                  'https://cercly-web.vercel.app/privacidad',
+                                ),
+                                mode: LaunchMode.externalApplication,
+                              ),
+                              icon: const Icon(Icons.privacy_tip_outlined),
+                              label: const Text('Leer política de privacidad'),
                             ),
                           ],
                         ),

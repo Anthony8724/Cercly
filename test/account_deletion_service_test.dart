@@ -5,6 +5,7 @@ import 'package:cercly/features/auth/services/account_deletion_service.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 Future<SupabaseClient> clientWithSession(
@@ -35,6 +36,9 @@ Future<SupabaseClient> clientWithSession(
 
 void main() {
   test('respuesta eliminada cierra sesión y no envía ID al backend', () async {
+    SharedPreferences.setMockInitialValues({
+      'cercly_modo_cuenta_b7000000-0000-0000-0000-000000000001': 'usuario',
+    });
     final requests = <http.Request>[];
     final client = await clientWithSession((request) async {
       requests.add(request);
@@ -52,6 +56,13 @@ void main() {
     expect(requests.first.url.path, '/functions/v1/eliminar-cuenta');
     expect(requests.first.headers['Authorization'], 'Bearer synthetic-jwt');
     expect(jsonDecode(requests.first.body), isEmpty);
+    final preferences = await SharedPreferences.getInstance();
+    expect(
+      preferences.getString(
+        'cercly_modo_cuenta_b7000000-0000-0000-0000-000000000001',
+      ),
+      isNull,
+    );
   });
 
   test('sin sesión no invoca la función', () async {

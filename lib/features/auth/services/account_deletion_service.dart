@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../notificaciones/services/historial_notificaciones_promocion.dart';
@@ -38,6 +39,13 @@ class AccountDeletionService {
       final data = response.data;
       final status = data is Map ? data['estado'] : null;
       if (status == 'eliminada') {
+        // Esta preferencia identifica el modo de cuenta asociado al usuario.
+        try {
+          final preferences = await SharedPreferences.getInstance();
+          await preferences.remove('cercly_modo_cuenta_${session.user.id}');
+        } catch (_) {
+          // Un fallo local no revierte una eliminación ya confirmada en Auth.
+        }
         // La identidad ya fue eliminada en Auth. Limpiar el JWT local aunque la
         // llamada de logout remoto no pueda completarse.
         try {

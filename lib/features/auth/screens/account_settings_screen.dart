@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../sky/apariencia_screen.dart';
 import '../../../sky/sky_backdrop.dart';
@@ -6,9 +7,29 @@ import '../../../sky/sky_theme.dart';
 import '../../../sky/sky_controller.dart';
 import '../services/account_deletion_service.dart';
 
+const _privacyPolicyUri = 'https://cercly-web.vercel.app/privacidad';
+const _privacyContactUri =
+    'https://cercly-web.vercel.app/privacidad#responsable';
+const _accountDeletionWebUri = 'https://cercly-web.vercel.app/eliminar-cuenta';
+
 class ConfiguracionCuentaScreen extends StatelessWidget {
-  const ConfiguracionCuentaScreen({super.key, this.deletionService});
+  const ConfiguracionCuentaScreen({
+    super.key,
+    this.deletionService,
+    this.abrirEnlace,
+  });
   final AccountDeletionService? deletionService;
+  final Future<bool> Function(Uri uri)? abrirEnlace;
+
+  Future<void> _abrirExterno(String valor) async {
+    final uri = Uri.parse(valor);
+    final abrir = abrirEnlace;
+    if (abrir != null) {
+      await abrir(uri);
+      return;
+    }
+    await launchUrl(uri, mode: LaunchMode.externalApplication);
+  }
 
   @override
   Widget build(BuildContext context) => Scaffold(
@@ -28,6 +49,32 @@ class ConfiguracionCuentaScreen extends StatelessWidget {
                       CuentaScreen(deletionService: deletionService),
                 ),
               ),
+            ),
+            ListTile(
+              key: const Key('abrir-politica-privacidad'),
+              leading: const Icon(Icons.privacy_tip_outlined),
+              title: const Text('Política de privacidad'),
+              subtitle: const Text('Cómo se usan y eliminan tus datos'),
+              trailing: const Icon(Icons.open_in_new_rounded),
+              onTap: () => _abrirExterno(_privacyPolicyUri),
+            ),
+            ListTile(
+              key: const Key('abrir-contacto-cercly'),
+              leading: const Icon(Icons.mail_outline_rounded),
+              title: const Text('Contacto de privacidad y soporte'),
+              subtitle: const Text('Correo disponible en el sitio de Cercly'),
+              trailing: const Icon(Icons.open_in_new_rounded),
+              onTap: () => _abrirExterno(_privacyContactUri),
+            ),
+            ListTile(
+              key: const Key('abrir-eliminacion-web'),
+              leading: const Icon(Icons.delete_outline_rounded),
+              title: const Text('Eliminar cuenta desde la web'),
+              subtitle: const Text(
+                'También puedes iniciar la solicitud sin la app',
+              ),
+              trailing: const Icon(Icons.open_in_new_rounded),
+              onTap: () => _abrirExterno(_accountDeletionWebUri),
             ),
             ListTile(
               key: const Key('abrir-apariencia'),
