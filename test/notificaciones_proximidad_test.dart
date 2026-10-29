@@ -1,9 +1,13 @@
+import 'dart:async';
+
 import 'package:cercly/features/explorar/models/ubicacion_usuario.dart';
 import 'package:cercly/features/explorar/services/ubicacion_service.dart';
 import 'package:cercly/features/notificaciones/controllers/monitor_proximidad_controller.dart';
+import 'package:cercly/features/notificaciones/models/configuracion_alertas_proximidad.dart';
 import 'package:cercly/features/notificaciones/services/control_notificaciones_promocion.dart';
 import 'package:cercly/features/notificaciones/services/historial_notificaciones_promocion.dart';
 import 'package:cercly/features/notificaciones/services/notificacion_local_service.dart';
+import 'package:cercly/features/notificaciones/services/preferencias_alertas_proximidad.dart';
 import 'package:cercly/features/promociones/models/promocion_destacada_model.dart';
 import 'package:cercly/features/promociones/services/promocion_publica_service.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -43,6 +47,11 @@ class _UbicacionFalsa implements UbicacionService {
   int solicitudes = 0;
 
   @override
+  Future<EstadoUbicacion> consultarEstadoPermiso({
+    bool solicitarPermiso = false,
+  }) async => resultado.estado;
+
+  @override
   Future<bool> abrirAjustesAplicacion() async => true;
 
   @override
@@ -58,17 +67,20 @@ class _UbicacionFalsa implements UbicacionService {
 }
 
 class _PromocionesFalsas implements PromocionesCercanasRepository {
-  _PromocionesFalsas(this.promociones);
+  _PromocionesFalsas(this.promociones, {this.error});
 
   final List<PromocionDestacadaModel> promociones;
+  final Object? error;
   int consultas = 0;
 
   @override
   Future<List<PromocionDestacadaModel>> listarCercanas({
     required double latitudUsuario,
     required double longitudUsuario,
+    int radioUsuarioMetros = 500,
   }) async {
     consultas++;
+    if (error case final error?) throw error;
     return promociones;
   }
 }
@@ -84,6 +96,9 @@ class _NotificacionesFalsas implements NotificacionPromocionGateway {
   Future<void> inicializar() async => inicializaciones++;
 
   @override
+  Future<bool> tienePermisoParaNotificar() async => permitir;
+
+  @override
   Future<bool> mostrarPromocion(PromocionDestacadaModel promocion) async {
     if (!permitir) {
       return false;
@@ -96,22 +111,46 @@ class _NotificacionesFalsas implements NotificacionPromocionGateway {
 
 class _HistorialFalso implements HistorialNotificacionesPromocion {
   _HistorialFalso([Map<String, DateTime>? inicial])
-    : _datos = Map<String, DateTime>.from(inicial ?? const {});
+    : _datos = HistorialNotificacionesPromocionDatos(
+        ultimaPorPromocion: Map<String, DateTime>.from(inicial ?? const {}),
+        recientes: (inicial?.values.toList() ?? <DateTime>[])..sort(),
+      );
 
-  Map<String, DateTime> _datos;
+  HistorialNotificacionesPromocionDatos _datos;
   int guardados = 0;
 
-  Map<String, DateTime> get datos => Map.unmodifiable(_datos);
+  Map<String, DateTime> get datos =>
+      Map.unmodifiable(_datos.ultimaPorPromocion);
 
   @override
-  Future<Map<String, DateTime>> cargar() async {
-    return Map<String, DateTime>.from(_datos);
-  }
+  Future<HistorialNotificacionesPromocionDatos> cargar() async => _datos;
 
   @override
-  Future<void> guardar(Map<String, DateTime> historial) async {
+  Future<void> guardar(HistorialNotificacionesPromocionDatos historial) async {
     guardados++;
-    _datos = Map<String, DateTime>.from(historial);
+    _datos = historial;
+  }
+}
+
+class _PreferenciasFalsas implements PreferenciasAlertasProximidadRepository {
+  _PreferenciasFalsas({
+    this.configuracion = const ConfiguracionAlertasProximidad(activadas: true),
+  });
+
+  ConfiguracionAlertasProximidad configuracion;
+  final StreamController<ConfiguracionAlertasProximidad> _cambios =
+      StreamController<ConfiguracionAlertasProximidad>.broadcast();
+
+  @override
+  Stream<ConfiguracionAlertasProximidad> get cambios => _cambios.stream;
+
+  @override
+  Future<ConfiguracionAlertasProximidad> cargar() async => configuracion;
+
+  @override
+  Future<void> guardar(ConfiguracionAlertasProximidad nueva) async {
+    configuracion = nueva;
+    _cambios.add(nueva);
   }
 }
 
@@ -210,26 +249,65 @@ void main() {
       expect(resultado, hasLength(1));
     });
 
-    test('varias promociones cercanas se evalúan independientemente', () {
+    test('solo genera una alerta por ciclo aunque haya varias promociones', () {
       final resultado = control.evaluar([
         promocion(),
         promocion(id: 'promo-2'),
       ], ahora: instanteBase);
 
-      expect(resultado, hasLength(2));
+      expect(resultado, hasLength(1));
     });
 
     test('historial previo mantiene el cooldown tras reiniciar', () {
       final nuevoControl = ControlNotificacionesPromocion(
         cooldown: const Duration(hours: 2),
       );
-      nuevoControl.cargarHistorial({'promo-1': instanteBase});
+      nuevoControl.cargarHistorial(
+        HistorialNotificacionesPromocionDatos(
+          ultimaPorPromocion: {'promo-1': instanteBase},
+          recientes: [instanteBase],
+        ),
+      );
 
       final resultado = nuevoControl.evaluar([
         promocion(),
       ], ahora: instanteBase.add(const Duration(minutes: 30)));
 
       expect(resultado, isEmpty);
+    });
+
+    test('límite global respeta intervalo y máximo diario', () {
+      final limitado = ControlNotificacionesPromocion(
+        intervaloGlobal: const Duration(minutes: 15),
+        maximoPorDia: 2,
+      );
+      expect(
+        limitado.evaluar([promocion()], ahora: instanteBase),
+        hasLength(1),
+      );
+      limitado.registrarNotificacion('promo-1', ahora: instanteBase);
+      expect(
+        limitado.evaluar([
+          promocion(id: 'promo-2'),
+        ], ahora: instanteBase.add(const Duration(minutes: 5))),
+        isEmpty,
+      );
+      expect(
+        limitado.evaluar([
+          promocion(id: 'promo-2'),
+        ], ahora: instanteBase.add(const Duration(minutes: 20))),
+        hasLength(1),
+      );
+      limitado.registrarNotificacion(
+        'promo-2',
+        ahora: instanteBase.add(const Duration(minutes: 20)),
+      );
+      expect(
+        limitado.evaluar([
+          promocion(id: 'promo-3'),
+        ], ahora: instanteBase.add(const Duration(minutes: 40))),
+        isEmpty,
+      );
     });
   });
 
@@ -245,12 +323,15 @@ void main() {
         promocionesService: _PromocionesFalsas([]),
         notificaciones: notificaciones,
         historial: _HistorialFalso(),
+        preferencias: _PreferenciasFalsas(
+          configuracion: const ConfiguracionAlertasProximidad(),
+        ),
       );
 
       await controller.iniciar();
 
       expect(ubicacion.solicitudes, 0);
-      expect(notificaciones.inicializaciones, 0);
+      expect(notificaciones.inicializaciones, 1);
       controller.dispose();
     });
 
@@ -259,15 +340,21 @@ void main() {
       final notificaciones = _NotificacionesFalsas();
       final controller = MonitorProximidadController(
         ubicacionService: _UbicacionFalsa(
-          const ResultadoUbicacion(
+          ResultadoUbicacion(
             estado: EstadoUbicacion.disponible,
-            ubicacion: UbicacionUsuario(latitud: 0.8116, longitud: -77.7172),
+            ubicacion: UbicacionUsuario(
+              latitud: 0.8116,
+              longitud: -77.7172,
+              precisionMetros: 10,
+              capturadaEn: instanteBase,
+            ),
           ),
         ),
         promocionesService: promociones,
         notificaciones: notificaciones,
         control: ControlNotificacionesPromocion(),
         historial: _HistorialFalso(),
+        preferencias: _PreferenciasFalsas(),
         ahora: () => instanteBase,
       );
 
@@ -275,6 +362,110 @@ void main() {
 
       expect(promociones.consultas, 1);
       expect(notificaciones.mostradas, hasLength(1));
+      expect(controller.ultimoResultadoDiagnostico, 'notificacion_enviada');
+    });
+
+    test('alertas desactivadas no consultan ubicación', () async {
+      final ubicacion = _UbicacionFalsa(
+        const ResultadoUbicacion(estado: EstadoUbicacion.disponible),
+      );
+      final promociones = _PromocionesFalsas([promocion()]);
+      final controller = MonitorProximidadController(
+        ubicacionService: ubicacion,
+        promocionesService: promociones,
+        notificaciones: _NotificacionesFalsas(),
+        historial: _HistorialFalso(),
+        preferencias: _PreferenciasFalsas(
+          configuracion: const ConfiguracionAlertasProximidad(),
+        ),
+      );
+
+      await controller.verificarAhora();
+
+      expect(ubicacion.solicitudes, 0);
+      expect(promociones.consultas, 0);
+      expect(controller.ultimoResultadoDiagnostico, 'alertas_desactivadas');
+      controller.dispose();
+    });
+
+    test('GPS impreciso y antiguo no consulta promociones', () async {
+      final ubicacion = _UbicacionFalsa(
+        ResultadoUbicacion(
+          estado: EstadoUbicacion.disponible,
+          ubicacion: UbicacionUsuario(
+            latitud: 0.8116,
+            longitud: -77.7172,
+            precisionMetros: 250,
+            capturadaEn: instanteBase.subtract(const Duration(minutes: 3)),
+          ),
+        ),
+      );
+      final promociones = _PromocionesFalsas([promocion()]);
+      final controller = MonitorProximidadController(
+        ubicacionService: ubicacion,
+        promocionesService: promociones,
+        notificaciones: _NotificacionesFalsas(),
+        historial: _HistorialFalso(),
+        preferencias: _PreferenciasFalsas(),
+        ahora: () => instanteBase,
+      );
+
+      await controller.verificarAhora();
+
+      expect(ubicacion.solicitudes, 1);
+      expect(promociones.consultas, 0);
+      expect(
+        controller.ultimoResultadoDiagnostico,
+        'ubicacion_imprecisa_o_desactualizada',
+      );
+      controller.dispose();
+    });
+
+    test('notificaciones deshabilitadas no consultan ubicación', () async {
+      final ubicacion = _UbicacionFalsa(
+        const ResultadoUbicacion(estado: EstadoUbicacion.disponible),
+      );
+      final promociones = _PromocionesFalsas([promocion()]);
+      final controller = MonitorProximidadController(
+        ubicacionService: ubicacion,
+        promocionesService: promociones,
+        notificaciones: _NotificacionesFalsas(permitir: false),
+        historial: _HistorialFalso(),
+        preferencias: _PreferenciasFalsas(),
+      );
+
+      await controller.verificarAhora();
+
+      expect(ubicacion.solicitudes, 0);
+      expect(promociones.consultas, 0);
+      controller.dispose();
+    });
+
+    test('error de red no genera alertas ni rompe el monitor', () async {
+      final controller = MonitorProximidadController(
+        ubicacionService: _UbicacionFalsa(
+          ResultadoUbicacion(
+            estado: EstadoUbicacion.disponible,
+            ubicacion: UbicacionUsuario(
+              latitud: 0.8116,
+              longitud: -77.7172,
+              precisionMetros: 10,
+              capturadaEn: instanteBase,
+            ),
+          ),
+        ),
+        promocionesService: _PromocionesFalsas(
+          const [],
+          error: StateError('offline'),
+        ),
+        notificaciones: _NotificacionesFalsas(),
+        historial: _HistorialFalso(),
+        preferencias: _PreferenciasFalsas(),
+        ahora: () => instanteBase,
+      );
+
+      await expectLater(controller.verificarAhora(), completes);
+      controller.dispose();
     });
 
     test('permiso de ubicación denegado no consulta promociones', () async {
@@ -288,6 +479,7 @@ void main() {
         notificaciones: notificaciones,
         control: ControlNotificacionesPromocion(),
         historial: _HistorialFalso(),
+        preferencias: _PreferenciasFalsas(),
         ahora: () => instanteBase,
       );
 
@@ -301,15 +493,21 @@ void main() {
       final historial = _HistorialFalso();
       final controller = MonitorProximidadController(
         ubicacionService: _UbicacionFalsa(
-          const ResultadoUbicacion(
+          ResultadoUbicacion(
             estado: EstadoUbicacion.disponible,
-            ubicacion: UbicacionUsuario(latitud: 0.8116, longitud: -77.7172),
+            ubicacion: UbicacionUsuario(
+              latitud: 0.8116,
+              longitud: -77.7172,
+              precisionMetros: 10,
+              capturadaEn: instanteBase,
+            ),
           ),
         ),
         promocionesService: _PromocionesFalsas([promocion()]),
         notificaciones: _NotificacionesFalsas(),
         control: ControlNotificacionesPromocion(),
         historial: historial,
+        preferencias: _PreferenciasFalsas(),
         ahora: () => instanteBase,
       );
 
@@ -323,15 +521,21 @@ void main() {
       final historial = _HistorialFalso();
       final controller = MonitorProximidadController(
         ubicacionService: _UbicacionFalsa(
-          const ResultadoUbicacion(
+          ResultadoUbicacion(
             estado: EstadoUbicacion.disponible,
-            ubicacion: UbicacionUsuario(latitud: 0.8116, longitud: -77.7172),
+            ubicacion: UbicacionUsuario(
+              latitud: 0.8116,
+              longitud: -77.7172,
+              precisionMetros: 10,
+              capturadaEn: instanteBase,
+            ),
           ),
         ),
         promocionesService: _PromocionesFalsas([promocion()]),
         notificaciones: _NotificacionesFalsas(permitir: false),
         control: ControlNotificacionesPromocion(),
         historial: historial,
+        preferencias: _PreferenciasFalsas(),
         ahora: () => instanteBase,
       );
 
@@ -343,12 +547,22 @@ void main() {
 
     test('historial cargado evita repetir después de reiniciar', () async {
       final historial = _HistorialFalso({'promo-1': instanteBase});
+      historial._datos = HistorialNotificacionesPromocionDatos(
+        ultimaPorPromocion: {'promo-1': instanteBase},
+        recientes: [instanteBase],
+        promocionesDentro: {'promo-1'},
+      );
       final notificaciones = _NotificacionesFalsas();
       final controller = MonitorProximidadController(
         ubicacionService: _UbicacionFalsa(
-          const ResultadoUbicacion(
+          ResultadoUbicacion(
             estado: EstadoUbicacion.disponible,
-            ubicacion: UbicacionUsuario(latitud: 0.8116, longitud: -77.7172),
+            ubicacion: UbicacionUsuario(
+              latitud: 0.8116,
+              longitud: -77.7172,
+              precisionMetros: 10,
+              capturadaEn: instanteBase.add(const Duration(minutes: 30)),
+            ),
           ),
         ),
         promocionesService: _PromocionesFalsas([promocion()]),
@@ -357,6 +571,7 @@ void main() {
           cooldown: const Duration(hours: 2),
         ),
         historial: historial,
+        preferencias: _PreferenciasFalsas(),
         ahora: () => instanteBase.add(const Duration(minutes: 30)),
       );
 
@@ -364,6 +579,10 @@ void main() {
 
       expect(notificaciones.mostradas, isEmpty);
       expect(historial.guardados, 0);
+      expect(
+        controller.ultimoResultadoDiagnostico,
+        'cooldown_limite_o_misma_zona',
+      );
     });
   });
 }

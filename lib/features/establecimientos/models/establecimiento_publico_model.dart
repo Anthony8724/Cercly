@@ -29,6 +29,7 @@ class PromocionPublicaModel {
     required this.fechaInicio,
     required this.fechaFin,
     required this.radioAlertaMetros,
+    this.activa = true,
     this.imagenRutaStorage,
     this.urlImagen,
   });
@@ -41,11 +42,12 @@ class PromocionPublicaModel {
   final DateTime fechaInicio;
   final DateTime fechaFin;
   final int radioAlertaMetros;
+  final bool activa;
 
   bool get estaVigente {
     final ahora = DateTime.now();
 
-    return !ahora.isBefore(fechaInicio) && !ahora.isAfter(fechaFin);
+    return activa && !ahora.isBefore(fechaInicio) && !ahora.isAfter(fechaFin);
   }
 
   PromocionPublicaModel copiarConUrl(String? nuevaUrl) {
@@ -58,6 +60,7 @@ class PromocionPublicaModel {
       fechaInicio: fechaInicio,
       fechaFin: fechaFin,
       radioAlertaMetros: radioAlertaMetros,
+      activa: activa,
     );
   }
 
@@ -70,6 +73,7 @@ class PromocionPublicaModel {
       fechaInicio: DateTime.parse(datos['fecha_inicio'] as String).toLocal(),
       fechaFin: DateTime.parse(datos['fecha_fin'] as String).toLocal(),
       radioAlertaMetros: datos['radio_alerta_metros'] as int? ?? 100,
+      activa: datos['activa'] as bool? ?? true,
     );
   }
 }

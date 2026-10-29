@@ -8,14 +8,20 @@ import '../services/auth_service.dart';
 import 'account_mode_selector.dart';
 import 'account_settings_screen.dart';
 import '../../establecimientos/screens/mis_negocios_screen.dart';
+import '../../establecimientos/services/establecimiento_service.dart';
+import '../../preferencias/screens/mis_preferencias_screen.dart';
+import '../../notificaciones/widgets/monitor_proximidad_app.dart';
 
-class MiCuentaScreen extends StatelessWidget {
+class MiCuentaScreen extends StatefulWidget {
   const MiCuentaScreen({
     super.key,
     this.authService,
     this.correo,
     this.cerrarSesion,
     this.negociosScreenBuilder,
+    this.registroScreenBuilder,
+    this.tieneNegocios,
+    this.preferenciasScreenBuilder,
     this.mostrarConfiguracion = true,
   });
 
@@ -23,16 +29,47 @@ class MiCuentaScreen extends StatelessWidget {
   final String? correo;
   final Future<void> Function()? cerrarSesion;
   final WidgetBuilder? negociosScreenBuilder;
+  final WidgetBuilder? registroScreenBuilder;
+  final Future<bool> Function()? tieneNegocios;
+  final WidgetBuilder? preferenciasScreenBuilder;
   final bool mostrarConfiguracion;
+
+  @override
+  State<MiCuentaScreen> createState() => _MiCuentaScreenState();
+}
+
+class _MiCuentaScreenState extends State<MiCuentaScreen> {
+  late Future<bool> _relacionConNegocios;
+
+  @override
+  void initState() {
+    super.initState();
+    _relacionConNegocios = _consultarNegocios();
+  }
+
+  Future<bool> _consultarNegocios() async {
+    try {
+      final rows =
+          await (widget.tieneNegocios?.call() ??
+              EstablecimientoService().listarEstablecimientosDelUsuario().then(
+                (items) => items.isNotEmpty,
+              ));
+      return rows;
+    } catch (_) {
+      rethrow;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final sky = SkyPalette.of(context);
     final servicio =
-        authService ??
-        (correo == null || cerrarSesion == null ? AuthService() : null);
+        widget.authService ??
+        (widget.correo == null || widget.cerrarSesion == null
+            ? AuthService()
+            : null);
     final correoVisible =
-        correo ??
+        widget.correo ??
         servicio?.currentUser?.email ??
         servicio?.currentUser?.phone ??
         'Usuario de Cercly';
@@ -161,12 +198,19 @@ class MiCuentaScreen extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 12),
-                if (mostrarConfiguracion)
+                if (widget.mostrarConfiguracion)
                   OutlinedButton.icon(
                     key: const Key('abrir-configuracion-cuenta'),
                     onPressed: () => Navigator.of(context).push(
                       MaterialPageRoute<void>(
-                        builder: (_) => const ConfiguracionCuentaScreen(),
+                        builder: (_) =>
+                            MonitorProximidadScope.wrapRouteIfAvailable(
+                              context: context,
+                              child: ConfiguracionCuentaScreen(
+                                registroScreenBuilder:
+                                    widget.registroScreenBuilder,
+                              ),
+                            ),
                       ),
                     ),
                     icon: const Icon(Icons.settings_outlined),
@@ -174,17 +218,65 @@ class MiCuentaScreen extends StatelessWidget {
                   ),
                 const SizedBox(height: 12),
                 OutlinedButton.icon(
-                  key: const Key('abrir-mis-negocios'),
+                  key: const Key('abrir-mis-preferencias'),
                   onPressed: () => Navigator.of(context).push(
                     MaterialPageRoute<void>(
                       builder:
-                          negociosScreenBuilder ??
-                          (_) => const MisNegociosScreen(),
+                          widget.preferenciasScreenBuilder ??
+                          (_) => const MisPreferenciasScreen(),
                     ),
                   ),
-                  icon: const Icon(Icons.storefront_outlined),
-                  label: const Text('Mis negocios'),
+                  icon: const Icon(Icons.tune_rounded),
+                  label: const Text('Mis preferencias'),
                 ),
+                FutureBuilder<bool>(
+                  future: _relacionConNegocios,
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 10),
+                        child: Center(
+                          child: SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
+                        ),
+                      );
+                    }
+                    if (snapshot.hasError) {
+                      return Column(
+                        children: [
+                          Text(
+                            'No pudimos comprobar tus establecimientos. Mis negocios permanecerá oculto hasta verificar el acceso.',
+                            style: TextStyle(color: sky.muted),
+                          ),
+                          TextButton.icon(
+                            onPressed: () => setState(
+                              () => _relacionConNegocios = _consultarNegocios(),
+                            ),
+                            icon: const Icon(Icons.refresh),
+                            label: const Text('Reintentar'),
+                          ),
+                        ],
+                      );
+                    }
+                    if (snapshot.data != true) return const SizedBox.shrink();
+                    return OutlinedButton.icon(
+                      key: const Key('abrir-mis-negocios'),
+                      onPressed: () => Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder:
+                              widget.negociosScreenBuilder ??
+                              (_) => const MisNegociosScreen(),
+                        ),
+                      ),
+                      icon: const Icon(Icons.storefront_outlined),
+                      label: const Text('Mis negocios'),
+                    );
+                  },
+                ),
+                const SizedBox(height: 8),
                 const SizedBox(height: 24),
                 SizedBox(
                   height: 52,
@@ -192,7 +284,7 @@ class MiCuentaScreen extends StatelessWidget {
                     key: const Key('cerrar-sesion-cuenta'),
                     onPressed: () async {
                       try {
-                        await (cerrarSesion ?? servicio!.signOut)();
+                        await (widget.cerrarSesion ?? servicio!.signOut)();
                       } catch (error) {
                         if (!context.mounted) return;
                         ScaffoldMessenger.of(context).showSnackBar(

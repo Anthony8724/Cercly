@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 
-import '../../../sky/sky_theme.dart';
-
 import '../../establecimientos/models/establecimiento_publico_model.dart';
 
+/// Tarjeta compartida por los resultados generales y las recomendaciones.
+/// Conserva toda la información de negocio en el modelo; aquí solo se presenta.
 class TarjetaEstablecimientoPublico extends StatelessWidget {
   const TarjetaEstablecimientoPublico({
     required this.establecimiento,
@@ -14,245 +14,320 @@ class TarjetaEstablecimientoPublico extends StatelessWidget {
   final EstablecimientoPublicoModel establecimiento;
   final VoidCallback onTap;
 
+  static const _card = Color(0xFF19152D);
+  static const _border = Color(0xFF3A3157);
+  static const _accent = Color(0xFFBDA7FF);
+  static const _text = Color(0xFFF8F5FF);
+  static const _muted = Color(0xFFD0C9E4);
+
   @override
   Widget build(BuildContext context) {
-    final sky = SkyPalette.of(context);
-    final detalle = establecimiento.descripcion.trim().isNotEmpty
-        ? establecimiento.descripcion.trim()
-        : establecimiento.direccion.trim();
+    final textScale = MediaQuery.textScalerOf(context).scale(1).clamp(1.0, 1.4);
+    final height = 148.0 * textScale;
+    final category = establecimiento.categoria.nombre.trim();
+    final distance = establecimiento.distanciaFormateada;
 
-    return Card(
-      key: Key('establecimiento-${establecimiento.id}'),
-      color: sky.surface,
-      elevation: 1,
-      shadowColor: const Color(0x241769FF),
-      margin: const EdgeInsets.only(bottom: 9),
-      clipBehavior: Clip.antiAlias,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(14),
-        side: BorderSide(color: sky.border),
-      ),
-      child: InkWell(
-        onTap: onTap,
-        child: SizedBox(
-          height:
-              118 * MediaQuery.textScalerOf(context).scale(1).clamp(1.0, 1.5),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Padding(
-                padding: const EdgeInsets.all(7),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(11),
-                  child: SizedBox(width: 88, child: _Portada(establecimiento)),
+    return Semantics(
+      button: true,
+      label: [
+        establecimiento.nombre,
+        if (category.isNotEmpty) category,
+        if (distance.isNotEmpty) distance,
+        if (establecimiento.tienePromociones) 'Promoción activa',
+      ].join(', '),
+      child: Material(
+        key: Key('establecimiento-${establecimiento.id}'),
+        color: _card,
+        elevation: 3,
+        shadowColor: const Color(0x664E3D83),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(22),
+          side: const BorderSide(color: _border),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(22),
+          splashColor: _accent.withValues(alpha: .12),
+          highlightColor: _accent.withValues(alpha: .06),
+          focusColor: _accent.withValues(alpha: .10),
+          child: SizedBox(
+            height: height,
+            child: Row(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.all(8),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(16),
+                    child: SizedBox(
+                      width: 106,
+                      height: height - 16,
+                      child: _FotoEstablecimiento(
+                        url: establecimiento.urlFotoPortada,
+                        icono: _iconoCategoria(establecimiento.categoria),
+                      ),
+                    ),
+                  ),
                 ),
-              ),
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(5, 9, 5, 8),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Row(
-                        children: [
-                          Expanded(
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(5, 12, 13, 12),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _CategoriaLabel(
+                          nombre: category,
+                          icono: _iconoCategoria(establecimiento.categoria),
+                        ),
+                        const SizedBox(height: 7),
+                        Expanded(
+                          child: Align(
+                            alignment: Alignment.centerLeft,
                             child: Text(
                               establecimiento.nombre,
                               maxLines: 2,
                               overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                color: sky.text,
-                                fontSize: 14.5,
-                                height: 1.05,
+                              style: const TextStyle(
+                                color: _text,
+                                fontSize: 17,
+                                height: 1.12,
                                 fontWeight: FontWeight.w800,
+                                letterSpacing: -.2,
                               ),
                             ),
                           ),
-                          Icon(
-                            Icons.chevron_right_rounded,
-                            color: sky.primary,
-                            size: 22,
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 4),
-                      Row(
-                        children: [
-                          Flexible(
-                            child: Text(
-                              establecimiento.categoria.nombre,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                color: sky.muted,
-                                fontSize: 11.5,
-                                fontWeight: FontWeight.w600,
+                        ),
+                        Wrap(
+                          spacing: 7,
+                          runSpacing: 5,
+                          crossAxisAlignment: WrapCrossAlignment.center,
+                          children: [
+                            if (distance.isNotEmpty)
+                              _MetaChip(
+                                key: const Key('distancia-establecimiento'),
+                                icon: Icons.near_me_rounded,
+                                text: distance,
                               ),
-                            ),
-                          ),
-                          if (detalle.isNotEmpty) ...[
-                            Text(
-                              '  •  ',
-                              style: TextStyle(color: sky.muted, fontSize: 10),
-                            ),
-                            Expanded(
-                              child: Text(
-                                detalle,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  color: sky.muted,
-                                  fontSize: 11,
-                                ),
-                              ),
-                            ),
+                            if (establecimiento.tienePromociones)
+                              const _PromotionChip(),
                           ],
-                        ],
-                      ),
-                      const Spacer(),
-                      Row(
-                        children: [
-                          if (establecimiento.estadoHorario != null)
-                            Flexible(
-                              child: _EstadoHorarioLinea(
-                                estado: establecimiento.estadoHorario!,
-                              ),
-                            ),
-                          if (establecimiento.estadoHorario != null &&
-                              establecimiento.distanciaFormateada.isNotEmpty)
-                            const SizedBox(width: 10),
-                          if (establecimiento.distanciaFormateada.isNotEmpty)
-                            _DatoLinea(
-                              icono: Icons.location_on_rounded,
-                              texto: establecimiento.distanciaFormateada,
-                              color: sky.muted,
-                            ),
-                        ],
-                      ),
-                      if (establecimiento.tienePromociones) ...[
-                        const SizedBox(height: 3),
-                        _DatoLinea(
-                          key: Key('indicador-promocion'),
-                          icono: Icons.local_offer_rounded,
-                          texto: 'Promoción activa',
-                          color: sky.warning,
                         ),
                       ],
-                    ],
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(width: 7),
-            ],
+              ],
+            ),
           ),
         ),
       ),
     );
   }
-}
 
-class _Portada extends StatelessWidget {
-  const _Portada(this.establecimiento);
-
-  final EstablecimientoPublicoModel establecimiento;
-
-  @override
-  Widget build(BuildContext context) {
-    final sky = SkyPalette.of(context);
-    final url = establecimiento.urlFotoPortada;
-    if (url == null || url.isEmpty) {
-      return DecoratedBox(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [sky.soft, sky.border],
-          ),
-        ),
-        child: Center(
-          child: Icon(Icons.storefront_rounded, size: 38, color: sky.primary),
-        ),
-      );
+  static IconData _iconoCategoria(CategoriaPublicaModel categoria) {
+    final value = '${categoria.icono} ${categoria.slug}'.toLowerCase();
+    if (value.contains('restaurant') ||
+        value.contains('food') ||
+        value.contains('comida')) {
+      return Icons.restaurant_rounded;
     }
-
-    return Image.network(
-      url,
-      fit: BoxFit.cover,
-      cacheWidth: 360,
-      errorBuilder: (_, _, _) => ColoredBox(
-        color: sky.soft,
-        child: Center(
-          child: Icon(Icons.storefront_rounded, size: 38, color: sky.primary),
-        ),
-      ),
-    );
+    if (value.contains('cafe') || value.contains('coffee')) {
+      return Icons.local_cafe_rounded;
+    }
+    if (value.contains('health') ||
+        value.contains('medical') ||
+        value.contains('salud')) {
+      return Icons.health_and_safety_rounded;
+    }
+    if (value.contains('beauty') ||
+        value.contains('spa') ||
+        value.contains('belleza')) {
+      return Icons.spa_rounded;
+    }
+    if (value.contains('shop') ||
+        value.contains('store') ||
+        value.contains('tienda')) {
+      return Icons.shopping_bag_rounded;
+    }
+    if (value.contains('hotel') ||
+        value.contains('travel') ||
+        value.contains('alojamiento')) {
+      return Icons.hotel_rounded;
+    }
+    if (value.contains('sport') ||
+        value.contains('fitness') ||
+        value.contains('deporte')) {
+      return Icons.fitness_center_rounded;
+    }
+    if (value.contains('school') ||
+        value.contains('education') ||
+        value.contains('educacion')) {
+      return Icons.school_rounded;
+    }
+    return Icons.storefront_rounded;
   }
 }
 
-class _EstadoHorarioLinea extends StatelessWidget {
-  const _EstadoHorarioLinea({required this.estado});
+class _FotoEstablecimiento extends StatelessWidget {
+  const _FotoEstablecimiento({required this.url, required this.icono});
 
-  final String estado;
+  final String? url;
+  final IconData icono;
+
+  static const _accent = Color(0xFFBDA7FF);
 
   @override
   Widget build(BuildContext context) {
-    final sky = SkyPalette.of(context);
-    final abierto = estado == 'abierto';
-    final cerrado = estado == 'cerrado';
+    final imageUrl = url?.trim();
+    final fallback = DecoratedBox(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF30284D), Color(0xFF211C3B), Color(0xFF17152C)],
+        ),
+      ),
+      child: Center(
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            color: _accent.withValues(alpha: .12),
+            shape: BoxShape.circle,
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(15),
+            child: Icon(icono, size: 34, color: _accent),
+          ),
+        ),
+      ),
+    );
 
-    final texto = abierto
-        ? 'Abierto'
-        : cerrado
-        ? 'Cerrado'
-        : 'Horario no disponible';
+    if (imageUrl == null || imageUrl.isEmpty) return fallback;
 
-    final color = abierto
-        ? sky.success
-        : cerrado
-        ? sky.error
-        : sky.muted;
-
-    return _DatoLinea(
-      key: Key('estado-horario-$estado'),
-      icono: Icons.schedule_rounded,
-      texto: texto,
-      color: color,
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        fallback,
+        Image.network(
+          imageUrl,
+          fit: BoxFit.cover,
+          cacheWidth: 480,
+          filterQuality: FilterQuality.medium,
+          frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
+            if (wasSynchronouslyLoaded) return child;
+            return AnimatedOpacity(
+              opacity: frame == null ? 0 : 1,
+              duration: const Duration(milliseconds: 220),
+              curve: Curves.easeOut,
+              child: child,
+            );
+          },
+          errorBuilder: (_, _, _) => fallback,
+        ),
+      ],
     );
   }
 }
 
-class _DatoLinea extends StatelessWidget {
-  const _DatoLinea({
-    required this.icono,
-    required this.texto,
-    required this.color,
-    super.key,
-  });
+class _CategoriaLabel extends StatelessWidget {
+  const _CategoriaLabel({required this.nombre, required this.icono});
 
+  final String nombre;
   final IconData icono;
-  final String texto;
-  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Icon(icono, size: 15, color: TarjetaEstablecimientoPublico._accent),
+        const SizedBox(width: 5),
+        Expanded(
+          child: Text(
+            nombre.isEmpty ? 'Establecimiento' : nombre,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: TarjetaEstablecimientoPublico._muted,
+              fontSize: 11.5,
+              height: 1.1,
+              fontWeight: FontWeight.w600,
+              letterSpacing: .15,
+            ),
+          ),
+        ),
+        const SizedBox(width: 3),
+        const Icon(
+          Icons.arrow_outward_rounded,
+          size: 15,
+          color: TarjetaEstablecimientoPublico._accent,
+        ),
+      ],
+    );
+  }
+}
+
+class _MetaChip extends StatelessWidget {
+  const _MetaChip({required this.icon, required this.text, super.key});
+
+  final IconData icon;
+  final String text;
 
   @override
   Widget build(BuildContext context) {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(icono, size: 13, color: color),
-        const SizedBox(width: 3),
+        Icon(icon, size: 13, color: TarjetaEstablecimientoPublico._muted),
+        const SizedBox(width: 4),
         Text(
-          texto,
+          text,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
-          style: TextStyle(
-            color: color,
-            fontSize: 10.5,
-            height: 1,
-            fontWeight: FontWeight.w500,
+          style: const TextStyle(
+            color: TarjetaEstablecimientoPublico._muted,
+            fontSize: 11,
+            fontWeight: FontWeight.w600,
           ),
         ),
       ],
+    );
+  }
+}
+
+class _PromotionChip extends StatelessWidget {
+  const _PromotionChip();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      key: const Key('indicador-promocion'),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+      decoration: BoxDecoration(
+        color: TarjetaEstablecimientoPublico._accent.withValues(alpha: .14),
+        borderRadius: BorderRadius.circular(99),
+        border: Border.all(
+          color: TarjetaEstablecimientoPublico._accent.withValues(alpha: .3),
+        ),
+      ),
+      child: const Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            Icons.local_offer_rounded,
+            size: 12,
+            color: TarjetaEstablecimientoPublico._accent,
+          ),
+          SizedBox(width: 4),
+          Text(
+            'Promoción',
+            maxLines: 1,
+            style: TextStyle(
+              color: TarjetaEstablecimientoPublico._accent,
+              fontSize: 10.5,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

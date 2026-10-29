@@ -21,6 +21,8 @@ class AuthOptions {
   };
   static String redirect({bool web = kIsWeb, Uri? base}) => web
       ? (base ?? Uri.base).toString().split(RegExp(r'[?#]')).first
+      : const bool.fromEnvironment('CERCLY_STAGING')
+      ? 'com.cercly.cercly.staging://auth-callback/'
       : 'com.cercly.cercly://auth-callback/';
 }
 

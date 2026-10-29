@@ -171,6 +171,7 @@ class AuthService {
           'No se pudo abrir el navegador. Inténtalo de nuevo.',
         'otp_expired' || 'otp_disabled' =>
           'El código es incorrecto o ha vencido. Solicita uno nuevo.',
+        'flow_state_expired' => 'El enlace de recuperación venció. Solicita uno nuevo desde la pantalla de acceso.',
         'invalid_credentials' => 'Los datos o el código no son correctos.',
         'email_not_confirmed' => 'Primero confirma tu correo electrónico.',
         _ => 'No se pudo completar el acceso. Inténtalo de nuevo.',

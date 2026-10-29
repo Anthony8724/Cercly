@@ -3,6 +3,10 @@ import 'package:geolocator/geolocator.dart';
 import '../models/ubicacion_usuario.dart';
 
 abstract class UbicacionService {
+  Future<EstadoUbicacion> consultarEstadoPermiso({
+    bool solicitarPermiso = false,
+  });
+
   Future<ResultadoUbicacion> obtenerUbicacion({bool solicitarPermiso = false});
 
   Future<bool> abrirAjustesUbicacion();
@@ -12,15 +16,12 @@ abstract class UbicacionService {
 
 class GeolocatorUbicacionService implements UbicacionService {
   @override
-  Future<ResultadoUbicacion> obtenerUbicacion({
+  Future<EstadoUbicacion> consultarEstadoPermiso({
     bool solicitarPermiso = false,
   }) async {
     try {
       if (!await Geolocator.isLocationServiceEnabled()) {
-        return const ResultadoUbicacion(
-          estado: EstadoUbicacion.servicioDesactivado,
-          mensaje: 'Activa la ubicación del dispositivo para explorar cerca.',
-        );
+        return EstadoUbicacion.servicioDesactivado;
       }
 
       var permiso = await Geolocator.checkPermission();
@@ -29,16 +30,38 @@ class GeolocatorUbicacionService implements UbicacionService {
       }
 
       if (permiso == LocationPermission.denied) {
-        return const ResultadoUbicacion(
-          estado: EstadoUbicacion.permisoDenegado,
-          mensaje: 'Necesitamos tu permiso para mostrar lugares cercanos.',
-        );
+        return EstadoUbicacion.permisoDenegado;
       }
 
       if (permiso == LocationPermission.deniedForever) {
-        return const ResultadoUbicacion(
-          estado: EstadoUbicacion.permisoDenegadoPermanentemente,
-          mensaje: 'Habilita el permiso de ubicación desde los ajustes.',
+        return EstadoUbicacion.permisoDenegadoPermanentemente;
+      }
+
+      return EstadoUbicacion.disponible;
+    } catch (_) {
+      return EstadoUbicacion.error;
+    }
+  }
+
+  @override
+  Future<ResultadoUbicacion> obtenerUbicacion({
+    bool solicitarPermiso = false,
+  }) async {
+    try {
+      final estado = await consultarEstadoPermiso(
+        solicitarPermiso: solicitarPermiso,
+      );
+      if (estado != EstadoUbicacion.disponible) {
+        return ResultadoUbicacion(
+          estado: estado,
+          mensaje: switch (estado) {
+            EstadoUbicacion.servicioDesactivado => 'Activa la ubicación del dispositivo para buscar promociones cercanas.',
+            EstadoUbicacion.permisoDenegado =>
+              'Concede el permiso de ubicación para activar las alertas.',
+            EstadoUbicacion.permisoDenegadoPermanentemente =>
+              'Habilita el permiso de ubicación desde los ajustes de Android.',
+            _ => 'No pudimos comprobar el permiso de ubicación.',
+          },
         );
       }
 
@@ -54,6 +77,8 @@ class GeolocatorUbicacionService implements UbicacionService {
         ubicacion: UbicacionUsuario(
           latitud: posicion.latitude,
           longitud: posicion.longitude,
+          precisionMetros: posicion.accuracy,
+          capturadaEn: posicion.timestamp,
         ),
       );
     } catch (_) {

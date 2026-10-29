@@ -8,6 +8,7 @@ import 'evaluation/cercly_ui_evaluation_app.dart';
 import 'features/auth/screens/auth_gate.dart';
 import 'features/auth/screens/auth_recovery_host.dart';
 import 'features/notificaciones/widgets/monitor_proximidad_app.dart';
+import 'shared/ui/environment_banner.dart';
 import 'sky/sky_controller.dart';
 import 'sky/sky_theme.dart';
 
@@ -32,6 +33,14 @@ Future<void> main() async {
 
   if (!SupabaseOptions.isConfigured) {
     runApp(const ConfiguracionFaltanteApp());
+    return;
+  }
+
+  const isStagingBuild = bool.fromEnvironment('CERCLY_STAGING');
+  if (isStagingBuild &&
+      Uri.tryParse(SupabaseOptions.url)?.host !=
+          'dlajxviqhkdcqnmczhvr.supabase.co') {
+    runApp(const ConfiguracionEntornoInvalidaApp());
     return;
   }
 
@@ -96,6 +105,8 @@ class _CerclyAppState extends State<CerclyApp> {
         child: MaterialApp(
           debugShowCheckedModeBanner: false,
           title: 'Cercly',
+          builder: (context, child) =>
+              EnvironmentBanner(child: child ?? const SizedBox.shrink()),
           theme: skyTheme(_sky.palette),
           themeAnimationDuration: Duration.zero,
           home: const AuthRecoveryHost(
@@ -105,6 +116,27 @@ class _CerclyAppState extends State<CerclyApp> {
       ),
     );
   }
+}
+
+class ConfiguracionEntornoInvalidaApp extends StatelessWidget {
+  const ConfiguracionEntornoInvalidaApp({super.key});
+
+  @override
+  Widget build(BuildContext context) => const MaterialApp(
+    home: Scaffold(
+      body: SafeArea(
+        child: Center(
+          child: Padding(
+            padding: EdgeInsets.all(24),
+            child: Text(
+              'Esta compilación STAGING requiere la configuración de Supabase Staging.',
+              textAlign: TextAlign.center,
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
 }
 
 class ConfiguracionFaltanteApp extends StatelessWidget {

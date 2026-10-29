@@ -351,8 +351,13 @@ class _EvaluationHubState extends State<_EvaluationHub> {
 MiCuentaScreen _miCuentaDemo() => MiCuentaScreen(
   correo: 'demo@cercly.local',
   cerrarSesion: () async {},
-  mostrarConfiguracion: false,
+  tieneNegocios: () async => _DemoDataStore.misNegocios.isNotEmpty,
   negociosScreenBuilder: (_) => _misNegociosDemo(),
+  registroScreenBuilder: (_) => RegistroEstablecimientoScreen(
+    service: _DemoRegistrationRepository(),
+    soloEvaluacion: true,
+    enviarSolicitudDemoLocal: _DemoDataStore.agregarSolicitud,
+  ),
 );
 
 Widget _misNegociosDemo() => MisNegociosScreen(
@@ -393,6 +398,11 @@ class _DemoLocationService implements UbicacionService {
   const _DemoLocationService();
 
   @override
+  Future<EstadoUbicacion> consultarEstadoPermiso({
+    bool solicitarPermiso = false,
+  }) async => EstadoUbicacion.disponible;
+
+  @override
   Future<ResultadoUbicacion> obtenerUbicacion({
     bool solicitarPermiso = false,
   }) async => const ResultadoUbicacion(
@@ -421,6 +431,16 @@ class _DemoCategoryRepository implements CategoriaPublicaRepository {
 }
 
 class _DemoEstablishmentRepository implements EstablecimientoCercanoRepository {
+  @override
+  Future<List<EstablecimientoPublicoModel>> listar({
+    String? categoriaId,
+    List<String>? subcategoriaIds,
+    bool soloPromociones = false,
+    String? busqueda,
+    int limite = 20,
+    int desplazamiento = 0,
+  }) async => [..._establecimientosDemo, ..._DemoDataStore.publicados];
+
   @override
   Future<List<EstablecimientoPublicoModel>> buscarCercanos({
     required double latitud,

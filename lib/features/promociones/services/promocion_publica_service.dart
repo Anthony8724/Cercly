@@ -8,6 +8,7 @@ abstract interface class PromocionesCercanasRepository {
   Future<List<PromocionDestacadaModel>> listarCercanas({
     required double latitudUsuario,
     required double longitudUsuario,
+    int radioUsuarioMetros = 500,
   });
 }
 
@@ -47,6 +48,7 @@ class PromocionPublicaService implements PromocionesCercanasRepository {
     double? latitudUsuario,
     double? longitudUsuario,
     double? radioMaximoMetros,
+    bool resolverImagenes = true,
   }) async {
     _validarUbicacion(
       latitudUsuario: latitudUsuario,
@@ -73,7 +75,16 @@ class PromocionPublicaService implements PromocionesCercanasRepository {
 
     final respuesta = await consulta.order('fecha_fin');
 
-    final filas = List<Map<String, dynamic>>.from(respuesta);
+    final filas = List<Map<String, dynamic>>.from(respuesta)
+        .where((fila) {
+          final establecimiento = fila['establecimientos'];
+          if (establecimiento is! Map) return false;
+          final latitud = establecimiento['latitud'];
+          final longitud = establecimiento['longitud'];
+          if (latitud is! num || longitud is! num) return false;
+          return latitud.toDouble().isFinite && longitud.toDouble().isFinite;
+        })
+        .toList(growable: false);
 
     final promociones = await Future.wait(
       filas.map(
@@ -81,6 +92,7 @@ class PromocionPublicaService implements PromocionesCercanasRepository {
           fila,
           latitudUsuario: latitudUsuario,
           longitudUsuario: longitudUsuario,
+          resolverImagen: resolverImagenes,
         ),
       ),
     );
@@ -114,17 +126,27 @@ class PromocionPublicaService implements PromocionesCercanasRepository {
   Future<List<PromocionDestacadaModel>> listarCercanas({
     required double latitudUsuario,
     required double longitudUsuario,
+    int radioUsuarioMetros = 500,
   }) async {
+    if (radioUsuarioMetros <= 0) {
+      throw ArgumentError.value(radioUsuarioMetros, 'radioUsuarioMetros');
+    }
+
     final promociones = await listarVigentes(
       latitudUsuario: latitudUsuario,
       longitudUsuario: longitudUsuario,
+      resolverImagenes: false,
     );
 
     return promociones
         .where((promocion) {
           final distancia = promocion.distanciaMetros;
 
-          return distancia != null && distancia <= promocion.radioAlertaMetros;
+          final radioEfectivo = math.min(
+            promocion.radioAlertaMetros,
+            radioUsuarioMetros,
+          );
+          return distancia != null && distancia <= radioEfectivo;
         })
         .toList(growable: false);
   }
@@ -155,6 +177,7 @@ class PromocionPublicaService implements PromocionesCercanasRepository {
         .lte('fecha_inicio', ahora)
         .gte('fecha_fin', ahora)
         .eq('establecimientos.estado', 'aprobado')
+        .eq('establecimientos.publicable', true)
         .maybeSingle();
 
     if (respuesta == null) {
@@ -172,6 +195,7 @@ class PromocionPublicaService implements PromocionesCercanasRepository {
     Map<String, dynamic> datos, {
     double? latitudUsuario,
     double? longitudUsuario,
+    bool resolverImagen = true,
   }) async {
     final promocion = PromocionDestacadaModel.fromSupabase(datos);
 
@@ -179,7 +203,7 @@ class PromocionPublicaService implements PromocionesCercanasRepository {
 
     final ruta = promocion.imagenRutaStorage;
 
-    if (ruta != null && ruta.isNotEmpty) {
+    if (resolverImagen && ruta != null && ruta.isNotEmpty) {
       urlImagen = await _crearUrlTemporal(ruta);
     }
 
@@ -274,11 +298,11 @@ class PromocionPublicaService implements PromocionesCercanasRepository {
   }
 
   void _validarCoordenada({required double latitud, required double longitud}) {
-    if (latitud < -90 || latitud > 90) {
+    if (!latitud.isFinite || latitud < -90 || latitud > 90) {
       throw ArgumentError('La latitud debe estar entre -90 y 90.');
     }
 
-    if (longitud < -180 || longitud > 180) {
+    if (!longitud.isFinite || longitud < -180 || longitud > 180) {
       throw ArgumentError('La longitud debe estar entre -180 y 180.');
     }
   }

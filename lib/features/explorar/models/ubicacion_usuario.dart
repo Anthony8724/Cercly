@@ -9,10 +9,17 @@ enum EstadoUbicacion {
 }
 
 class UbicacionUsuario {
-  const UbicacionUsuario({required this.latitud, required this.longitud});
+  const UbicacionUsuario({
+    required this.latitud,
+    required this.longitud,
+    this.precisionMetros,
+    this.capturadaEn,
+  });
 
   final double latitud;
   final double longitud;
+  final double? precisionMetros;
+  final DateTime? capturadaEn;
 }
 
 class ResultadoUbicacion {

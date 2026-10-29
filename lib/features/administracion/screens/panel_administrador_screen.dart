@@ -7,6 +7,8 @@ import '../../../sky/sky_theme.dart';
 import '../../auth/services/auth_service.dart';
 import '../../auth/screens/account_mode_selector.dart';
 import '../../auth/screens/account_settings_screen.dart';
+import '../../notificaciones/widgets/monitor_proximidad_app.dart';
+import '../../preferencias/screens/mis_preferencias_screen.dart';
 import '../../establecimientos/models/establecimiento_model.dart';
 import '../../establecimientos/services/establecimiento_service.dart';
 import '../../solicitudes_establecimientos/screens/solicitudes_administrador_screen.dart';
@@ -462,11 +464,25 @@ class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
                       ),
                       const SizedBox(width: 8),
                       _accionCabecera(
+                        icono: Icons.tune_rounded,
+                        tooltip: 'Mis preferencias',
+                        onPressed: () => Navigator.of(context).push(
+                          MaterialPageRoute<void>(
+                            builder: (_) => const MisPreferenciasScreen(),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      _accionCabecera(
                         icono: Icons.settings_outlined,
                         tooltip: 'Configuración de cuenta',
                         onPressed: () => Navigator.of(context).push(
                           MaterialPageRoute<void>(
-                            builder: (_) => const ConfiguracionCuentaScreen(),
+                            builder: (_) =>
+                                MonitorProximidadScope.wrapRouteIfAvailable(
+                                  context: context,
+                                  child: const ConfiguracionCuentaScreen(),
+                                ),
                           ),
                         ),
                       ),

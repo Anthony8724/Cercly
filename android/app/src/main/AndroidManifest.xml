@@ -31,7 +31,7 @@
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="com.cercly.cercly" android:host="auth-callback" android:pathPrefix="/" />
+                <data android:scheme="${authCallbackScheme}" android:host="auth-callback" android:pathPrefix="/" />
             </intent-filter>
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>

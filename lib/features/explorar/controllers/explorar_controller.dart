@@ -7,6 +7,9 @@ import '../../categorias/models/subcategoria_model.dart';
 import '../../categorias/services/categoria_publica_service.dart';
 import '../../establecimientos/models/establecimiento_publico_model.dart';
 import '../../establecimientos/services/establecimiento_publico_service.dart';
+import '../../preferencias/models/preferencias_usuario.dart';
+import '../../preferencias/services/preferencias_usuario_service.dart';
+import '../../preferencias/services/recomendador_establecimientos.dart';
 import '../models/ubicacion_usuario.dart';
 import '../services/consentimiento_ubicacion.dart';
 import '../services/ubicacion_service.dart';
@@ -16,16 +19,26 @@ class ExplorarController extends ChangeNotifier {
     EstablecimientoCercanoRepository? establecimientoService,
     CategoriaPublicaRepository? categoriaService,
     UbicacionService? ubicacionService,
+    PreferenciasUsuarioService? preferenciasService,
   }) : _establecimientoService =
            establecimientoService ?? EstablecimientoPublicoService(),
+       _establecimientosPublicos = establecimientoService == null
+           ? EstablecimientoPublicoService()
+           : establecimientoService is EstablecimientoPublicoService
+           ? establecimientoService
+           : null,
        _categoriaService = categoriaService ?? CategoriaPublicaService(),
-       _ubicacionService = ubicacionService ?? GeolocatorUbicacionService();
+       _ubicacionService = ubicacionService ?? GeolocatorUbicacionService(),
+       _preferenciasService =
+           preferenciasService ?? PreferenciasUsuarioService();
 
   static const radiosDisponibles = <int>[500, 1000, 2000, 5000, 10000];
 
   final EstablecimientoCercanoRepository _establecimientoService;
   final CategoriaPublicaRepository _categoriaService;
   final UbicacionService _ubicacionService;
+  final EstablecimientoPublicoService? _establecimientosPublicos;
+  final PreferenciasUsuarioService _preferenciasService;
 
   EstadoUbicacion estadoUbicacion = EstadoUbicacion.inicial;
   UbicacionUsuario? ubicacion;
@@ -33,6 +46,8 @@ class ExplorarController extends ChangeNotifier {
   List<CategoriaModel> categorias = const [];
   List<SubcategoriaModel> subcategorias = const [];
   List<EstablecimientoPublicoModel> establecimientos = const [];
+  List<EstablecimientoPublicoModel> recomendados = const [];
+  PreferenciasUsuario preferencias = const PreferenciasUsuario();
   String? categoriaId;
   String? subcategoriaId;
   String busqueda = '';
@@ -50,6 +65,44 @@ class ExplorarController extends ChangeNotifier {
 
   Future<void> inicializar() async {
     await cargarCategorias();
+    try {
+      try {
+        await _preferenciasService.sincronizarPendientes();
+      } on PreferenciasConflictException {
+        // Se conserva el borrador local, pero no se pisa una revisión remota nueva.
+      }
+      preferencias = await _preferenciasService.cargar();
+      await cargarRecomendaciones();
+    } catch (_) {
+      // La búsqueda general no depende de la sincronización de preferencias.
+    }
+    if (ubicacion == null) await buscar();
+  }
+
+  Future<void> cargarRecomendaciones() async {
+    final service = _establecimientosPublicos;
+    if (service == null ||
+        (preferencias.categoriasIds.isEmpty &&
+            !preferencias.priorizarPromociones)) {
+      recomendados = const [];
+      notifyListeners();
+      return;
+    }
+    try {
+      final candidates = await service.listarCandidatosRecomendacion(
+        categoriasIds: preferencias.categoriasIds,
+        incluirPromociones: preferencias.priorizarPromociones,
+      );
+      recomendados = const RecomendadorEstablecimientos().recomendar(
+        establecimientos: candidates,
+        preferencias: preferencias,
+        latitud: ubicacion?.latitud,
+        longitud: ubicacion?.longitud,
+      );
+    } catch (_) {
+      recomendados = const [];
+    }
+    notifyListeners();
   }
 
   Future<void> cargarCategorias() async {
@@ -90,6 +143,7 @@ class ExplorarController extends ChangeNotifier {
 
     if (ubicacion != null) {
       await buscar();
+      await cargarRecomendaciones();
     }
   }
 
@@ -160,7 +214,7 @@ class ExplorarController extends ChangeNotifier {
 
   Future<void> buscar({bool reiniciar = true}) async {
     final posicion = ubicacion;
-    if (posicion == null || (!reiniciar && cargandoResultados)) return;
+    if (!reiniciar && cargandoResultados) return;
 
     final versionConsulta = ++_versionConsulta;
 
@@ -170,17 +224,27 @@ class ExplorarController extends ChangeNotifier {
 
     try {
       final desplazamiento = reiniciar ? 0 : establecimientos.length;
-      final nuevos = await _establecimientoService.buscarCercanos(
-        latitud: posicion.latitud,
-        longitud: posicion.longitud,
-        radioMetros: radioMetros,
-        categoriaId: categoriaId,
-        subcategoriaIds: subcategoriaId == null ? null : [subcategoriaId!],
-        soloPromociones: soloPromociones,
-        busqueda: busqueda,
-        limite: _tamanoPagina,
-        desplazamiento: desplazamiento,
-      );
+      final nuevos = posicion == null
+          ? await _establecimientoService.listar(
+              categoriaId: categoriaId,
+              busqueda: busqueda,
+              soloPromociones: soloPromociones,
+              limite: _tamanoPagina,
+              desplazamiento: desplazamiento,
+            )
+          : await _establecimientoService.buscarCercanos(
+              latitud: posicion.latitud,
+              longitud: posicion.longitud,
+              radioMetros: radioMetros,
+              categoriaId: categoriaId,
+              subcategoriaIds: subcategoriaId == null
+                  ? null
+                  : [subcategoriaId!],
+              soloPromociones: soloPromociones,
+              busqueda: busqueda,
+              limite: _tamanoPagina,
+              desplazamiento: desplazamiento,
+            );
       if (versionConsulta != _versionConsulta) return;
       establecimientos = reiniciar ? nuevos : [...establecimientos, ...nuevos];
       hayMasResultados = nuevos.length == _tamanoPagina;

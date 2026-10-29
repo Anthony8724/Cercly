@@ -4,10 +4,12 @@ import 'package:cercly/features/auth/screens/password_screen.dart';
 import 'package:cercly/features/auth/services/auth_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class FakePassword extends AuthService {
   String? email, password;
   bool fail = true;
+  Object? updateError;
   @override
   Future<void> resetPassword(String value) async {
     email = value;
@@ -16,6 +18,7 @@ class FakePassword extends AuthService {
 
   @override
   Future<void> updatePassword(String value) async {
+    if (updateError != null) throw updateError!;
     password = value;
   }
 }
@@ -61,5 +64,27 @@ void main() {
     await tester.pumpAndSettle();
     expect(service.password, 'new-password');
     expect(completed, true);
+  });
+  testWidgets('enlace vencido muestra guía sin filtrar detalle de Auth', (
+    tester,
+  ) async {
+    final service = FakePassword()
+      ..fail = false
+      ..updateError = const AuthException(
+        'private provider detail',
+        code: 'flow_state_expired',
+      );
+    await tester.pumpWidget(
+      MaterialApp(home: PasswordScreen(service: service, recovery: true)),
+    );
+    await tester.enterText(find.byType(TextFormField).at(0), 'new-password');
+    await tester.enterText(find.byType(TextFormField).at(1), 'new-password');
+    await tester.tap(find.text('Guardar contraseña'));
+    await tester.pumpAndSettle();
+    expect(
+      find.textContaining('El enlace de recuperación venció'),
+      findsOneWidget,
+    );
+    expect(find.textContaining('private provider detail'), findsNothing);
   });
 }

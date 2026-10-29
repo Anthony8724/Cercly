@@ -48,6 +48,11 @@ class UbicacionFalsa implements UbicacionService {
   bool? pidioPermiso;
 
   @override
+  Future<EstadoUbicacion> consultarEstadoPermiso({
+    bool solicitarPermiso = false,
+  }) async => resultado.estado;
+
+  @override
   Future<bool> abrirAjustesAplicacion() async => true;
 
   @override
@@ -73,6 +78,21 @@ class EstablecimientoServiceFalso implements EstablecimientoCercanoRepository {
   List<String>? subcategoriasRecibidas;
   bool? soloPromocionesRecibido;
   String? busquedaRecibida;
+  int consultasGenerales = 0;
+
+  @override
+  Future<List<EstablecimientoPublicoModel>> listar({
+    String? categoriaId,
+    List<String>? subcategoriaIds,
+    bool soloPromociones = false,
+    String? busqueda,
+    int limite = 20,
+    int desplazamiento = 0,
+  }) async {
+    if (error != null) throw error!;
+    consultasGenerales++;
+    return respuesta;
+  }
 
   @override
   Future<List<EstablecimientoPublicoModel>> buscarCercanos({
@@ -144,6 +164,29 @@ ExplorarController crearController({
 
 void main() {
   group('ExplorarController', () {
+    test('permite explorar el catálogo sin conceder ubicación', () async {
+      final service = EstablecimientoServiceFalso(
+        respuesta: [establecimiento()],
+      );
+      final controller = ExplorarController(
+        establecimientoService: service,
+        categoriaService: CategoriaServiceFalso(),
+        ubicacionService: UbicacionFalsa(
+          const ResultadoUbicacion(
+            estado: EstadoUbicacion.permisoDenegado,
+            mensaje: 'Permiso denegado',
+          ),
+        ),
+      );
+
+      await controller.buscar();
+
+      expect(controller.ubicacion, isNull);
+      expect(controller.establecimientos, hasLength(1));
+      expect(service.consultasGenerales, 1);
+      controller.dispose();
+    });
+
     test('al inicializar carga categorías sin consultar GPS', () async {
       final ubicacion = UbicacionFalsa(
         const ResultadoUbicacion(

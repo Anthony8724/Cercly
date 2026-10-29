@@ -97,30 +97,57 @@ class _MisNegociosScreenState extends State<MisNegociosScreen> {
                     physics: const AlwaysScrollableScrollPhysics(),
                     padding: const EdgeInsets.all(16),
                     children: [
-                      FilledButton.icon(
-                        key: const Key('registrar-nuevo-establecimiento'),
-                        onPressed: _abrirRegistro,
-                        icon: const Icon(Icons.add_business_rounded),
-                        label: const Text('Registrar nuevo establecimiento'),
-                      ),
-                      const SizedBox(height: 10),
-                      OutlinedButton.icon(
-                        key: const Key('reclamar-establecimiento-existente'),
-                        onPressed: _abrirReclamo,
-                        icon: const Icon(Icons.verified_user_outlined),
-                        label: const Text('Reclamar establecimiento existente'),
-                      ),
-                      const SizedBox(height: 10),
-                      OutlinedButton.icon(
-                        onPressed: () => Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder:
-                                widget.solicitudesScreenBuilder ??
-                                (_) => const MisSolicitudesScreen(),
-                          ),
+                      FutureBuilder<List<EstablecimientoModel>>(
+                        future: _negocios,
+                        builder: (context, snapshot) => Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            FilledButton.icon(
+                              key: const Key('registrar-nuevo-establecimiento'),
+                              onPressed: _abrirRegistro,
+                              icon: const Icon(Icons.add_business_rounded),
+                              label: const Text(
+                                'Registrar nuevo establecimiento',
+                              ),
+                            ),
+                            if (snapshot.connectionState ==
+                                    ConnectionState.done &&
+                                !snapshot.hasError &&
+                                snapshot.data?.isNotEmpty == true) ...[
+                              const SizedBox(height: 10),
+                              OutlinedButton.icon(
+                                key: const Key(
+                                  'reclamar-establecimiento-existente',
+                                ),
+                                onPressed: _abrirReclamo,
+                                icon: const Icon(Icons.verified_user_outlined),
+                                label: const Text(
+                                  'Reclamar establecimiento existente',
+                                ),
+                              ),
+                              const SizedBox(height: 10),
+                              OutlinedButton.icon(
+                                onPressed: () => Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    builder:
+                                        widget.solicitudesScreenBuilder ??
+                                        (_) => const MisSolicitudesScreen(),
+                                  ),
+                                ),
+                                icon: const Icon(Icons.assignment_outlined),
+                                label: const Text('Mis solicitudes'),
+                              ),
+                            ],
+                            if (snapshot.hasError)
+                              Padding(
+                                padding: const EdgeInsets.only(top: 8),
+                                child: Text(
+                                  'No pudimos verificar tu relación con negocios. Las opciones de gestión permanecen ocultas.',
+                                  style: TextStyle(color: sky.muted),
+                                ),
+                              ),
+                          ],
                         ),
-                        icon: const Icon(Icons.assignment_outlined),
-                        label: const Text('Mis solicitudes'),
                       ),
                       const SizedBox(height: 22),
                       Text(

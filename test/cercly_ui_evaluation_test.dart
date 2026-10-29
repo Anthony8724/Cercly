@@ -6,6 +6,7 @@ import 'package:cercly/sky/sky_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class _Preferences implements SkyPreferenceStore {
   @override
@@ -79,6 +80,7 @@ void main() {
   testWidgets('la evaluación navega por Mi cuenta sin activar el envío', (
     tester,
   ) async {
+    SharedPreferences.setMockInitialValues({});
     final sky = SkyController(store: _Preferences());
     await tester.pumpWidget(
       CerclyUiEvaluationApp(skyController: sky, mostrarTilesMapa: false),
@@ -123,12 +125,22 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Mi cuenta'), findsOneWidget);
 
-    await tester.ensureVisible(find.byKey(const Key('abrir-mis-negocios')));
-    await tester.tap(find.byKey(const Key('abrir-mis-negocios')));
+    await tester.tap(find.byKey(const Key('abrir-configuracion-cuenta')));
     await tester.pumpAndSettle();
-    expect(find.text('Mis negocios'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('registrar-mi-negocio-configuracion')),
+      100,
+    );
+    await tester.tap(
+      find.byKey(const Key('registrar-mi-negocio-configuracion')),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Registrar establecimiento'), findsOneWidget);
 
-    await tester.tap(find.byKey(const Key('registrar-nuevo-establecimiento')));
+    await tester.ensureVisible(
+      find.byKey(const Key('enviar-solicitud-establecimiento')),
+    );
+    await tester.tap(find.byKey(const Key('enviar-solicitud-establecimiento')));
     await tester.pumpAndSettle();
     expect(find.textContaining('se simula solo en la memoria'), findsOneWidget);
     final submit = tester.widget<FilledButton>(

@@ -168,7 +168,9 @@ void main() {
   test('redirecciones Android y web eliminan credenciales del callback', () {
     expect(
       AuthOptions.redirect(web: false),
-      'com.cercly.cercly://auth-callback/',
+      const bool.fromEnvironment('CERCLY_STAGING')
+          ? 'com.cercly.cercly.staging://auth-callback/'
+          : 'com.cercly.cercly://auth-callback/',
     );
     expect(
       AuthOptions.redirect(
@@ -178,4 +180,56 @@ void main() {
       'https://cercly.test/app/',
     );
   });
+  test(
+    'recuperación solicita redirección al callback nativo del entorno',
+    () async {
+      final requests = <http.Request>[];
+      final client = SupabaseClient(
+        'https://example.test',
+        'public-test',
+        authOptions: const AuthClientOptions(
+          autoRefreshToken: false,
+          authFlowType: AuthFlowType.implicit,
+        ),
+        httpClient: MockClient((request) async {
+          requests.add(request);
+          return http.Response('{}', 200);
+        }),
+      );
+      addTearDown(client.dispose);
+
+      await AuthService(supabase: client).resetPassword(' person@example.com ');
+
+      expect(requests, hasLength(1));
+      expect(requests.single.url.path, '/auth/v1/recover');
+      expect(
+        requests.single.url.queryParameters['redirect_to'],
+        AuthOptions.redirect(),
+      );
+      expect(jsonDecode(requests.single.body)['email'], 'person@example.com');
+    },
+  );
+  test(
+    'enlace de recuperación vencido produce mensaje seguro y accionable',
+    () {
+      expect(
+        AuthService.errorMessage(
+          const AuthException(
+            'sensitive provider detail',
+            code: 'flow_state_expired',
+          ),
+        ),
+        'El enlace de recuperación venció. Solicita uno nuevo desde la pantalla de acceso.',
+      );
+      expect(
+        AuthService.errorMessage(
+          const AuthException(
+            'sensitive provider detail',
+            code: 'flow_state_expired',
+          ),
+        ),
+        isNot(contains('sensitive provider detail')),
+      );
+    },
+  );
 }

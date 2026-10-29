@@ -90,6 +90,35 @@ class ExplorarScreen extends StatelessWidget {
                             const SizedBox(height: 12),
                           ],
                           FiltrosExplorar(controller: controller),
+                          if (controller.recomendados.isNotEmpty) ...[
+                            const SizedBox(height: 18),
+                            Row(
+                              children: [
+                                Icon(
+                                  Icons.auto_awesome_outlined,
+                                  color: sky.primary,
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  'Recomendados para ti',
+                                  style: TextStyle(
+                                    color: sky.text,
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w900,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            for (final item in controller.recomendados)
+                              Padding(
+                                padding: const EdgeInsets.only(bottom: 8),
+                                child: TarjetaEstablecimientoPublico(
+                                  establecimiento: item,
+                                  onTap: () => _abrirDetalle(context, item),
+                                ),
+                              ),
+                          ],
                           if (controller.estadoUbicacion ==
                                   EstadoUbicacion.disponible &&
                               !controller.cargandoResultados &&
@@ -123,27 +152,15 @@ class ExplorarScreen extends StatelessWidget {
   }
 
   List<Widget> _contenido(BuildContext context) {
-    if (controller.estadoUbicacion != EstadoUbicacion.disponible) {
-      return [
-        SliverFillRemaining(
-          hasScrollBody: false,
-          child: _MensajeCentral(
-            icono: Icons.explore_outlined,
-            titulo: 'Activa tu ubicación para comenzar',
-            descripcion: 'Si eliges continuar, Cercly pedirá ubicación precisa para mostrar lugares cercanos y comprobar promociones para alertas locales mientras la app está abierta. Las búsquedas cercanas envían las coordenadas a Supabase. No usamos ubicación en segundo plano. Puedes seguir sin activar esta función y revocar el permiso en los ajustes de Android.',
-            accion: FilledButton.icon(
-              key: const Key('aceptar-uso-ubicacion'),
-              onPressed: controller.solicitarUbicacion,
-              icon: const Icon(Icons.my_location_rounded),
-              label: const Text('Usar ubicación y buscar cerca'),
-            ),
-          ),
-        ),
-      ];
-    }
+    final recomendadosIds = controller.recomendados
+        .map((item) => item.id)
+        .toSet();
+    final establecimientosVisibles = controller.establecimientos
+        .where((item) => !recomendadosIds.contains(item.id))
+        .toList(growable: false);
 
     if (controller.cargandoResultados && controller.establecimientos.isEmpty) {
-      return const [
+      return [
         SliverFillRemaining(
           hasScrollBody: false,
           child: Center(
@@ -155,7 +172,8 @@ class ExplorarScreen extends StatelessWidget {
     }
 
     if (controller.errorResultados != null &&
-        controller.establecimientos.isEmpty) {
+        controller.establecimientos.isEmpty &&
+        controller.recomendados.isEmpty) {
       return [
         SliverFillRemaining(
           hasScrollBody: false,
@@ -174,7 +192,34 @@ class ExplorarScreen extends StatelessWidget {
       ];
     }
 
-    if (controller.establecimientos.isEmpty) {
+    if (establecimientosVisibles.isEmpty &&
+        controller.recomendados.isNotEmpty) {
+      return [
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: EdgeInsets.fromLTRB(18, 8, 18, 24),
+            child: Column(
+              children: [
+                const Text(
+                  'Estas son tus recomendaciones. Puedes cambiar los filtros para explorar más lugares.',
+                ),
+                if (controller.hayMasResultados)
+                  TextButton.icon(
+                    key: const Key('cargar-mas-sin-duplicados'),
+                    onPressed: controller.cargandoResultados
+                        ? null
+                        : controller.cargarMas,
+                    icon: const Icon(Icons.expand_more),
+                    label: const Text('Cargar más establecimientos'),
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ];
+    }
+
+    if (establecimientosVisibles.isEmpty) {
       final tieneBusqueda = controller.busqueda.trim().isNotEmpty;
       return [
         SliverFillRemaining(
@@ -198,10 +243,10 @@ class ExplorarScreen extends StatelessWidget {
         padding: const EdgeInsets.fromLTRB(14, 0, 14, 20),
         sliver: SliverList.builder(
           itemCount:
-              controller.establecimientos.length +
+              establecimientosVisibles.length +
               (controller.hayMasResultados ? 1 : 0),
           itemBuilder: (context, index) {
-            if (index == controller.establecimientos.length) {
+            if (index == establecimientosVisibles.length) {
               return Padding(
                 padding: const EdgeInsets.only(top: 4),
                 child: OutlinedButton.icon(
@@ -215,7 +260,7 @@ class ExplorarScreen extends StatelessWidget {
               );
             }
 
-            final establecimiento = controller.establecimientos[index];
+            final establecimiento = establecimientosVisibles[index];
             return TarjetaEstablecimientoPublico(
               establecimiento: establecimiento,
               onTap: () => _abrirDetalle(context, establecimiento),
@@ -236,7 +281,7 @@ class _EncabezadoResultados extends StatelessWidget {
   Widget build(BuildContext context) {
     final sky = SkyPalette.of(context);
     final titulo = controller.busqueda.trim().isEmpty
-        ? 'Cerca de ti'
+        ? (controller.ubicacion == null ? 'Establecimientos' : 'Cerca de ti')
         : 'Resultados de búsqueda';
 
     return Row(

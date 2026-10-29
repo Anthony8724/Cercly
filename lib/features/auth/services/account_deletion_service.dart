@@ -5,6 +5,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../notificaciones/services/historial_notificaciones_promocion.dart';
 import '../../notificaciones/services/notificacion_local_service.dart';
+import '../../notificaciones/services/preferencias_alertas_proximidad.dart';
+import '../../preferencias/services/preferencias_usuario_service.dart';
 
 enum AccountDeletionOutcome { deleted, review }
 
@@ -43,6 +45,7 @@ class AccountDeletionService {
         try {
           final preferences = await SharedPreferences.getInstance();
           await preferences.remove('cercly_modo_cuenta_${session.user.id}');
+          await PreferenciasUsuarioService.borrarDatosLocales(session.user.id);
         } catch (_) {
           // Un fallo local no revierte una eliminación ya confirmada en Auth.
         }
@@ -50,6 +53,7 @@ class AccountDeletionService {
         // llamada de logout remoto no pueda completarse.
         try {
           await HistorialNotificacionesPromocionLocal().borrarDatosLocales();
+          await PreferenciasAlertasProximidadLocal().borrarDatosLocales();
         } catch (_) {
           // El borrado remoto no se revierte por un error de almacenamiento local.
         }

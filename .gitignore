@@ -149,3 +149,4 @@ skills-lock.json
 *.pre-auditoria
 *.aab
 *.apk
+/config/supabase.staging.local.json

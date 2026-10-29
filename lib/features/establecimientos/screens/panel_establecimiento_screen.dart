@@ -8,6 +8,8 @@ import '../../../shared/ui/cercly_ui.dart';
 import '../../auth/services/auth_service.dart';
 import '../../auth/screens/account_mode_selector.dart';
 import '../../auth/screens/account_settings_screen.dart';
+import '../../notificaciones/widgets/monitor_proximidad_app.dart';
+import '../../preferencias/screens/mis_preferencias_screen.dart';
 import '../../promociones/screens/promociones_establecimiento_screen.dart';
 import '../../solicitudes_establecimientos/screens/mis_solicitudes_screen.dart';
 import '../models/establecimiento_model.dart';
@@ -224,11 +226,24 @@ class _PanelEstablecimientoScreenState
               icon: Icons.storefront_rounded,
               actions: [
                 CerclyHeaderAction(
+                  icon: Icons.tune_rounded,
+                  tooltip: 'Mis preferencias',
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => const MisPreferenciasScreen(),
+                    ),
+                  ),
+                ),
+                CerclyHeaderAction(
                   icon: Icons.settings_outlined,
                   tooltip: 'Configuración de cuenta',
                   onPressed: () => Navigator.of(context).push(
                     MaterialPageRoute<void>(
-                      builder: (_) => const ConfiguracionCuentaScreen(),
+                      builder: (_) =>
+                          MonitorProximidadScope.wrapRouteIfAvailable(
+                            context: context,
+                            child: const ConfiguracionCuentaScreen(),
+                          ),
                     ),
                   ),
                 ),
@@ -390,29 +405,43 @@ class _PanelEstablecimientoScreenState
                           );
                         },
                       ),
-                      const SizedBox(height: 24),
-                      const CerclySectionTitle(
-                        title: 'Administración general',
-                        subtitle: 'Gestiona información general y solicitudes relacionadas con tus negocios.',
-                        icon: Icons.settings_rounded,
-                      ),
-                      const SizedBox(height: 14),
-                      _OpcionPanel(
-                        icono: Icons.edit_rounded,
-                        titulo: 'Información del establecimiento',
-                        descripcion: 'Edita el nombre, descripción, dirección y teléfono.',
-                        onTap: _abrirInformacionEstablecimiento,
-                      ),
-                      const SizedBox(height: 10),
-                      _OpcionPanel(
-                        icono: Icons.assignment_rounded,
-                        titulo: 'Mis solicitudes',
-                        descripcion: 'Envía solicitudes y consulta la respuesta del administrador.',
-                        onTap: () {
-                          Navigator.of(context).push(
-                            MaterialPageRoute<void>(
-                              builder: (_) => const MisSolicitudesScreen(),
-                            ),
+                      FutureBuilder<List<EstablecimientoModel>>(
+                        future: _establecimientosFuture,
+                        builder: (context, snapshot) {
+                          if (snapshot.connectionState !=
+                                  ConnectionState.done ||
+                              snapshot.hasError ||
+                              snapshot.data?.isNotEmpty != true) {
+                            return const SizedBox.shrink();
+                          }
+                          return Column(
+                            children: [
+                              const SizedBox(height: 24),
+                              const CerclySectionTitle(
+                                title: 'Administración general',
+                                subtitle: 'Gestiona información y solicitudes de establecimientos vinculados a tu cuenta.',
+                                icon: Icons.settings_rounded,
+                              ),
+                              const SizedBox(height: 14),
+                              _OpcionPanel(
+                                icono: Icons.edit_rounded,
+                                titulo: 'Información del establecimiento',
+                                descripcion: 'Edita el nombre, descripción, dirección y teléfono.',
+                                onTap: _abrirInformacionEstablecimiento,
+                              ),
+                              const SizedBox(height: 10),
+                              _OpcionPanel(
+                                icono: Icons.assignment_rounded,
+                                titulo: 'Mis solicitudes',
+                                descripcion: 'Envía solicitudes y consulta la respuesta del administrador.',
+                                onTap: () => Navigator.of(context).push(
+                                  MaterialPageRoute<void>(
+                                    builder: (_) =>
+                                        const MisSolicitudesScreen(),
+                                  ),
+                                ),
+                              ),
+                            ],
                           );
                         },
                       ),

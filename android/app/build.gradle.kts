@@ -35,12 +35,49 @@ android {
         }
     val isUiEvaluation = "CERCLY_UI_EVALUATION=true" in dartDefineEntries
     val isDemoRelease = "CERCLY_DEMO_RELEASE=true" in dartDefineEntries
+    val isCerclyStaging = "CERCLY_STAGING=true" in dartDefineEntries
+    val configuredSupabaseUrl = dartDefineEntries
+        .firstOrNull { it.startsWith("SUPABASE_URL=") }
+        ?.substringAfter("=")
+    val configuredPublishableKey = dartDefineEntries
+        .firstOrNull { it.startsWith("SUPABASE_PUBLISHABLE_KEY=") }
+        ?.substringAfter("=")
+
+    if (isCerclyStaging) {
+        if (isUiEvaluation || isDemoRelease) {
+            throw GradleException("CERCLY_STAGING no se combina con builds de evaluación/demo.")
+        }
+        if (configuredSupabaseUrl != "https://dlajxviqhkdcqnmczhvr.supabase.co") {
+            throw GradleException("El APK STAGING requiere exclusivamente la URL de Supabase Staging.")
+        }
+        if (configuredPublishableKey.isNullOrBlank() ||
+            !configuredPublishableKey.startsWith("sb_publishable_") ||
+            dartDefineEntries.any {
+                it.startsWith("SUPABASE_SERVICE_ROLE_KEY=") ||
+                    it.startsWith("SUPABASE_SECRET_KEY=") ||
+                    it.startsWith("DATABASE_URL=") ||
+                    it.startsWith("DB_PASSWORD=") ||
+                    it.startsWith("POSTGRES_PASSWORD=")
+            }
+        ) {
+            throw GradleException("El APK STAGING requiere solo una clave publicable y no admite secretos de servidor.")
+        }
+    } else if (configuredSupabaseUrl == "https://dlajxviqhkdcqnmczhvr.supabase.co") {
+        throw GradleException("La URL de Staging requiere CERCLY_STAGING para evitar un APK indistinguible de Production.")
+    }
+
     if (isDemoRelease && !isUiEvaluation) {
         throw GradleException(
             "CERCLY_DEMO_RELEASE requiere CERCLY_UI_EVALUATION para impedir conexiones remotas.",
         )
     }
-    if (isUiEvaluation) {
+    if (isCerclyStaging) {
+        defaultConfig {
+            applicationIdSuffix = ".staging"
+            manifestPlaceholders["appLabel"] = "Cercly STAGING"
+            manifestPlaceholders["authCallbackScheme"] = "com.cercly.cercly.staging"
+        }
+    } else if (isUiEvaluation) {
         defaultConfig {
             applicationIdSuffix = if (isDemoRelease) ".demo" else ".evaluation"
             manifestPlaceholders["appLabel"] = if (isDemoRelease) {
@@ -48,10 +85,12 @@ android {
             } else {
                 "Cercly Evaluación"
             }
+            manifestPlaceholders["authCallbackScheme"] = "com.cercly.cercly"
         }
     } else {
         defaultConfig {
             manifestPlaceholders["appLabel"] = "Cercly"
+            manifestPlaceholders["authCallbackScheme"] = "com.cercly.cercly"
         }
     }
 

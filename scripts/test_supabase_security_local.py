@@ -130,6 +130,9 @@ def main():
             '20261026072156_aislar_operaciones_propietario_y_auditar_superadmin.sql',
             '20261027001121_registrar_nuevo_establecimiento.sql',
             '20261027001217_configurar_solicitud_registro_establecimiento.sql',
+            '20261028071611_restringir_grants_rpc_anon.sql',
+            '20261029025918_preferencias_personalizadas_usuario.sql',
+            '20261029032754_revoke_elevated_preference_grants.sql',
         )
         pending = [ROOT / 'supabase/migrations' / n for n in pending_names]
         if any(p.name > pending_names[-1] for p in migrations):
@@ -147,7 +150,10 @@ create or replace function pg_temp.data_fingerprint() returns text language plpg
 declare t record; h text; result text := '';
 begin
   for t in select schemaname,tablename from pg_tables
-    where schemaname in ('public','auth') order by schemaname,tablename
+    where schemaname in ('public','auth')
+      -- Nuevas tablas vacías añadidas por la migración no son datos preexistentes.
+      and tablename not in ('preferencias_usuario','preferencias_usuario_categorias')
+    order by schemaname,tablename
   loop
     execute format('select md5(coalesce(string_agg(row_data, chr(10) order by row_data), '''')) from (select to_jsonb(x)::text row_data from %I.%I x) s', t.schemaname,t.tablename) into h;
     result := result || t.schemaname || '.' || t.tablename || ':' || h;
@@ -313,7 +319,7 @@ commit;
                     'auth_access_test.sql', 'security_access_test.sql',
                     'profile_recovery_test.sql', 'auth_final_permissions_test.sql',
                     'account_deletion_test.sql', 'superadmin_capabilities_test.sql',
-                    'owner_operation_security_test.sql'):
+                    'owner_operation_security_test.sql', 'preferencias_usuario_test.sql'):
                 continue
             sql(path.stem, path.read_text(), tap=True, user='supabase_admin')
         if before_suites != sql('data-after-suites', integrity_query):

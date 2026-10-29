@@ -41,6 +41,10 @@ void main() {
   testWidgets('Configuración abre política, contacto y eliminación web', (
     tester,
   ) async {
+    tester.view.physicalSize = const Size(800, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
     final opened = <Uri>[];
     await tester.pumpWidget(
       MaterialApp(
@@ -53,18 +57,58 @@ void main() {
       ),
     );
 
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('abrir-politica-privacidad')),
+      100,
+    );
     expect(find.byKey(const Key('abrir-politica-privacidad')), findsOneWidget);
     expect(find.text('Política de privacidad'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('abrir-contacto-cercly')),
+      100,
+    );
     expect(find.byKey(const Key('abrir-contacto-cercly')), findsOneWidget);
-    expect(find.byKey(const Key('abrir-eliminacion-web')), findsOneWidget);
 
     await tester.tap(find.byKey(const Key('abrir-contacto-cercly')));
     await tester.pump();
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('abrir-eliminacion-web')),
+      100,
+    );
     await tester.tap(find.byKey(const Key('abrir-eliminacion-web')));
     await tester.pump();
 
     expect(opened[0].toString(), endsWith('/privacidad#responsable'));
     expect(opened[1].toString(), endsWith('/eliminar-cuenta'));
+  });
+
+  testWidgets('registro desde Configuración funciona a 320 px', (tester) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(320, 640);
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: ConfiguracionCuentaScreen(
+          registroScreenBuilder: (_) =>
+              const Scaffold(body: Text('Formulario de registro')),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('registrar-mi-negocio-configuracion')),
+      100,
+    );
+    await tester.tap(
+      find.byKey(const Key('registrar-mi-negocio-configuracion')),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Formulario de registro'), findsOneWidget);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('Perfil → Configuración → Cuenta muestra consecuencias', (

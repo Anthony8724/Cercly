@@ -22,6 +22,16 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 class _EstablecimientosVacios implements EstablecimientoCercanoRepository {
   @override
+  Future<List<EstablecimientoPublicoModel>> listar({
+    String? categoriaId,
+    List<String>? subcategoriaIds,
+    bool soloPromociones = false,
+    String? busqueda,
+    int limite = 20,
+    int desplazamiento = 0,
+  }) async => const [];
+
+  @override
   Future<List<EstablecimientoPublicoModel>> buscarCercanos({
     required double latitud,
     required double longitud,
@@ -46,6 +56,11 @@ class _CategoriasVacias implements CategoriaPublicaRepository {
 }
 
 class _UbicacionDenegada implements UbicacionService {
+  @override
+  Future<EstadoUbicacion> consultarEstadoPermiso({
+    bool solicitarPermiso = false,
+  }) async => EstadoUbicacion.permisoDenegado;
+
   @override
   Future<bool> abrirAjustesAplicacion() async => true;
 
@@ -90,7 +105,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Cerca de ti'), findsOneWidget);
+    expect(find.text('Establecimientos'), findsOneWidget);
     expect(find.text('Regístrate'), findsOneWidget);
     expect(find.text('Iniciar sesión'), findsNothing);
   });
@@ -238,12 +253,107 @@ void main() {
         home: MiCuentaScreen(
           correo: 'persona@cercly.app',
           cerrarSesion: () async => cerroSesion = true,
+          tieneNegocios: () async => false,
         ),
       ),
     );
 
+    await tester.ensureVisible(find.byKey(const Key('cerrar-sesion-cuenta')));
     await tester.tap(find.byKey(const Key('cerrar-sesion-cuenta')));
     await tester.pump();
     expect(cerroSesion, isTrue);
+  });
+
+  testWidgets('Mi cuenta oculta Mis negocios si no hay relación vinculada', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: MiCuentaScreen(
+          correo: 'persona@cercly.app',
+          cerrarSesion: () async {},
+          tieneNegocios: () async => false,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('abrir-mis-negocios')), findsNothing);
+    expect(find.byKey(const Key('abrir-mis-preferencias')), findsOneWidget);
+    expect(
+      find.byKey(const Key('solicitar-registro-establecimiento-cuenta')),
+      findsNothing,
+    );
+    expect(find.byKey(const Key('abrir-configuracion-cuenta')), findsOneWidget);
+  });
+
+  testWidgets('Mi cuenta muestra Mis negocios con relación comprobada', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: MiCuentaScreen(
+          correo: 'propietaria@cercly.app',
+          cerrarSesion: () async {},
+          tieneNegocios: () async => true,
+          negociosScreenBuilder: (_) =>
+              const Scaffold(body: Text('Negocios vinculados')),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('abrir-mis-negocios')), findsOneWidget);
+  });
+
+  testWidgets('primer negocio se registra desde Configuración', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: MiCuentaScreen(
+          correo: 'persona@cercly.app',
+          cerrarSesion: () async {},
+          tieneNegocios: () async => false,
+          registroScreenBuilder: (_) =>
+              const Scaffold(body: Text('Formulario de registro existente')),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const Key('solicitar-registro-establecimiento-cuenta')),
+      findsNothing,
+    );
+    await tester.tap(find.byKey(const Key('abrir-configuracion-cuenta')));
+    await tester.pumpAndSettle();
+    expect(find.text('¿Tienes un negocio?'), findsOneWidget);
+    await tester.tap(
+      find.byKey(const Key('registrar-mi-negocio-configuracion')),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Formulario de registro existente'), findsOneWidget);
+  });
+
+  testWidgets('Mi cuenta conserva sus acciones en pantalla pequeña', (
+    tester,
+  ) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(320, 640);
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: MiCuentaScreen(
+          correo: 'persona@cercly.app',
+          cerrarSesion: () async {},
+          tieneNegocios: () async => false,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('abrir-configuracion-cuenta')), findsOneWidget);
+    expect(find.byKey(const Key('abrir-mis-preferencias')), findsOneWidget);
+    expect(find.byKey(const Key('cerrar-sesion-cuenta')), findsOneWidget);
+    expect(tester.takeException(), isNull);
   });
 }

@@ -5,6 +5,10 @@ import '../../../sky/apariencia_screen.dart';
 import '../../../sky/sky_backdrop.dart';
 import '../../../sky/sky_theme.dart';
 import '../../../sky/sky_controller.dart';
+import '../../../shared/ui/cercly_ui.dart';
+import '../../notificaciones/widgets/alertas_proximidad_section.dart';
+import '../../notificaciones/widgets/staging_proximity_diagnostics.dart';
+import '../../establecimientos/screens/registro_establecimiento_screen.dart';
 import '../services/account_deletion_service.dart';
 
 const _privacyPolicyUri = 'https://cercly-web.vercel.app/privacidad';
@@ -17,9 +21,11 @@ class ConfiguracionCuentaScreen extends StatelessWidget {
     super.key,
     this.deletionService,
     this.abrirEnlace,
+    this.registroScreenBuilder,
   });
   final AccountDeletionService? deletionService;
   final Future<bool> Function(Uri uri)? abrirEnlace;
+  final WidgetBuilder? registroScreenBuilder;
 
   Future<void> _abrirExterno(String valor) async {
     final uri = Uri.parse(valor);
@@ -32,71 +38,209 @@ class ConfiguracionCuentaScreen extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('Configuración')),
-    body: SkySurface(
-      intensity: .48,
-      child: SafeArea(
-        child: Column(
-          children: [
-            ListTile(
-              leading: const Icon(Icons.manage_accounts_outlined),
-              title: const Text('Cuenta'),
-              trailing: const Icon(Icons.chevron_right),
-              onTap: () => Navigator.of(context).push(
-                MaterialPageRoute<void>(
-                  builder: (_) =>
-                      CuentaScreen(deletionService: deletionService),
-                ),
-              ),
-            ),
-            ListTile(
-              key: const Key('abrir-politica-privacidad'),
-              leading: const Icon(Icons.privacy_tip_outlined),
-              title: const Text('Política de privacidad'),
-              subtitle: const Text('Cómo se usan y eliminan tus datos'),
-              trailing: const Icon(Icons.open_in_new_rounded),
-              onTap: () => _abrirExterno(_privacyPolicyUri),
-            ),
-            ListTile(
-              key: const Key('abrir-contacto-cercly'),
-              leading: const Icon(Icons.mail_outline_rounded),
-              title: const Text('Contacto de privacidad y soporte'),
-              subtitle: const Text('Correo disponible en el sitio de Cercly'),
-              trailing: const Icon(Icons.open_in_new_rounded),
-              onTap: () => _abrirExterno(_privacyContactUri),
-            ),
-            ListTile(
-              key: const Key('abrir-eliminacion-web'),
-              leading: const Icon(Icons.delete_outline_rounded),
-              title: const Text('Eliminar cuenta desde la web'),
-              subtitle: const Text(
-                'También puedes iniciar la solicitud sin la app',
-              ),
-              trailing: const Icon(Icons.open_in_new_rounded),
-              onTap: () => _abrirExterno(_accountDeletionWebUri),
-            ),
-            ListTile(
-              key: const Key('abrir-apariencia'),
-              leading: const Icon(Icons.palette_outlined),
-              title: const Text('Apariencia'),
-              subtitle: const Text('Cercly Sky: automático o ambiente manual'),
-              trailing: const Icon(Icons.chevron_right),
-              onTap: SkyScope.maybeOf(context) == null
-                  ? null
-                  : () => Navigator.of(context).push(
-                      MaterialPageRoute<void>(
-                        builder: (_) => AparienciaScreen(
-                          controller: SkyScope.maybeOf(context)!,
-                        ),
-                      ),
-                    ),
-            ),
-          ],
+  Widget build(BuildContext context) {
+    final sky = SkyPalette.of(context);
+    return Scaffold(
+      backgroundColor: sky.background,
+      appBar: AppBar(
+        title: const Text('Configuración'),
+        foregroundColor: Colors.white,
+        flexibleSpace: DecoratedBox(
+          decoration: BoxDecoration(gradient: sky.headerGradient),
         ),
       ),
-    ),
-  );
+      body: SkySurface(
+        intensity: .48,
+        child: SafeArea(
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(18, 16, 18, 28),
+            children: [
+              Container(
+                padding: const EdgeInsets.all(19),
+                decoration: BoxDecoration(
+                  gradient: sky.headerGradient,
+                  borderRadius: BorderRadius.circular(23),
+                  boxShadow: [
+                    BoxShadow(
+                      color: sky.primary.withValues(alpha: .13),
+                      blurRadius: 16,
+                      offset: const Offset(0, 7),
+                    ),
+                  ],
+                ),
+                child: const Row(
+                  children: [
+                    Icon(Icons.settings_rounded, color: Colors.white, size: 29),
+                    SizedBox(width: 13),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Configura tu experiencia',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 18,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                          SizedBox(height: 4),
+                          Text(
+                            'Ajustes de tu cuenta, privacidad y apariencia.',
+                            style: TextStyle(
+                              color: Color(0xE6FFFFFF),
+                              fontSize: 12,
+                              height: 1.35,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 14),
+              CerclySectionCard(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const CerclySectionTitle(
+                      title: '¿Tienes un negocio?',
+                      subtitle: 'Regístralo en Cercly para que las personas puedan encontrarlo. Nuestro equipo revisará la solicitud antes de publicarlo.',
+                      icon: Icons.storefront_outlined,
+                    ),
+                    const SizedBox(height: 14),
+                    SizedBox(
+                      width: double.infinity,
+                      child: FilledButton.icon(
+                        key: const Key('registrar-mi-negocio-configuracion'),
+                        onPressed: () => Navigator.of(context).push(
+                          MaterialPageRoute<void>(
+                            builder:
+                                registroScreenBuilder ??
+                                (_) => const RegistroEstablecimientoScreen(),
+                          ),
+                        ),
+                        icon: const Icon(Icons.add_business_rounded),
+                        label: const Text('Registrar mi negocio'),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              CerclySectionCard(
+                padding: EdgeInsets.zero,
+                child: Material(
+                  color: sky.surface,
+                  borderRadius: BorderRadius.circular(22),
+                  clipBehavior: Clip.antiAlias,
+                  child: Column(
+                    children: [
+                      ListTile(
+                        leading: Icon(
+                          Icons.manage_accounts_outlined,
+                          color: sky.interactive,
+                        ),
+                        title: const Text('Cuenta'),
+                        subtitle: const Text(
+                          'Opciones y eliminación de cuenta',
+                        ),
+                        trailing: const Icon(Icons.chevron_right_rounded),
+                        onTap: () => Navigator.of(context).push(
+                          MaterialPageRoute<void>(
+                            builder: (_) =>
+                                CuentaScreen(deletionService: deletionService),
+                          ),
+                        ),
+                      ),
+                      Divider(height: 1, indent: 60, color: sky.border),
+                      ListTile(
+                        key: const Key('abrir-politica-privacidad'),
+                        leading: Icon(
+                          Icons.privacy_tip_outlined,
+                          color: sky.interactive,
+                        ),
+                        title: const Text('Política de privacidad'),
+                        subtitle: const Text(
+                          'Cómo se usan y eliminan tus datos',
+                        ),
+                        trailing: const Icon(Icons.open_in_new_rounded),
+                        onTap: () => _abrirExterno(_privacyPolicyUri),
+                      ),
+                      Divider(height: 1, indent: 60, color: sky.border),
+                      ListTile(
+                        key: const Key('abrir-contacto-cercly'),
+                        leading: Icon(
+                          Icons.mail_outline_rounded,
+                          color: sky.interactive,
+                        ),
+                        title: const Text('Contacto de privacidad y soporte'),
+                        subtitle: const Text(
+                          'Correo disponible en el sitio de Cercly',
+                        ),
+                        trailing: const Icon(Icons.open_in_new_rounded),
+                        onTap: () => _abrirExterno(_privacyContactUri),
+                      ),
+                      Divider(height: 1, indent: 60, color: sky.border),
+                      ListTile(
+                        key: const Key('abrir-eliminacion-web'),
+                        leading: Icon(
+                          Icons.delete_outline_rounded,
+                          color: sky.error,
+                        ),
+                        title: const Text('Eliminar cuenta desde la web'),
+                        subtitle: const Text(
+                          'También puedes iniciar la solicitud sin la app',
+                        ),
+                        trailing: const Icon(Icons.open_in_new_rounded),
+                        onTap: () => _abrirExterno(_accountDeletionWebUri),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              CerclySectionCard(
+                padding: EdgeInsets.zero,
+                child: Material(
+                  color: sky.surface,
+                  borderRadius: BorderRadius.circular(22),
+                  clipBehavior: Clip.antiAlias,
+                  child: ListTile(
+                    key: const Key('abrir-apariencia'),
+                    leading: Icon(
+                      Icons.palette_outlined,
+                      color: sky.interactive,
+                    ),
+                    title: const Text('Apariencia'),
+                    subtitle: const Text(
+                      'Cercly Sky: automático o ambiente manual',
+                    ),
+                    trailing: const Icon(Icons.chevron_right_rounded),
+                    onTap: SkyScope.maybeOf(context) == null
+                        ? null
+                        : () => Navigator.of(context).push(
+                            MaterialPageRoute<void>(
+                              builder: (_) => AparienciaScreen(
+                                controller: SkyScope.maybeOf(context)!,
+                              ),
+                            ),
+                          ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              const AlertasProximidadSection(),
+              if (const bool.fromEnvironment('CERCLY_STAGING')) ...[
+                const SizedBox(height: 12),
+                const StagingProximityDiagnostics(),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 class CuentaScreen extends StatelessWidget {

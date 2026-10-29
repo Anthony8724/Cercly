@@ -19,6 +19,15 @@ typedef CargarHorariosPublicos = Future<List<Map<String, dynamic>>> Function(
 );
 
 abstract interface class EstablecimientoCercanoRepository {
+  Future<List<EstablecimientoPublicoModel>> listar({
+    String? categoriaId,
+    List<String>? subcategoriaIds,
+    bool soloPromociones = false,
+    String? busqueda,
+    int limite = 20,
+    int desplazamiento = 0,
+  });
+
   Future<List<EstablecimientoPublicoModel>> buscarCercanos({
     required double latitud,
     required double longitud,
@@ -86,12 +95,15 @@ class EstablecimientoPublicoService
       imagen_ruta_storage,
       fecha_inicio,
       fecha_fin,
-      radio_alerta_metros
+      radio_alerta_metros,
+      activa
     )
   ''';
 
+  @override
   Future<List<EstablecimientoPublicoModel>> listar({
     String? categoriaId,
+    List<String>? categoriasIds,
     double? latitudUsuario,
     double? longitudUsuario,
     double? radioMaximoMetros,
@@ -100,6 +112,7 @@ class EstablecimientoPublicoService
     String? busqueda,
     int limite = 20,
     int desplazamiento = 0,
+    bool resolverImagenes = true,
   }) async {
     _validarUbicacion(
       latitudUsuario: latitudUsuario,
@@ -132,9 +145,30 @@ class EstablecimientoPublicoService
     if (categoria != null && categoria.isNotEmpty) {
       consulta = consulta.eq('categoria_id', categoria);
     }
+    if (categoriasIds != null && categoriasIds.isNotEmpty) {
+      consulta = consulta.inFilter('categoria_id', categoriasIds.toList());
+    }
 
-    final respuesta = await consulta.order('nombre');
-    final filas = List<Map<String, dynamic>>.from(respuesta);
+    final respuesta = await consulta
+        .order('nombre')
+        .range(desplazamiento, desplazamiento + limite - 1);
+    var filas = List<Map<String, dynamic>>.from(respuesta)
+        .where(_tieneCoordenadasValidas)
+        .toList(growable: false);
+    if (subcategoriaIds != null &&
+        subcategoriaIds.isNotEmpty &&
+        filas.isNotEmpty) {
+      final links = await _supabase
+          .from('establecimiento_categorias')
+          .select('establecimiento_id')
+          .inFilter('subcategoria_id', subcategoriaIds);
+      final ids = List<Map<String, dynamic>>.from(links)
+          .map((link) => link['establecimiento_id'] as String)
+          .toSet();
+      filas = filas
+          .where((row) => ids.contains(row['id']))
+          .toList(growable: false);
+    }
 
     final termino = _normalizarBusqueda(busqueda);
     final establecimientos = await Future.wait(
@@ -143,6 +177,7 @@ class EstablecimientoPublicoService
           fila,
           latitudUsuario: latitudUsuario,
           longitudUsuario: longitudUsuario,
+          resolverImagenes: resolverImagenes,
         ),
       ),
     );
@@ -156,11 +191,14 @@ class EstablecimientoPublicoService
       }
 
       if (termino == null) {
-        return true;
+        return !soloPromociones || establecimiento.tienePromociones;
       }
 
-      return _normalizarTexto(establecimiento.nombre).contains(termino) ||
+      final coincideBusqueda =
+          _normalizarTexto(establecimiento.nombre).contains(termino) ||
           _normalizarTexto(establecimiento.categoria.nombre).contains(termino);
+      return coincideBusqueda &&
+          (!soloPromociones || establecimiento.tienePromociones);
     }).toList();
 
     if (latitudUsuario != null && longitudUsuario != null) {
@@ -178,6 +216,31 @@ class EstablecimientoPublicoService
     }
 
     return resultado;
+  }
+
+  Future<List<EstablecimientoPublicoModel>> listarCandidatosRecomendacion({
+    Set<String> categoriasIds = const {},
+    bool incluirPromociones = false,
+  }) => listar(
+    categoriasIds: incluirPromociones || categoriasIds.isEmpty
+        ? null
+        : categoriasIds.toList(),
+    limite: 100,
+    resolverImagenes: false,
+  );
+
+  static bool _tieneCoordenadasValidas(Map<String, dynamic> row) {
+    final lat = row['latitud'];
+    final lon = row['longitud'];
+    if (lat is! num || lon is! num) return false;
+    final latitude = lat.toDouble();
+    final longitude = lon.toDouble();
+    return latitude.isFinite &&
+        longitude.isFinite &&
+        latitude >= -90 &&
+        latitude <= 90 &&
+        longitude >= -180 &&
+        longitude <= 180;
   }
 
   @override
@@ -383,11 +446,12 @@ class EstablecimientoPublicoService
     Map<String, dynamic> datos, {
     double? latitudUsuario,
     double? longitudUsuario,
+    bool resolverImagenes = true,
   }) async {
     final establecimiento = EstablecimientoPublicoModel.fromSupabase(datos);
     final rutaPortada = establecimiento.rutaFotoPortada;
 
-    final urlPortada = rutaPortada == null
+    final urlPortada = rutaPortada == null || !resolverImagenes
         ? null
         : await _crearUrlTemporal(
             bucket: bucketEstablecimientos,
@@ -397,7 +461,9 @@ class EstablecimientoPublicoService
     final promocionesConImagen = await Future.wait(
       establecimiento.promociones.map((promocion) async {
         final rutaImagen = promocion.imagenRutaStorage;
-        if (rutaImagen == null || rutaImagen.isEmpty) return promocion;
+        if (!resolverImagenes || rutaImagen == null || rutaImagen.isEmpty) {
+          return promocion;
+        }
 
         final url = await _crearUrlTemporal(
           bucket: bucketPromociones,

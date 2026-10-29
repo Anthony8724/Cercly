@@ -38,6 +38,8 @@ void main() {
   test('respuesta eliminada cierra sesión y no envía ID al backend', () async {
     SharedPreferences.setMockInitialValues({
       'cercly_modo_cuenta_b7000000-0000-0000-0000-000000000001': 'usuario',
+      'cercly_preferencias_v1_b7000000-0000-0000-0000-000000000001':
+          '{"categorias_ids":["category-1"]}',
     });
     final requests = <http.Request>[];
     final client = await clientWithSession((request) async {
@@ -60,6 +62,12 @@ void main() {
     expect(
       preferences.getString(
         'cercly_modo_cuenta_b7000000-0000-0000-0000-000000000001',
+      ),
+      isNull,
+    );
+    expect(
+      preferences.getString(
+        'cercly_preferencias_v1_b7000000-0000-0000-0000-000000000001',
       ),
       isNull,
     );
