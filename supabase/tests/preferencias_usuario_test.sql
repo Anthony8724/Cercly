@@ -1,6 +1,6 @@
 -- Identidades y categoría sintéticas; todo se revierte al terminar.
 begin;
-select plan(38);
+select plan(39);
 insert into auth.users(id,email,raw_user_meta_data) values
  ('b8100000-0000-0000-0000-000000000001','pref-uno@cercly.test','{}'),
  ('b8100000-0000-0000-0000-000000000002','pref-dos@cercly.test','{}');
@@ -14,6 +14,7 @@ select ok((select relrowsecurity from pg_class where oid='public.preferencias_us
 select ok(not has_table_privilege('anon','public.preferencias_usuario','SELECT'), 'anon no lee preferencias');
 select ok(not has_table_privilege('anon','public.preferencias_usuario_categorias','INSERT'), 'anon no escribe categorías preferidas');
 select ok(not has_function_privilege('anon','public.guardar_preferencias_usuario(uuid[],integer,boolean,bigint)','EXECUTE'), 'anon no ejecuta RPC de escritura');
+select ok(not has_function_privilege('service_role','public.guardar_preferencias_usuario(uuid[],integer,boolean,bigint)','EXECUTE'), 'service_role no ejecuta la RPC de usuario');
 select ok(not exists (
   select 1
   from pg_catalog.aclexplode(
