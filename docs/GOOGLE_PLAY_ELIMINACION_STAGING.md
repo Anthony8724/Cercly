@@ -49,11 +49,18 @@ flujo. La comprobación de sesión reciente usa `auth.sessions.created_at`, no
 Preparar un proyecto Supabase separado, sin enlaces ni claves del proyecto de
 producción. Inventariar y aprobar previamente región, coste y administrador del
 proyecto. No copiar respaldos ni filas reales; crear cuentas `@cercly.test` o
-direcciones de prueba controladas para recibir OTP. El proyecto local solo
-verifica SQL; la integración HTTP completa requiere ese staging independiente.
+direcciones de prueba controladas para recibir OTP. El entorno local aislado
+permite verificar SQL y recorridos HTTP de Auth, PostgREST, Storage, Edge
+Functions y Mailpit; no sustituye la validación en un proyecto alojado.
 
-Configuración necesaria, guardada en gestor de secretos del entorno y nunca en
-Git:
+No se encontró `supabase/.temp/project-ref` ni `~/.supabase/access-token` en
+este entorno. Por tanto, no hay evidencia local de un proyecto enlazado ni se
+pudo inventariar la cuenta Supabase para confirmar si existe un proyecto
+alojado independiente. Esto no demuestra que no exista. No se creó ni modificó
+ningún recurso remoto.
+
+Configuración necesaria para crear staging, guardada en gestor de secretos del
+entorno y nunca en Git:
 
 - `SUPABASE_URL` y clave publicable de **staging** para Flutter y la página.
 - `SUPABASE_SERVICE_ROLE_KEY` solo como secreto de la Edge Function.
@@ -110,5 +117,43 @@ personales. No reutilizar la base local restaurada para staging remoto.
 - Validar en staging la integración real Auth/PostgREST/Edge/Storage/OAuth;
   las pruebas locales no sustituyen esa validación.
 
+## Resultados de validación aislada · Bloques 7 y 8
+
+Entorno: Podman 5.8.7, Supabase CLI 2.119.0 (versión reportada por la CLI), backup local del proyecto
+`cercly-b6-podman-isolated`, con 19 migraciones. Se excluyeron el panel,
+Logflare, Vector, Postgres Meta, imgproxy y Supavisor; Auth, Postgres,
+PostgREST, Storage, Kong, Edge Runtime y Mailpit sí estuvieron disponibles.
+El stack se detuvo después de las pruebas conservando los volúmenes.
+
+| Caso probado con identidad/datos sintéticos | Resultado observado |
+|---|---|
+| OTP recibido por Mailpit y verificado | OTP válido `200`; inválido y expirado `403`; sesión del titular comprobada |
+| Cuenta sin dependencias | Edge `200 eliminada`; Auth `404`; perfil, solicitud y objetos en cero; sesión anterior rechazada |
+| Propietario, archivo y negocio con responsable administrador | Solicitud duplicada devolvió `revision` con una sola fila; Edge `202`; el no administrador recibió `403`; transferencia y aprobación por administrador permitieron `200 eliminada`; negocio conservado bajo el nuevo titular |
+| Miembro de negocio compartido | Edge `200 eliminada`; Auth eliminado y membresía retirada; negocio y responsable restantes conservados |
+| Solicitud comercial pendiente | Edge `202 revision`; Auth y solicitud comercial permanecieron |
+| Borrado de archivo | El dueño recibió `200` y la fila Storage quedó en cero; GET posterior devolvió `400`. Antes, otro usuario recibió `200` al intentar borrarlo, pero la fila y el archivo siguieron presentes |
+| ID ajeno en el cuerpo de Edge | `400`; Auth de la cuenta objetivo permaneció |
+| Fallo parcial | Cubierto por prueba unitaria de `completeDeletion`, no por inyección de fallo en el servicio HTTP |
+
+Resultado adicional: seis suites pgTAP pasaron (111 aserciones); ocho casos
+unitarios de `deletion_flow` pasaron; la prueba web existente y lint pasaron.
+Se eliminaron las cuentas y fixtures sintéticos; la consulta final dio cero
+usuarios, negocios, solicitudes, auditorías y objetos de prueba residuales.
+La prueba de propietario compartido sí incluyó Auth, OTP/Mailpit, Postgres,
+PostgREST, Edge Function y Storage; el fallo parcial sigue siendo simulado.
+
+La integración fue local, no alojada. El endpoint público actual de Vercel
+respondió `404` para `/privacidad`, `/eliminar-cuenta` y
+`/api/eliminar-cuenta/configuracion`; esas páginas no están disponibles en el
+dominio público consultado. El código exige
+`ACCOUNT_DELETION_ENABLED=true` para habilitar el portal, pero no se pudo
+consultar la configuración de entorno de Vercel. Al desplegar las páginas en
+el futuro, confirmar explícitamente que esa variable esté ausente o sea
+`false` hasta completar staging. El enlace alternativo mailto está presente en
+el código, pero el correo por sí solo no valida la identidad ni automatiza el
+borrado.
+
 La página no debe publicarse ni declararse en Play Console hasta completar
-estas decisiones y la validación de staging.
+estas decisiones, verificar la configuración remota y ejecutar la matriz de
+staging alojado.

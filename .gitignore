@@ -135,7 +135,7 @@ ui-debug.log
 .agents/
 skills-lock.json
 /config/supabase.local.json
-# Configuración remota de Supabase para compilaciones locales
+# Configuraciï¿½n remota de Supabase para compilaciones locales
 /config/supabase.remote.json
 
 # APK generados localmente
@@ -150,3 +150,6 @@ skills-lock.json
 *.aab
 *.apk
 /config/supabase.staging.local.json
+
+# Evidencias de dispositivos y artefactos locales; publicar solo informes saneados en docs
+/artifacts/

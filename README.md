@@ -4,6 +4,8 @@
 
 > **Estado:** proyecto académico en desarrollo y validación. Las capturas corresponden a datos de demostración/prueba; algunas funciones dependen de servicios externos y de la información disponible en cada zona.
 
+> **Demostración 4/11/2026:** geofencing nativo STAGING validado con Honor bloqueado. [Guía académica](docs/DEMO_ACADEMICA_2026-11-04.md) · [Arquitectura y evidencia](docs/GEOFENCING_GO_HONOR_2026-11-03.md). No implica aprobación para Production/Google Play.
+
 ## ¿Qué es Cercly?
 
 Cercly ayuda a descubrir negocios próximos desde un teléfono Android. Reúne exploración por proximidad, categorías, visualización en mapa y fichas de establecimientos. También incorpora interfaces para los responsables de comercios y la administración de solicitudes.
