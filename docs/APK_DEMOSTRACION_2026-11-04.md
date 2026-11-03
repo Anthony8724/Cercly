@@ -43,3 +43,7 @@ Código de aplicación consolidado en el commit `b36242c` (`feat(android): conso
 No se modificó código de aplicación para preparar esta entrega: se consolidó el avance existente y se añadieron documentación y exclusiones de evidencia privada. Los archivos locales de configuración/fixtures de Supabase se versionan como preparación histórica, no como un despliegue: no se ejecutaron migraciones ni scripts remotos. El fixture publicado usa una cuenta de ejemplo que debe sustituirse únicamente bajo autorización administrativa; no debe ejecutarse para la demostración.
 
 Para mañana, mantener instalada la code7 y seguir [el procedimiento](DEMO_ACADEMICA_2026-11-04.md). La demostración depende de permisos, consentimiento, Play Services, red y promoción vigente. GO técnico Staging; sin autorización de publicación pública/Production.
+
+## Automatización de develop
+
+El workflow de GitHub ejecuta análisis, pruebas generales y focales, y compila **debug STAGING** con `vars.CERCLY_STAGING_PUBLISHABLE_KEY`. No usa el endpoint Production ni publica releases. El artefacto `Cercly-STAGING-CI-debug` lleva firma debug: **no reemplazar con él la Release code7 del Honor**. La clave de firma Release permanece exclusivamente local.

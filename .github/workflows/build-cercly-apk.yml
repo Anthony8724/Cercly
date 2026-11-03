@@ -1,4 +1,4 @@
-name: Compilar APK de Cercly
+name: Validar Cercly STAGING
 
 on:
   workflow_dispatch:
@@ -17,7 +17,7 @@ permissions:
 
 jobs:
   build-apk:
-    name: APK Android
+    name: Pruebas y APK debug STAGING
     runs-on: ubuntu-latest
     timeout-minutes: 30
 
@@ -46,20 +46,38 @@ jobs:
       - name: Instalar dependencias
         run: flutter pub get
 
-      - name: Compilar APK debug instalable
+      - name: Analizar y probar
+        run: |
+          flutter analyze
+          flutter test
+          flutter test --dart-define=CERCLY_STAGING=true test/geofencing_experimental_service_test.dart test/staging_proximity_diagnostics_test.dart
+
+      - name: Comprobar configuración Staging
+        env:
+          STAGING_KEY: ${{ vars.CERCLY_STAGING_PUBLISHABLE_KEY }}
+        run: |
+          case "$STAGING_KEY" in
+            sb_publishable_*) ;;
+            *) echo "Falta la variable publicable CERCLY_STAGING_PUBLISHABLE_KEY"; exit 1 ;;
+          esac
+
+      - name: Compilar APK debug Staging (no sustituye la Release validada)
+        env:
+          STAGING_KEY: ${{ vars.CERCLY_STAGING_PUBLISHABLE_KEY }}
         run: >-
           flutter build apk --debug
-          --dart-define=SUPABASE_URL=https://aimubazregckmjchnszf.supabase.co
-          --dart-define=SUPABASE_PUBLISHABLE_KEY=sb_publishable_ITO9El4_ipx11kSMgiCtqA_N-0SxpbK
+          --dart-define=CERCLY_STAGING=true
+          --dart-define=SUPABASE_URL=https://dlajxviqhkdcqnmczhvr.supabase.co
+          --dart-define="SUPABASE_PUBLISHABLE_KEY=$STAGING_KEY"
 
       - name: Preparar APK
-        run: cp build/app/outputs/flutter-apk/app-debug.apk Cercly-actualizado.apk
+        run: cp build/app/outputs/flutter-apk/app-debug.apk Cercly-STAGING-CI-debug.apk
 
       - name: Subir APK
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: Cercly-APK
-          path: Cercly-actualizado.apk
+          name: Cercly-STAGING-CI-debug
+          path: Cercly-STAGING-CI-debug.apk
           if-no-files-found: error
           retention-days: 7
           compression-level: 0
