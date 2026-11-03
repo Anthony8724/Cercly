@@ -5,6 +5,7 @@ import 'package:cercly/features/explorar/services/ubicacion_service.dart';
 import 'package:cercly/features/notificaciones/controllers/monitor_proximidad_controller.dart';
 import 'package:cercly/features/notificaciones/models/configuracion_alertas_proximidad.dart';
 import 'package:cercly/features/notificaciones/services/control_notificaciones_promocion.dart';
+import 'package:cercly/features/notificaciones/services/geofencing_experimental_service.dart';
 import 'package:cercly/features/notificaciones/services/historial_notificaciones_promocion.dart';
 import 'package:cercly/features/notificaciones/services/notificacion_local_service.dart';
 import 'package:cercly/features/notificaciones/services/preferencias_alertas_proximidad.dart';
@@ -17,6 +18,7 @@ final instanteBase = DateTime(2026, 9, 14, 12);
 
 PromocionDestacadaModel promocion({
   String id = 'promo-1',
+  String establecimientoId = 'establecimiento-1',
   bool activa = true,
   double distancia = 50,
   int radio = 100,
@@ -25,7 +27,7 @@ PromocionDestacadaModel promocion({
 }) {
   return PromocionDestacadaModel(
     id: id,
-    establecimientoId: 'establecimiento-1',
+    establecimientoId: establecimientoId,
     establecimientoNombre: 'Café Ejemplo',
     categoriaNombre: 'Comida y bebidas',
     titulo: '20% de descuento',
@@ -72,6 +74,8 @@ class _PromocionesFalsas implements PromocionesCercanasRepository {
   final List<PromocionDestacadaModel> promociones;
   final Object? error;
   int consultas = 0;
+  double? ultimaLatitud;
+  double? ultimaLongitud;
 
   @override
   Future<List<PromocionDestacadaModel>> listarCercanas({
@@ -80,16 +84,20 @@ class _PromocionesFalsas implements PromocionesCercanasRepository {
     int radioUsuarioMetros = 500,
   }) async {
     consultas++;
+    ultimaLatitud = latitudUsuario;
+    ultimaLongitud = longitudUsuario;
     if (error case final error?) throw error;
     return promociones;
   }
 }
 
-class _NotificacionesFalsas implements NotificacionPromocionGateway {
+class _NotificacionesFalsas
+    implements NotificacionPromocionGateway, NotificacionPromocionSimulable {
   _NotificacionesFalsas({this.permitir = true});
 
   final bool permitir;
   final mostradas = <PromocionDestacadaModel>[];
+  final simuladas = <PromocionDestacadaModel>[];
   int inicializaciones = 0;
 
   @override
@@ -107,9 +115,21 @@ class _NotificacionesFalsas implements NotificacionPromocionGateway {
     mostradas.add(promocion);
     return true;
   }
+
+  @override
+  Future<bool> mostrarPromocionSimulada(
+    PromocionDestacadaModel promocion,
+  ) async {
+    if (!permitir) return false;
+    simuladas.add(promocion);
+    return true;
+  }
 }
 
-class _HistorialFalso implements HistorialNotificacionesPromocion {
+class _HistorialFalso
+    implements
+        HistorialNotificacionesPromocion,
+        BorradoHistorialLocalNotificaciones {
   _HistorialFalso([Map<String, DateTime>? inicial])
     : _datos = HistorialNotificacionesPromocionDatos(
         ultimaPorPromocion: Map<String, DateTime>.from(inicial ?? const {}),
@@ -129,6 +149,11 @@ class _HistorialFalso implements HistorialNotificacionesPromocion {
   Future<void> guardar(HistorialNotificacionesPromocionDatos historial) async {
     guardados++;
     _datos = historial;
+  }
+
+  @override
+  Future<void> borrarDatosLocales() async {
+    _datos = const HistorialNotificacionesPromocionDatos();
   }
 }
 
@@ -582,6 +607,222 @@ void main() {
       expect(
         controller.ultimoResultadoDiagnostico,
         'cooldown_limite_o_misma_zona',
+      );
+    });
+
+    test(
+      'simulación Staging reutiliza elegibilidad y notifica con marca QA',
+      () async {
+        if (!GeofencingExperimentalService.staging) return;
+        final promociones = _PromocionesFalsas([
+          promocion(
+            id: 'f14a1f14-14b0-4b14-8a14-140000000002',
+            establecimientoId: 'f14a1f14-14b0-4b14-8a14-140000000001',
+            distancia: 0,
+          ),
+        ]);
+        final notificaciones = _NotificacionesFalsas();
+        final historial = _HistorialFalso();
+        final ubicacion = _UbicacionFalsa(
+          const ResultadoUbicacion(estado: EstadoUbicacion.disponible),
+        );
+        final controller = MonitorProximidadController(
+          ubicacionService: ubicacion,
+          promocionesService: promociones,
+          notificaciones: notificaciones,
+          historial: historial,
+          preferencias: _PreferenciasFalsas(),
+          stagingQaEnabled: true,
+          ahora: () => instanteBase,
+        );
+
+        final result = await controller.simularEntradaUpec();
+
+        expect(result, 'simulacion_notificacion_enviada');
+        expect(promociones.ultimaLatitud, 0.80525);
+        expect(promociones.ultimaLongitud, -77.73434);
+        expect(
+          ubicacion.solicitudes,
+          0,
+          reason: 'No lee ni falsifica la ubicación del dispositivo.',
+        );
+        expect(notificaciones.simuladas, hasLength(1));
+        expect(notificaciones.mostradas, isEmpty);
+        expect(
+          notificaciones.simuladas.single.establecimientoId,
+          'f14a1f14-14b0-4b14-8a14-140000000001',
+        );
+        expect(historial.guardados, 1);
+        expect(
+          controller.ultimoResultadoDiagnostico,
+          'simulacion_notificacion_enviada',
+        );
+      },
+    );
+
+    test('simulación no limpia ni ignora un cooldown existente', () async {
+      if (!GeofencingExperimentalService.staging) return;
+      final id = 'f14a1f14-14b0-4b14-8a14-140000000002';
+      final notificaciones = _NotificacionesFalsas();
+      final controller = MonitorProximidadController(
+        ubicacionService: _UbicacionFalsa(
+          const ResultadoUbicacion(estado: EstadoUbicacion.disponible),
+        ),
+        promocionesService: _PromocionesFalsas([
+          promocion(
+            id: id,
+            establecimientoId: 'f14a1f14-14b0-4b14-8a14-140000000001',
+            distancia: 0,
+          ),
+        ]),
+        notificaciones: notificaciones,
+        historial: _HistorialFalso({id: instanteBase}),
+        preferencias: _PreferenciasFalsas(),
+        stagingQaEnabled: true,
+        ahora: () => instanteBase.add(const Duration(minutes: 20)),
+      );
+
+      expect(
+        await controller.simularEntradaUpec(),
+        'simulacion_bloqueada_cooldown_o_radio',
+      );
+      expect(notificaciones.simuladas, isEmpty);
+    });
+
+    test('simulación rechaza promoción vencida', () async {
+      if (!GeofencingExperimentalService.staging) return;
+      final controller = MonitorProximidadController(
+        ubicacionService: _UbicacionFalsa(
+          const ResultadoUbicacion(estado: EstadoUbicacion.disponible),
+        ),
+        promocionesService: _PromocionesFalsas([
+          promocion(
+            id: 'f14a1f14-14b0-4b14-8a14-140000000002',
+            establecimientoId: 'f14a1f14-14b0-4b14-8a14-140000000001',
+            distancia: 0,
+            fin: instanteBase.subtract(const Duration(seconds: 1)),
+          ),
+        ]),
+        notificaciones: _NotificacionesFalsas(),
+        historial: _HistorialFalso(),
+        preferencias: _PreferenciasFalsas(),
+        stagingQaEnabled: true,
+        ahora: () => instanteBase,
+      );
+
+      expect(
+        await controller.simularEntradaUpec(),
+        'simulacion_sin_promocion_vigente',
+      );
+    });
+
+    test(
+      'simulación respeta permisos denegados y consentimiento apagado',
+      () async {
+        if (!GeofencingExperimentalService.staging) return;
+        final promociones = _PromocionesFalsas([]);
+        final notifications = _NotificacionesFalsas();
+        final sinConsentimiento = MonitorProximidadController(
+          ubicacionService: _UbicacionFalsa(
+            const ResultadoUbicacion(estado: EstadoUbicacion.disponible),
+          ),
+          promocionesService: promociones,
+          notificaciones: notifications,
+          historial: _HistorialFalso(),
+          preferencias: _PreferenciasFalsas(
+            configuracion: const ConfiguracionAlertasProximidad(
+              activadas: false,
+            ),
+          ),
+          stagingQaEnabled: true,
+          ahora: () => instanteBase,
+        );
+        expect(
+          await sinConsentimiento.simularEntradaUpec(),
+          'simulacion_sin_consentimiento',
+        );
+        expect(promociones.consultas, 0);
+
+        final sinPermiso = MonitorProximidadController(
+          ubicacionService: _UbicacionFalsa(
+            const ResultadoUbicacion(estado: EstadoUbicacion.permisoDenegado),
+          ),
+          promocionesService: promociones,
+          notificaciones: notifications,
+          historial: _HistorialFalso(),
+          preferencias: _PreferenciasFalsas(),
+          stagingQaEnabled: true,
+          ahora: () => instanteBase,
+        );
+        expect(
+          await sinPermiso.simularEntradaUpec(),
+          'simulacion_permiso_ubicacion_denegado',
+        );
+        expect(promociones.consultas, 0);
+
+        final sinNotificaciones = MonitorProximidadController(
+          ubicacionService: _UbicacionFalsa(
+            const ResultadoUbicacion(estado: EstadoUbicacion.disponible),
+          ),
+          promocionesService: promociones,
+          notificaciones: _NotificacionesFalsas(permitir: false),
+          historial: _HistorialFalso(),
+          preferencias: _PreferenciasFalsas(),
+          stagingQaEnabled: true,
+          ahora: () => instanteBase,
+        );
+        expect(
+          await sinNotificaciones.simularEntradaUpec(),
+          'simulacion_permiso_notificaciones_denegado',
+        );
+        expect(promociones.consultas, 0);
+      },
+    );
+
+    test(
+      'el motor de simulación retorna no disponible fuera de Staging',
+      () async {
+        final promociones = _PromocionesFalsas([]);
+        final controller = MonitorProximidadController(
+          promocionesService: promociones,
+          notificaciones: _NotificacionesFalsas(),
+          historial: _HistorialFalso(),
+          preferencias: _PreferenciasFalsas(),
+          stagingQaEnabled: false,
+        );
+        expect(
+          await controller.simularEntradaUpec(),
+          'simulacion_no_disponible',
+        );
+        expect(promociones.consultas, 0);
+      },
+    );
+
+    test('reiniciar historial QA limpia cooldown e ids dentro sin cambiar permisos', () async {
+      final id = 'f14a1f14-14b0-4b14-8a14-140000000002';
+      final historial = _HistorialFalso({id: instanteBase});
+      historial._datos = HistorialNotificacionesPromocionDatos(
+        ultimaPorPromocion: {id: instanteBase},
+        recientes: [instanteBase],
+        promocionesDentro: {id},
+      );
+      final preferencias = _PreferenciasFalsas();
+      final controller = MonitorProximidadController(
+        historial: historial,
+        promocionesService: _PromocionesFalsas([]),
+        preferencias: preferencias,
+        stagingQaEnabled: false,
+      );
+
+      await controller.reiniciarHistorialLocalDiagnostico();
+
+      expect(historial.datos, isEmpty);
+      expect((await historial.cargar()).recientes, isEmpty);
+      expect((await historial.cargar()).promocionesDentro, isEmpty);
+      expect(preferencias.configuracion.activadas, isTrue);
+      expect(
+        controller.ultimoResultadoDiagnostico,
+        'historial_local_reiniciado',
       );
     });
   });

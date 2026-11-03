@@ -1,4 +1,7 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../sky/apariencia_screen.dart';
@@ -8,6 +11,12 @@ import '../../../sky/sky_controller.dart';
 import '../../../shared/ui/cercly_ui.dart';
 import '../../notificaciones/widgets/alertas_proximidad_section.dart';
 import '../../notificaciones/widgets/staging_proximity_diagnostics.dart';
+import '../../notificaciones/services/geofencing_experimental_service.dart';
+import '../../notificaciones/services/notificacion_local_service.dart';
+import '../../notificaciones/services/preferencias_alertas_proximidad.dart';
+import '../../explorar/models/ubicacion_usuario.dart';
+import '../../explorar/services/consentimiento_ubicacion.dart';
+import '../../explorar/services/ubicacion_service.dart';
 import '../../establecimientos/screens/registro_establecimiento_screen.dart';
 import '../services/account_deletion_service.dart';
 
@@ -230,7 +239,12 @@ class ConfiguracionCuentaScreen extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 12),
+              const UbicacionExploracionSection(),
+              const SizedBox(height: 12),
               const AlertasProximidadSection(),
+              const SizedBox(height: 12),
+              if (const bool.fromEnvironment('CERCLY_STAGING'))
+                const AlertasSegundoPlanoSection(),
               if (const bool.fromEnvironment('CERCLY_STAGING')) ...[
                 const SizedBox(height: 12),
                 const StagingProximityDiagnostics(),
@@ -241,6 +255,380 @@ class ConfiguracionCuentaScreen extends StatelessWidget {
       ),
     );
   }
+}
+
+class UbicacionExploracionSection extends StatefulWidget {
+  const UbicacionExploracionSection({super.key, this.ubicacionService});
+
+  final UbicacionService? ubicacionService;
+
+  @override
+  State<UbicacionExploracionSection> createState() =>
+      _UbicacionExploracionSectionState();
+}
+
+class _UbicacionExploracionSectionState
+    extends State<UbicacionExploracionSection>
+    with WidgetsBindingObserver {
+  late final UbicacionService _service =
+      widget.ubicacionService ?? GeolocatorUbicacionService();
+  EstadoUbicacion? _estado;
+  bool _consentimiento = false;
+  bool? _precisa;
+  bool _cargando = true;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _actualizar();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) _actualizar();
+  }
+
+  Future<void> _actualizar() async {
+    final estado = await _service.consultarEstadoPermiso();
+    final consentimiento = await ConsentimientoUbicacion.estaAceptado();
+    final precision = _service is PrecisionUbicacionService
+        ? await (_service as PrecisionUbicacionService).ubicacionPrecisa()
+        : null;
+    if (!mounted) return;
+    setState(() {
+      _estado = estado;
+      _consentimiento = consentimiento;
+      _precisa = precision;
+      _cargando = false;
+    });
+  }
+
+  Future<void> _abrirAjustes() async {
+    var abierto = false;
+    try {
+      abierto = await _service.abrirAjustesAplicacion();
+    } catch (_) {
+      abierto = false;
+    }
+    if (!mounted || abierto) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text(
+          'Abre Ajustes de Android → Aplicaciones → Cercly → Permisos → Ubicación.',
+        ),
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final estado = _cargando
+        ? 'Comprobando permiso…'
+        : switch (_estado) {
+            EstadoUbicacion.disponible =>
+              _precisa == false
+                  ? 'Ubicación aproximada concedida · sirve para explorar; las alertas requieren precisión.'
+                  : _consentimiento
+                  ? 'Permiso concedido · Cercly puede actualizar tu ubicación al explorar.'
+                  : 'Permiso Android concedido · aún no has activado ubicación en Cercly.',
+            EstadoUbicacion.servicioDesactivado =>
+              'La ubicación del dispositivo está apagada.',
+            EstadoUbicacion.permisoDenegado ||
+            EstadoUbicacion.permisoDenegadoPermanentemente =>
+              'Permiso de ubicación no concedido.',
+            _ => 'No se pudo comprobar el permiso.',
+          };
+    return CerclySectionCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Ubicación para explorar',
+            style: TextStyle(fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: 5),
+          Text(estado),
+          const SizedBox(height: 5),
+          const Text(
+            'Se solicita al usar una función cercana. Rechazarla no impide explorar el catálogo.',
+          ),
+          Align(
+            alignment: Alignment.centerRight,
+            child: TextButton.icon(
+              onPressed: _abrirAjustes,
+              icon: const Icon(Icons.settings_outlined),
+              label: const Text('Ajustes de ubicación'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class AlertasSegundoPlanoSection extends StatefulWidget {
+  const AlertasSegundoPlanoSection({super.key});
+
+  @override
+  State<AlertasSegundoPlanoSection> createState() =>
+      _AlertasSegundoPlanoSectionState();
+}
+
+class _AlertasSegundoPlanoSectionState extends State<AlertasSegundoPlanoSection>
+    with WidgetsBindingObserver {
+  final _service = GeofencingExperimentalService();
+  final _location = GeolocatorUbicacionService();
+  final _notifications = NotificacionLocalService();
+  GeofencingExperimentalStatus _status = const GeofencingExperimentalStatus();
+  bool _busy = false;
+  String? _message;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _refresh();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) _refresh();
+  }
+
+  Future<void> _refresh() async {
+    try {
+      final value = await _service.status();
+      if (mounted) setState(() => _status = value);
+      if (value.consent &&
+          (!value.backgroundLocation || !value.foregroundLocation)) {
+        await _service.remove();
+        if (mounted) {
+          setState(
+            () => _message =
+                'Se retiró la zona porque Android revocó un permiso.',
+          );
+        }
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() => _message = 'No se pudo consultar el estado nativo.');
+      }
+    }
+  }
+
+  Future<void> _enable() async {
+    final accepted = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Prueba de alertas en segundo plano'),
+        content: const Text(
+          'Solo Staging: Cercly registrará una zona alrededor del establecimiento ficticio de prueba de la UPEC y recibirá el evento de entrada para validar la promoción pública. Android puede retrasar o bloquear estos eventos. No se guarda tu ubicación ni un historial de recorridos. Para continuar, concede primero ubicación mientras usas la app y notificaciones; después Android abrirá Ajustes para que, si lo deseas, permitas ubicación todo el tiempo. Puedes desactivar la prueba aquí en cualquier momento.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Ahora no'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Continuar'),
+          ),
+        ],
+      ),
+    );
+    if (accepted != true || !mounted) return;
+    setState(() {
+      _busy = true;
+      _message = null;
+    });
+    try {
+      final location = await _location.consultarEstadoPermiso(
+        solicitarPermiso: true,
+      );
+      if (location != EstadoUbicacion.disponible) {
+        setState(
+          () => _message = 'Se necesita primero el permiso de ubicación mientras Cercly está en uso.',
+        );
+        return;
+      }
+      final notifications = await _notifications
+          .solicitarPermisoNotificaciones();
+      if (!notifications) {
+        setState(
+          () => _message = 'Concede notificaciones desde Ajustes antes de activar la prueba.',
+        );
+        return;
+      }
+      await _service.setConsent(true);
+      await _refresh();
+      if (!_status.backgroundLocation) {
+        setState(
+          () => _message = 'Activa “Permitir siempre” en la pantalla de Ajustes que abrirá Android.',
+        );
+        await _service.openAppSettings();
+      } else {
+        setState(
+          () => _message = 'Permisos concedidos. Pulsa “Registrar zona UPEC” para sincronizar la promoción vigente.',
+        );
+      }
+    } catch (_) {
+      setState(
+        () => _message = 'No se pudo completar la activación. Revisa permisos y vuelve a consultar.',
+      );
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _register() async {
+    setState(() {
+      _busy = true;
+      _message = null;
+    });
+    try {
+      final status = await _service.status();
+      if (!status.consent ||
+          !status.foregroundAlerts ||
+          !status.foregroundLocation ||
+          !status.preciseLocation ||
+          !status.backgroundLocation ||
+          !status.notifications ||
+          !status.googlePlayServices) {
+        setState(
+          () => _message = 'Falta consentimiento, alertas activadas, ubicación precisa todo el tiempo, notificaciones o Google Play Services.',
+        );
+        await _refresh();
+        return;
+      }
+      final row = await Supabase.instance.client
+          .from('promociones')
+          .select(
+            'id,titulo,fecha_fin,radio_alerta_metros,activa,establecimientos!inner(id,nombre,latitud,longitud,estado,publicable)',
+          )
+          .eq('id', GeofencingExperimentalService.promotionId)
+          .maybeSingle();
+      if (row == null || row['activa'] != true) {
+        setState(
+          () => _message = 'La promoción de prueba no está activa en Staging; no se registró zona.',
+        );
+        return;
+      }
+      final establishment = Map<String, dynamic>.from(
+        row['establecimientos'] as Map,
+      );
+      if (establishment['id'] !=
+              GeofencingExperimentalService.establishmentId ||
+          establishment['estado'] != 'aprobado' ||
+          establishment['publicable'] != true) {
+        setState(
+          () => _message = 'El establecimiento de prueba no es elegible; no se registró zona.',
+        );
+        return;
+      }
+      final expiresAt = DateTime.parse(row['fecha_fin'] as String).toUtc();
+      if (!expiresAt.isAfter(DateTime.now().toUtc())) {
+        setState(
+          () => _message = 'La promoción ya venció; no se registró zona.',
+        );
+        return;
+      }
+      final settings = await PreferenciasAlertasProximidadLocal().cargar();
+      final result = await _service.register(
+        latitude: (establishment['latitud'] as num).toDouble(),
+        longitude: (establishment['longitud'] as num).toDouble(),
+        radiusMeters: math.min(
+          (row['radio_alerta_metros'] as num).toInt(),
+          settings.radioMetros,
+        ),
+        expiresAt: expiresAt,
+        establishmentName:
+            establishment['nombre'] as String? ?? 'Cercly Test UPEC',
+        promotionTitle:
+            row['titulo'] as String? ?? 'Promoción de prueba Cercly',
+      );
+      setState(
+        () => _message = switch (result) {
+          'registration_submitted' => 'Solicitud de registro enviada. Android puede tardar en confirmar el geofence.',
+          'background_permission_required' =>
+            'Android aún no concedió ubicación todo el tiempo.',
+          'precise_location_required' => 'Para este geofence de prueba, permite ubicación precisa en los ajustes de Android.',
+          'google_play_services_unavailable' =>
+            'Google Play Services no está disponible en este dispositivo.',
+          'promotion_expired' => 'La promoción de prueba venció.',
+          _ => 'No se registró la zona ($result).',
+        },
+      );
+      await _refresh();
+    } catch (_) {
+      setState(
+        () => _message =
+            'No se pudo verificar Staging; por seguridad no se registró zona.',
+      );
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _disable() async {
+    await _service.setConsent(false);
+    await _service.remove();
+    await _refresh();
+    if (mounted) {
+      setState(() => _message = 'Prueba desactivada y geofence retirado.');
+    }
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => CerclySectionCard(
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Alertas en segundo plano · experimento Staging',
+          style: TextStyle(fontWeight: FontWeight.w700),
+        ),
+        const SizedBox(height: 7),
+        Text(
+          'Ubicación: ${_status.foregroundLocation ? 'permitida en uso' : 'no permitida'}, precisión ${_status.preciseLocation ? 'precisa' : 'aproximada/no disponible'}, segundo plano ${_status.backgroundLocation ? 'permitido' : 'no permitido'}. Notificaciones ${_status.notifications ? 'permitidas' : 'no permitidas'}, canal ${_status.notificationChannel ? 'disponible' : 'bloqueado/no creado'}. Play Services: ${_status.googlePlayServices ? 'disponible' : 'no disponible'}. ${_status.registered ? 'Zona registrada.' : 'Sin zona registrada.'}',
+        ),
+        const SizedBox(height: 8),
+        if (!_status.consent)
+          FilledButton(
+            onPressed: _busy ? null : _enable,
+            child: const Text('Activar prueba experimental'),
+          )
+        else ...[
+          FilledButton.tonal(
+            onPressed: _busy ? null : _register,
+            child: const Text('Registrar zona UPEC'),
+          ),
+          TextButton(
+            onPressed: _busy ? null : _disable,
+            child: const Text('Desactivar y retirar zona'),
+          ),
+        ],
+        if (_busy) const LinearProgressIndicator(),
+        if (_message != null) ...[const SizedBox(height: 6), Text(_message!)],
+        const SizedBox(height: 6),
+        const Text(
+          'Solo monitorea la promoción ficticia autorizada de UPEC. Sin GPS continuo ni historial de recorridos. Android puede retrasar eventos y la detención forzada impide la reactivación hasta abrir Cercly.',
+        ),
+      ],
+    ),
+  );
 }
 
 class CuentaScreen extends StatelessWidget {

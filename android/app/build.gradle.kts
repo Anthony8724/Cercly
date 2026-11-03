@@ -11,6 +11,10 @@ android {
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
+    buildFeatures {
+        buildConfig = true
+    }
+
     compileOptions {
         isCoreLibraryDesugaringEnabled = true
         sourceCompatibility = JavaVersion.VERSION_17
@@ -43,7 +47,25 @@ android {
         .firstOrNull { it.startsWith("SUPABASE_PUBLISHABLE_KEY=") }
         ?.substringAfter("=")
 
+    fun String.asBuildConfigString(): String =
+        "\"${replace("\\", "\\\\").replace("\"", "\\\"")}\""
+
+    defaultConfig {
+        buildConfigField("boolean", "CERCLY_STAGING", isCerclyStaging.toString())
+        buildConfigField(
+            "String",
+            "STAGING_SUPABASE_URL",
+            if (isCerclyStaging) configuredSupabaseUrl!!.asBuildConfigString() else "\"\"",
+        )
+        buildConfigField(
+            "String",
+            "STAGING_SUPABASE_PUBLISHABLE_KEY",
+            if (isCerclyStaging) configuredPublishableKey!!.asBuildConfigString() else "\"\"",
+        )
+    }
+
     if (isCerclyStaging) {
+        sourceSets.getByName("main").manifest.srcFile("src/staging/AndroidManifest.xml")
         if (isUiEvaluation || isDemoRelease) {
             throw GradleException("CERCLY_STAGING no se combina con builds de evaluación/demo.")
         }
@@ -151,6 +173,7 @@ flutter {
 }
 
 dependencies {
+    implementation("com.google.android.gms:play-services-location:21.2.0")
     coreLibraryDesugaring(
         "com.android.tools:desugar_jdk_libs:2.1.4",
     )

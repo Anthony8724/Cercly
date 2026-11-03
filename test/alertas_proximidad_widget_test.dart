@@ -44,11 +44,13 @@ class _PreferenciasFalsas implements PreferenciasAlertasProximidadRepository {
 }
 
 class _UbicacionFalsa implements UbicacionService {
-  _UbicacionFalsa({this.resultado});
+  _UbicacionFalsa({this.resultado, this.ajustesAplicacionAbren = true});
 
-  final ResultadoUbicacion? resultado;
+  ResultadoUbicacion? resultado;
+  final bool ajustesAplicacionAbren;
   int consultasPermiso = 0;
   int obtenciones = 0;
+  int aperturasAjustesAplicacion = 0;
 
   @override
   Future<EstadoUbicacion> consultarEstadoPermiso({
@@ -76,7 +78,10 @@ class _UbicacionFalsa implements UbicacionService {
   }
 
   @override
-  Future<bool> abrirAjustesAplicacion() async => true;
+  Future<bool> abrirAjustesAplicacion() async {
+    aperturasAjustesAplicacion++;
+    return ajustesAplicacionAbren;
+  }
 
   @override
   Future<bool> abrirAjustesUbicacion() async => true;
@@ -90,11 +95,13 @@ class _NotificacionesFalsas
     this.permitir = true,
     this.fallar = false,
     this.estadoSolicitud,
+    this.ajustesNotificacionesAbren = true,
   });
 
-  final bool permitir;
+  bool permitir;
   final bool fallar;
   final EstadoPermisoNotificaciones? estadoSolicitud;
+  final bool ajustesNotificacionesAbren;
   int lecturasPermiso = 0;
   int solicitudesPermiso = 0;
 
@@ -113,9 +120,14 @@ class _NotificacionesFalsas
 
   @override
   Future<EstadoPermisoNotificaciones> consultarEstadoDetallado() async =>
-      permitir
-      ? EstadoPermisoNotificaciones.concedido
-      : EstadoPermisoNotificaciones.desactivadoEnAjustes;
+      _consultarEstadoDetallado();
+
+  Future<EstadoPermisoNotificaciones> _consultarEstadoDetallado() async {
+    lecturasPermiso++;
+    return permitir
+        ? EstadoPermisoNotificaciones.concedido
+        : EstadoPermisoNotificaciones.desactivadoEnAjustes;
+  }
 
   @override
   Future<EstadoPermisoNotificaciones> solicitarPermisoDetallado() async {
@@ -128,7 +140,7 @@ class _NotificacionesFalsas
   }
 
   @override
-  Future<bool> abrirAjustesNotificaciones() async => true;
+  Future<bool> abrirAjustesNotificaciones() async => ajustesNotificacionesAbren;
 }
 
 void main() {
@@ -166,7 +178,7 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  testWidgets('lectura normal mantiene apagado sin consultar permisos', (
+  testWidgets('lectura apagada consulta estado real sin pedir permisos', (
     tester,
   ) async {
     final preferencias = _PreferenciasFalsas();
@@ -188,15 +200,45 @@ void main() {
           .value,
       isFalse,
     );
-    expect(ubicacion.consultasPermiso, 0);
+    expect(ubicacion.consultasPermiso, 1);
     expect(ubicacion.obtenciones, 0);
-    expect(notificaciones.lecturasPermiso, 0);
+    expect(notificaciones.lecturasPermiso, 1);
     expect(notificaciones.solicitudesPermiso, 0);
+    expect(find.text('Segundo plano'), findsOneWidget);
+    expect(find.text('no disponible en esta versión'), findsOneWidget);
     expect(
       find.text('No pudimos leer la configuración de alertas.'),
       findsNothing,
     );
   });
+
+  testWidgets(
+    'al volver de Ajustes refresca permisos aunque las alertas estén apagadas',
+    (tester) async {
+      final preferencias = _PreferenciasFalsas();
+      final ubicacion = _UbicacionFalsa();
+      final notificaciones = _NotificacionesFalsas();
+      await montar(
+        tester,
+        preferencias: preferencias,
+        ubicacion: ubicacion,
+        notificaciones: notificaciones,
+      );
+      expect(ubicacion.consultasPermiso, 1);
+      expect(notificaciones.lecturasPermiso, 1);
+
+      ubicacion.resultado = const ResultadoUbicacion(
+        estado: EstadoUbicacion.permisoDenegado,
+      );
+      notificaciones.permitir = false;
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+      await tester.pumpAndSettle();
+
+      expect(ubicacion.consultasPermiso, 2);
+      expect(notificaciones.lecturasPermiso, 2);
+      expect(find.text('no permitida'), findsOneWidget);
+    },
+  );
 
   testWidgets('guardar y desactivar persisten ambos estados', (tester) async {
     final preferencias = _PreferenciasFalsas();
@@ -380,6 +422,53 @@ void main() {
     );
   });
 
+  testWidgets('al volver desde Ajustes detecta permisos revocados', (
+    tester,
+  ) async {
+    final preferencias = _PreferenciasFalsas(
+      configuracion: const ConfiguracionAlertasProximidad(activadas: true),
+    );
+    final ubicacion = _UbicacionFalsa(
+      resultado: ResultadoUbicacion(
+        estado: EstadoUbicacion.disponible,
+        ubicacion: UbicacionUsuario(
+          latitud: 0.8,
+          longitud: -77.7,
+          precisionMetros: 5,
+          capturadaEn: DateTime.now(),
+        ),
+      ),
+    );
+    final notificaciones = _NotificacionesFalsas();
+    await montar(
+      tester,
+      preferencias: preferencias,
+      ubicacion: ubicacion,
+      notificaciones: notificaciones,
+    );
+
+    ubicacion.resultado = const ResultadoUbicacion(
+      estado: EstadoUbicacion.permisoDenegado,
+    );
+    notificaciones.permitir = false;
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text('Concede el permiso de ubicación para activar las alertas.'),
+      findsOneWidget,
+    );
+    expect(preferencias.configuracion.activadas, isTrue);
+    expect(
+      tester
+          .widget<SwitchListTile>(
+            find.byKey(const Key('alertas-proximidad-switch')),
+          )
+          .value,
+      isTrue,
+    );
+  });
+
   testWidgets('notificaciones apagadas en Android tienen mensaje específico', (
     tester,
   ) async {
@@ -426,4 +515,57 @@ void main() {
     expect(notificaciones.solicitudesPermiso, 0);
     expect(preferencias.escrituras, 0);
   });
+
+  testWidgets('si Android no abre ajustes, Cercly muestra una ruta manual', (
+    tester,
+  ) async {
+    final preferencias = _PreferenciasFalsas();
+    final ubicacion = _UbicacionFalsa(ajustesAplicacionAbren: false);
+    final notificaciones = _NotificacionesFalsas(
+      permitir: false,
+      ajustesNotificacionesAbren: false,
+    );
+    await montar(
+      tester,
+      preferencias: preferencias,
+      ubicacion: ubicacion,
+      notificaciones: notificaciones,
+    );
+    await cambiar(tester, true);
+
+    await tester.tap(find.byKey(const Key('abrir-ajustes-alertas')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Ajustes de Cercly'), findsOneWidget);
+    expect(
+      find.textContaining('Ajustes del teléfono → Aplicaciones → Cercly'),
+      findsOneWidget,
+    );
+    expect(ubicacion.aperturasAjustesAplicacion, 1);
+  });
+
+  testWidgets(
+    'ajustes de notificaciones abre la ficha de Cercly como fallback',
+    (tester) async {
+      final preferencias = _PreferenciasFalsas();
+      final ubicacion = _UbicacionFalsa();
+      final notificaciones = _NotificacionesFalsas(
+        permitir: false,
+        ajustesNotificacionesAbren: false,
+      );
+      await montar(
+        tester,
+        preferencias: preferencias,
+        ubicacion: ubicacion,
+        notificaciones: notificaciones,
+      );
+      await cambiar(tester, true);
+
+      await tester.tap(find.byKey(const Key('abrir-ajustes-alertas')));
+      await tester.pumpAndSettle();
+
+      expect(ubicacion.aperturasAjustesAplicacion, 1);
+      expect(find.text('Ajustes de Cercly'), findsNothing);
+    },
+  );
 }

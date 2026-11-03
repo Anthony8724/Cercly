@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/configuracion_alertas_proximidad.dart';
@@ -54,6 +55,17 @@ class PreferenciasAlertasProximidadLocal
 
     final preferencias = await SharedPreferences.getInstance();
     if (!configuracion.activadas) {
+      if (const bool.fromEnvironment('CERCLY_STAGING')) {
+        try {
+          const canal = MethodChannel('cercly/geofence_experiment');
+          await canal.invokeMethod<void>('setConsent', {'enabled': false});
+          await canal.invokeMethod<void>('remove');
+        } on MissingPluginException {
+          // El flujo foreground sigue siendo independiente de Android nativo.
+        } on PlatformException {
+          // La preferencia local se apaga igual; el receiver omite cualquier evento.
+        }
+      }
       // Pausa el monitor inmediatamente, incluso si falla la escritura local.
       _cambios.add(configuracion);
       final guardado = await preferencias.setBool(_claveActivas, false);

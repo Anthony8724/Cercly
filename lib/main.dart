@@ -8,6 +8,7 @@ import 'evaluation/cercly_ui_evaluation_app.dart';
 import 'features/auth/screens/auth_gate.dart';
 import 'features/auth/screens/auth_recovery_host.dart';
 import 'features/notificaciones/widgets/monitor_proximidad_app.dart';
+import 'shared/widgets/bienvenida_permisos.dart';
 import 'shared/ui/environment_banner.dart';
 import 'sky/sky_controller.dart';
 import 'sky/sky_theme.dart';
@@ -110,7 +111,9 @@ class _CerclyAppState extends State<CerclyApp> {
           theme: skyTheme(_sky.palette),
           themeAnimationDuration: Duration.zero,
           home: const AuthRecoveryHost(
-            child: MonitorProximidadApp(child: AuthGate()),
+            child: MonitorProximidadApp(
+              child: BienvenidaPermisos(child: AuthGate()),
+            ),
           ),
         ),
       ),

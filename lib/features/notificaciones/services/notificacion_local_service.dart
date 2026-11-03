@@ -3,8 +3,10 @@ import 'dart:developer' as developer;
 
 import 'package:flutter/services.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../promociones/models/promocion_destacada_model.dart';
+import 'geofencing_experimental_service.dart';
 
 abstract interface class NotificacionPromocionGateway {
   Future<void> inicializar();
@@ -12,6 +14,10 @@ abstract interface class NotificacionPromocionGateway {
   Future<bool> tienePermisoParaNotificar();
 
   Future<bool> mostrarPromocion(PromocionDestacadaModel promocion);
+}
+
+abstract interface class NotificacionPromocionSimulable {
+  Future<bool> mostrarPromocionSimulada(PromocionDestacadaModel promocion);
 }
 
 abstract interface class PermisosNotificacionesProximidad {
@@ -36,11 +42,18 @@ abstract interface class DiagnosticoPermisoNotificaciones {
   Future<EstadoPermisoNotificaciones> solicitarPermisoDetallado();
 }
 
+abstract interface class DiagnosticoCanalNotificaciones {
+  /// `null` indica que el sistema o plugin no pudo informar el estado.
+  Future<bool?> canalPromocionesDisponible();
+}
+
 class NotificacionLocalService
     implements
         NotificacionPromocionGateway,
         PermisosNotificacionesProximidad,
-        DiagnosticoPermisoNotificaciones {
+        DiagnosticoPermisoNotificaciones,
+        DiagnosticoCanalNotificaciones,
+        NotificacionPromocionSimulable {
   NotificacionLocalService({
     FlutterLocalNotificationsPlugin? plugin,
     this.alAbrirEstablecimiento,
@@ -48,6 +61,8 @@ class NotificacionLocalService
 
   static const _canalId = 'promociones_cercanas';
   static const _canalNombre = 'Promociones cercanas';
+  static const _permisoSolicitadoKey =
+      'cercly.permisos.notificaciones.solicitud_resuelta.v1';
 
   final FlutterLocalNotificationsPlugin _plugin;
   final Future<void> Function(String establecimientoId)? alAbrirEstablecimiento;
@@ -90,8 +105,8 @@ class NotificacionLocalService
           );
           if (id != null) await alAbrirEstablecimiento?.call(id);
         }
-      } catch (error) {
-        _registrarFalloSeguro('launch_details', error);
+      } catch (error, stackTrace) {
+        _registrarFalloSeguro('launch_details', error, stackTrace);
       }
     }
   }
@@ -106,32 +121,36 @@ class NotificacionLocalService
 
   @override
   Future<EstadoPermisoNotificaciones> solicitarPermisoDetallado() async {
-    try {
-      await inicializar();
-    } catch (error) {
-      _registrarFalloSeguro('initialize', error);
-      return EstadoPermisoNotificaciones.errorTecnico;
-    }
     final android = _plugin
         .resolvePlatformSpecificImplementation<
           AndroidFlutterLocalNotificationsPlugin
         >();
     if (android != null) {
       try {
+        // Las consultas y solicitudes del permiso no necesitan inicializar
+        // canales ni leer el detalle de una notificación anterior.
         final activo = await android.areNotificationsEnabled();
-        if (activo == true) return EstadoPermisoNotificaciones.concedido;
+        if (activo == true) {
+          await _marcarSolicitudResuelta();
+          return EstadoPermisoNotificaciones.concedido;
+        }
         if (activo == null) return EstadoPermisoNotificaciones.noDisponible;
-        final solicitud = await android.requestNotificationsPermission();
+        final preferencias = SharedPreferencesAsync();
+        if (await preferencias.getBool(_permisoSolicitadoKey) ?? false) {
+          return EstadoPermisoNotificaciones.denegado;
+        }
+        await android.requestNotificationsPermission();
         final despues = await android.areNotificationsEnabled();
-        if (despues == true || solicitud == true) {
+        await _marcarSolicitudResuelta();
+        if (despues == true) {
           return EstadoPermisoNotificaciones.concedido;
         }
         if (despues == null) {
           return EstadoPermisoNotificaciones.noDisponible;
         }
         return EstadoPermisoNotificaciones.denegado;
-      } catch (error) {
-        _registrarFalloSeguro('android_request', error);
+      } catch (error, stackTrace) {
+        _registrarFalloSeguro('android_request', error, stackTrace);
         return EstadoPermisoNotificaciones.errorTecnico;
       }
     }
@@ -146,50 +165,55 @@ class NotificacionLocalService
         badge: false,
         sound: true,
       );
+      if (ios != null) await _marcarSolicitudResuelta();
       if (permiso == true) return EstadoPermisoNotificaciones.concedido;
       return permiso == false
           ? EstadoPermisoNotificaciones.denegado
           : EstadoPermisoNotificaciones.noDisponible;
-    } catch (error) {
-      _registrarFalloSeguro('ios_request', error);
+    } catch (error, stackTrace) {
+      _registrarFalloSeguro('ios_request', error, stackTrace);
       return EstadoPermisoNotificaciones.errorTecnico;
     }
   }
 
   @override
   Future<EstadoPermisoNotificaciones> consultarEstadoDetallado() async {
-    try {
-      await inicializar();
-      final android = _plugin
-          .resolvePlatformSpecificImplementation<
-            AndroidFlutterLocalNotificationsPlugin
-          >();
-      if (android != null) {
+    final android = _plugin
+        .resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin
+        >();
+    if (android != null) {
+      try {
         final activo = await android.areNotificationsEnabled();
         if (activo == true) return EstadoPermisoNotificaciones.concedido;
         if (activo == false) {
           return EstadoPermisoNotificaciones.desactivadoEnAjustes;
         }
         return EstadoPermisoNotificaciones.noDisponible;
+      } catch (error, stackTrace) {
+        _registrarFalloSeguro('android_permission_check', error, stackTrace);
+        return EstadoPermisoNotificaciones.errorTecnico;
       }
+    }
 
-      final ios = _plugin
-          .resolvePlatformSpecificImplementation<
-            IOSFlutterLocalNotificationsPlugin
-          >();
-      if (ios != null) {
+    final ios = _plugin
+        .resolvePlatformSpecificImplementation<
+          IOSFlutterLocalNotificationsPlugin
+        >();
+    if (ios != null) {
+      try {
         final permisos = await ios.checkPermissions();
         if (permisos?.isEnabled == true) {
           return EstadoPermisoNotificaciones.concedido;
         }
         if (permisos == null) return EstadoPermisoNotificaciones.noDisponible;
         return EstadoPermisoNotificaciones.denegado;
+      } catch (error, stackTrace) {
+        _registrarFalloSeguro('ios_permission_check', error, stackTrace);
+        return EstadoPermisoNotificaciones.errorTecnico;
       }
-      return EstadoPermisoNotificaciones.noDisponible;
-    } catch (error) {
-      _registrarFalloSeguro('permission_check', error);
-      return EstadoPermisoNotificaciones.errorTecnico;
     }
+    return EstadoPermisoNotificaciones.noDisponible;
   }
 
   @override
@@ -199,19 +223,83 @@ class NotificacionLocalService
   }
 
   @override
-  Future<bool> abrirAjustesNotificaciones() async {
-    await inicializar();
-    final android = _plugin
-        .resolvePlatformSpecificImplementation<
-          AndroidFlutterLocalNotificationsPlugin
-        >();
-    return await android?.openAppNotificationSettings() ?? false;
+  Future<bool?> canalPromocionesDisponible() async {
+    try {
+      await inicializar();
+      final android = _plugin
+          .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin
+          >();
+      if (android == null) return null;
+      await android.createNotificationChannel(
+        const AndroidNotificationChannel(
+          _canalId,
+          _canalNombre,
+          description: 'Avisos cuando hay una promoción cerca de ti',
+          importance: Importance.high,
+          enableVibration: true,
+          playSound: true,
+        ),
+      );
+      final canales = await android.getNotificationChannels();
+      if (canales == null) return null;
+      final canal = canales.where((canal) => canal.id == _canalId);
+      if (canal.isEmpty) return null;
+      return canal.first.importance != Importance.none;
+    } catch (error, stackTrace) {
+      _registrarFalloSeguro('notification_channel_check', error, stackTrace);
+      return null;
+    }
   }
 
   @override
-  Future<bool> mostrarPromocion(PromocionDestacadaModel promocion) async {
+  Future<bool> abrirAjustesNotificaciones() async {
+    try {
+      await inicializar();
+      final android = _plugin
+          .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin
+          >();
+      return await android?.openAppNotificationSettings() ?? false;
+    } catch (error, stackTrace) {
+      _registrarFalloSeguro('open_notification_settings', error, stackTrace);
+      return false;
+    }
+  }
+
+  Future<void> _marcarSolicitudResuelta() async {
+    await SharedPreferencesAsync().setBool(_permisoSolicitadoKey, true);
+  }
+
+  @override
+  Future<bool> mostrarPromocion(PromocionDestacadaModel promocion) =>
+      _mostrarPromocion(promocion, simulada: false);
+
+  @override
+  Future<bool> mostrarPromocionSimulada(PromocionDestacadaModel promocion) =>
+      _mostrarPromocion(promocion, simulada: true);
+
+  Future<bool> _mostrarPromocion(
+    PromocionDestacadaModel promocion, {
+    required bool simulada,
+  }) async {
     await inicializar();
     if (!await tienePermisoParaNotificar()) return false;
+
+    if (GeofencingExperimentalService.staging) {
+      try {
+        final reserva = await const MethodChannel('cercly/geofence_experiment')
+            .invokeMethod<String>('reserveForegroundSlot', {
+              'promotionId': promocion.id,
+            });
+        if (reserva == 'cooldown' || reserva == 'blocked') return false;
+      } on MissingPluginException {
+        // Tests y plataformas sin el módulo nativo conservan el control Dart.
+      } on PlatformException catch (error, stackTrace) {
+        _registrarFalloSeguro('geofence_shared_cooldown', error, stackTrace);
+        return false;
+      }
+    }
 
     final descripcion = promocion.descripcion.trim();
     final cuerpo = descripcion.isEmpty
@@ -229,7 +317,6 @@ class NotificacionLocalService
         enableVibration: true,
         playSound: true,
         autoCancel: true,
-        timeoutAfter: 10000,
         category: AndroidNotificationCategory.promo,
         visibility: NotificationVisibility.private,
       ),
@@ -242,8 +329,10 @@ class NotificacionLocalService
 
     await _plugin.show(
       id: _idEstable(promocion.id),
-      title: 'Promoción cerca de ti',
-      body: cuerpo,
+      title: simulada
+          ? '[PRUEBA SIMULADA] Promoción cerca de ti'
+          : 'Promoción cerca de ti',
+      body: simulada ? 'SIMULACIÓN QA · $cuerpo' : cuerpo,
       notificationDetails: detalles,
       payload: promocion.establecimientoId,
     );
@@ -278,13 +367,14 @@ class NotificacionLocalService
     return '${texto.substring(0, 87)}...';
   }
 
-  void _registrarFalloSeguro(String fase, Object error) {
-    // No registrar payloads, tokens, coordenadas ni mensajes completos de
-    // plataforma. El código permite correlacionar fallos de Android con QA.
+  void _registrarFalloSeguro(String fase, Object error, StackTrace stackTrace) {
+    // La traza permite diagnosticar el fallo sin registrar el mensaje de
+    // plataforma, payloads, tokens ni coordenadas.
     final codigo = error is PlatformException ? error.code : 'no_platform_code';
     developer.log(
       'Notificaciones: fallo tecnico en $fase (codigo=$codigo, tipo=${error.runtimeType}).',
       name: 'cercly.notifications',
+      stackTrace: stackTrace,
     );
   }
 }

@@ -1,10 +1,15 @@
 import 'dart:async';
+import 'dart:developer' as developer;
+
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../explorar/models/ubicacion_usuario.dart';
 import '../../explorar/services/ubicacion_service.dart';
+import '../../promociones/models/promocion_destacada_model.dart';
 import '../../promociones/services/promocion_publica_service.dart';
 import '../models/configuracion_alertas_proximidad.dart';
 import '../services/control_notificaciones_promocion.dart';
+import '../services/geofencing_experimental_service.dart';
 import '../services/historial_notificaciones_promocion.dart';
 import '../services/notificacion_local_service.dart';
 import '../services/preferencias_alertas_proximidad.dart';
@@ -22,6 +27,7 @@ class MonitorProximidadController {
     this.precisionMaximaMetros = 100,
     this.edadMaximaUbicacion = const Duration(minutes: 2),
     DateTime Function()? ahora,
+    this.stagingQaEnabled = GeofencingExperimentalService.staging,
   }) : _ubicacionService = ubicacionService ?? GeolocatorUbicacionService(),
        _promocionesService = promocionesService ?? PromocionPublicaService(),
        _notificaciones =
@@ -41,6 +47,7 @@ class MonitorProximidadController {
   final HistorialNotificacionesPromocion _historial;
   final PreferenciasAlertasProximidadRepository _preferencias;
   final DateTime Function() _ahora;
+  final bool stagingQaEnabled;
   final Duration intervalo;
   final Duration edadMaximaUbicacion;
   final double precisionMaximaMetros;
@@ -51,8 +58,23 @@ class MonitorProximidadController {
   bool _historialCargado = false;
   bool _disposed = false;
   String _ultimoResultadoDiagnostico = 'sin_evaluacion';
+  static const _ultimaComprobacionKey =
+      'cercly.alertas_proximidad.ultima_comprobacion_ms.v1';
 
   String get ultimoResultadoDiagnostico => _ultimoResultadoDiagnostico;
+
+  Future<DateTime?> cargarUltimaComprobacion() async {
+    try {
+      final milisegundos = await SharedPreferencesAsync().getInt(
+        _ultimaComprobacionKey,
+      );
+      return milisegundos == null
+          ? null
+          : DateTime.fromMillisecondsSinceEpoch(milisegundos, isUtc: true);
+    } catch (_) {
+      return null;
+    }
+  }
 
   Future<EstadoPermisoNotificaciones> consultarPermisoNotificaciones() async {
     final servicio = _notificaciones;
@@ -87,13 +109,11 @@ class MonitorProximidadController {
       await _notificaciones.inicializar();
       final configuracion = await _preferencias.cargar();
       if (!configuracion.activadas) return;
-      if (await _ubicacionService.consultarEstadoPermiso() !=
-          EstadoUbicacion.disponible) {
-        return;
-      }
-      if (!await _notificaciones.tienePermisoParaNotificar()) return;
       await _asegurarHistorialCargado();
       await verificarAhora();
+      if (_requierePermisosAntesDeProgramar(_ultimoResultadoDiagnostico)) {
+        return;
+      }
     } catch (_) {
       return;
     }
@@ -119,35 +139,86 @@ class MonitorProximidadController {
         _ultimoResultadoDiagnostico = 'alertas_desactivadas';
         return;
       }
-      if (await _ubicacionService.consultarEstadoPermiso() !=
-          EstadoUbicacion.disponible) {
-        _ultimoResultadoDiagnostico = 'permiso_ubicacion_pendiente';
-        return;
-      }
-      if (!await _notificaciones.tienePermisoParaNotificar()) {
+      final servicioNotificaciones = _notificaciones;
+      if (servicioNotificaciones is DiagnosticoPermisoNotificaciones) {
+        final estado =
+            await (servicioNotificaciones as DiagnosticoPermisoNotificaciones)
+                .consultarEstadoDetallado();
+        if (estado != EstadoPermisoNotificaciones.concedido) {
+          _ultimoResultadoDiagnostico = switch (estado) {
+            EstadoPermisoNotificaciones.denegado ||
+            EstadoPermisoNotificaciones.desactivadoEnAjustes =>
+              'permiso_notificaciones_pendiente',
+            EstadoPermisoNotificaciones.noDisponible =>
+              'permiso_notificaciones_indeterminado',
+            EstadoPermisoNotificaciones.errorTecnico =>
+              'error_permiso_notificaciones',
+            EstadoPermisoNotificaciones.concedido => 'sin_evaluacion',
+          };
+          return;
+        }
+      } else if (!await _notificaciones.tienePermisoParaNotificar()) {
         _ultimoResultadoDiagnostico = 'permiso_notificaciones_pendiente';
         return;
+      }
+      if (servicioNotificaciones is DiagnosticoCanalNotificaciones) {
+        final disponible =
+            await (servicioNotificaciones as DiagnosticoCanalNotificaciones)
+                .canalPromocionesDisponible();
+        if (disponible == false) {
+          _ultimoResultadoDiagnostico = 'canal_notificaciones_bloqueado';
+          return;
+        }
       }
       await _asegurarHistorialCargado();
 
       final resultado = await _ubicacionService.obtenerUbicacion();
-      if (resultado.estado != EstadoUbicacion.disponible ||
-          resultado.ubicacion == null ||
+      if (resultado.estado != EstadoUbicacion.disponible) {
+        _ultimoResultadoDiagnostico = switch (resultado.estado) {
+          EstadoUbicacion.servicioDesactivado =>
+            'ubicacion_servicio_desactivado',
+          EstadoUbicacion.permisoDenegado => 'permiso_ubicacion_pendiente',
+          EstadoUbicacion.permisoDenegadoPermanentemente =>
+            'permiso_ubicacion_revocado',
+          _ => 'error_ubicacion',
+        };
+        return;
+      }
+      if (resultado.ubicacion == null ||
           !_ubicacionEsSuficientementePrecisa(resultado.ubicacion!)) {
         _ultimoResultadoDiagnostico = 'ubicacion_imprecisa_o_desactualizada';
         return;
       }
 
       final ubicacion = resultado.ubicacion!;
-      final promociones = await _promocionesService.listarCercanas(
-        latitudUsuario: ubicacion.latitud,
-        longitudUsuario: ubicacion.longitud,
-        radioUsuarioMetros: configuracion.radioMetros,
-      );
-      final dentroAntes = _control.promocionesDentro;
-      if (promociones.isEmpty) {
-        _ultimoResultadoDiagnostico = 'sin_promociones_elegibles';
+      late final List<PromocionDestacadaModel> promociones;
+      final servicioPromociones = _promocionesService;
+      if (servicioPromociones is PromocionesCercanasDiagnosticoRepository) {
+        final diagnostico =
+            await (servicioPromociones
+                    as PromocionesCercanasDiagnosticoRepository)
+                .diagnosticarCercanas(
+                  latitudUsuario: ubicacion.latitud,
+                  longitudUsuario: ubicacion.longitud,
+                  radioUsuarioMetros: configuracion.radioMetros,
+                );
+        promociones = diagnostico.promocionesEnRadio;
+        if (diagnostico.promocionesVigentes == 0) {
+          _ultimoResultadoDiagnostico = 'sin_promociones_vigentes';
+        } else if (promociones.isEmpty) {
+          _ultimoResultadoDiagnostico = 'sin_promociones_en_radio';
+        }
+      } else {
+        promociones = await _promocionesService.listarCercanas(
+          latitudUsuario: ubicacion.latitud,
+          longitudUsuario: ubicacion.longitud,
+          radioUsuarioMetros: configuracion.radioMetros,
+        );
+        if (promociones.isEmpty) {
+          _ultimoResultadoDiagnostico = 'sin_promociones_elegibles';
+        }
       }
+      final dentroAntes = _control.promocionesDentro;
       final notificables = _control.evaluar(
         promociones,
         ahora: _ahora(),
@@ -176,10 +247,23 @@ class MonitorProximidadController {
       if (huboCambios) {
         await _historial.guardar(_control.crearHistorial());
       }
-    } catch (_) {
+    } catch (error, stackTrace) {
       // Una falla de red, ubicación o sistema de notificaciones no bloquea la app.
       _ultimoResultadoDiagnostico = 'error_evaluacion';
+      developer.log(
+        'Proximidad: evaluación fallida (tipo=${error.runtimeType}).',
+        name: 'cercly.proximity',
+        stackTrace: stackTrace,
+      );
     } finally {
+      try {
+        await SharedPreferencesAsync().setInt(
+          _ultimaComprobacionKey,
+          _ahora().toUtc().millisecondsSinceEpoch,
+        );
+      } catch (_) {
+        // Es un dato informativo; su fallo no afecta el envío ni el estado.
+      }
       _consultando = false;
     }
   }
@@ -190,11 +274,107 @@ class MonitorProximidadController {
     if (historial is! BorradoHistorialLocalNotificaciones) {
       throw StateError('El historial no admite restablecimiento local.');
     }
+    if (stagingQaEnabled &&
+        !await GeofencingExperimentalService().resetQaCooldown()) {
+      throw StateError('No se reinició el cooldown nativo de Staging.');
+    }
     await (historial as BorradoHistorialLocalNotificaciones)
         .borrarDatosLocales();
     _control.cargarHistorial(const HistorialNotificacionesPromocionDatos());
     _historialCargado = true;
     _ultimoResultadoDiagnostico = 'historial_local_reiniciado';
+  }
+
+  Future<String> simularEntradaUpec() async {
+    if (!GeofencingExperimentalService.staging || !stagingQaEnabled) {
+      return 'simulacion_no_disponible';
+    }
+    if (_consultando) return 'evaluacion_en_curso';
+    _consultando = true;
+    try {
+      final configuracion = await _preferencias.cargar();
+      if (!configuracion.activadas) {
+        return _ultimoResultadoDiagnostico = 'simulacion_sin_consentimiento';
+      }
+      final permisoUbicacion = await _ubicacionService.consultarEstadoPermiso(
+        solicitarPermiso: false,
+      );
+      if (permisoUbicacion != EstadoUbicacion.disponible) {
+        return _ultimoResultadoDiagnostico =
+            'simulacion_permiso_ubicacion_denegado';
+      }
+
+      final notificaciones = _notificaciones;
+      if (notificaciones is DiagnosticoPermisoNotificaciones) {
+        final estado =
+            await (notificaciones as DiagnosticoPermisoNotificaciones)
+                .consultarEstadoDetallado();
+        if (estado != EstadoPermisoNotificaciones.concedido) {
+          return _ultimoResultadoDiagnostico =
+              'simulacion_permiso_notificaciones_denegado';
+        }
+      } else if (!await notificaciones.tienePermisoParaNotificar()) {
+        return _ultimoResultadoDiagnostico =
+            'simulacion_permiso_notificaciones_denegado';
+      }
+      if (notificaciones is DiagnosticoCanalNotificaciones &&
+          await (notificaciones as DiagnosticoCanalNotificaciones)
+                  .canalPromocionesDisponible() ==
+              false) {
+        return _ultimoResultadoDiagnostico =
+            'simulacion_canal_notificaciones_bloqueado';
+      }
+
+      await _asegurarHistorialCargado();
+      final candidatas = await _promocionesService.listarCercanas(
+        latitudUsuario: 0.80525,
+        longitudUsuario: -77.73434,
+        radioUsuarioMetros: configuracion.radioMetros,
+      );
+      final ahora = _ahora();
+      final elegibles = candidatas
+          .where(
+            (item) =>
+                item.id == GeofencingExperimentalService.promotionId &&
+                item.establecimientoId ==
+                    GeofencingExperimentalService.establishmentId &&
+                item.activa &&
+                item.estaVigenteEn(ahora),
+          )
+          .toList(growable: false);
+      if (elegibles.isEmpty) {
+        return _ultimoResultadoDiagnostico = 'simulacion_sin_promocion_vigente';
+      }
+      final promocion = elegibles.first;
+
+      final notificables = _control.evaluar(
+        [promocion],
+        ahora: ahora,
+        radioUsuarioMetros: configuracion.radioMetros,
+        conservarPromocionesDentro: true,
+      );
+      if (notificables.isEmpty) {
+        return _ultimoResultadoDiagnostico =
+            'simulacion_bloqueada_cooldown_o_radio';
+      }
+      if (notificaciones is! NotificacionPromocionSimulable) {
+        return _ultimoResultadoDiagnostico =
+            'simulacion_notificacion_no_disponible';
+      }
+      final mostrada = await (notificaciones as NotificacionPromocionSimulable)
+          .mostrarPromocionSimulada(promocion);
+      if (!mostrada) {
+        return _ultimoResultadoDiagnostico =
+            'simulacion_notificacion_bloqueada';
+      }
+      _control.registrarNotificacion(promocion.id, ahora: _ahora());
+      await _historial.guardar(_control.crearHistorial());
+      return _ultimoResultadoDiagnostico = 'simulacion_notificacion_enviada';
+    } catch (_) {
+      return _ultimoResultadoDiagnostico = 'simulacion_error_evaluacion';
+    } finally {
+      _consultando = false;
+    }
   }
 
   bool _ubicacionEsSuficientementePrecisa(UbicacionUsuario ubicacion) {
@@ -221,6 +401,19 @@ class MonitorProximidadController {
     if (primero.length != segundo.length) return false;
     return primero.containsAll(segundo);
   }
+
+  bool _requierePermisosAntesDeProgramar(String resultado) => const {
+    'alertas_desactivadas',
+    'permiso_ubicacion_pendiente',
+    'permiso_ubicacion_revocado',
+    'ubicacion_servicio_desactivado',
+    'error_ubicacion',
+    'permiso_notificaciones_pendiente',
+    'permiso_notificaciones_indeterminado',
+    'error_permiso_notificaciones',
+    'canal_notificaciones_bloqueado',
+    'ubicacion_imprecisa_o_desactualizada',
+  }.contains(resultado);
 
   Future<void> _asegurarHistorialCargado() async {
     if (_historialCargado) return;

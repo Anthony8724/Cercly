@@ -62,6 +62,9 @@ class ExplorarController extends ChangeNotifier {
   static const Duration _esperaBusqueda = Duration(milliseconds: 450);
   int _versionConsulta = 0;
   Timer? _temporizadorBusqueda;
+  bool _restaurandoUbicacion = false;
+  bool _disposed = false;
+  DateTime? _ultimaActualizacionUbicacion;
 
   Future<void> inicializar() async {
     await cargarCategorias();
@@ -72,6 +75,9 @@ class ExplorarController extends ChangeNotifier {
         // Se conserva el borrador local, pero no se pisa una revisión remota nueva.
       }
       preferencias = await _preferenciasService.cargar();
+      if (await ConsentimientoUbicacion.estaAceptado()) {
+        await restaurarUbicacionConsentida();
+      }
       await cargarRecomendaciones();
     } catch (_) {
       // La búsqueda general no depende de la sincronización de preferencias.
@@ -80,6 +86,7 @@ class ExplorarController extends ChangeNotifier {
   }
 
   Future<void> cargarRecomendaciones() async {
+    if (_disposed) return;
     final service = _establecimientosPublicos;
     if (service == null ||
         (preferencias.categoriasIds.isEmpty &&
@@ -93,6 +100,7 @@ class ExplorarController extends ChangeNotifier {
         categoriasIds: preferencias.categoriasIds,
         incluirPromociones: preferencias.priorizarPromociones,
       );
+      if (_disposed) return;
       recomendados = const RecomendadorEstablecimientos().recomendar(
         establecimientos: candidates,
         preferencias: preferencias,
@@ -144,6 +152,67 @@ class ExplorarController extends ChangeNotifier {
     if (ubicacion != null) {
       await buscar();
       await cargarRecomendaciones();
+    }
+  }
+
+  /// Reacquire el punto actual sin volver a pedir permisos.
+  /// Solo se ejecuta después de un consentimiento previo en Cercly y un
+  /// permiso que Android todavía concede.
+  Future<void> restaurarUbicacionConsentida({bool alReanudar = false}) async {
+    if (_disposed ||
+        _restaurandoUbicacion ||
+        !await ConsentimientoUbicacion.estaAceptado()) {
+      return;
+    }
+    final ultima = _ultimaActualizacionUbicacion;
+    if (alReanudar &&
+        ultima != null &&
+        DateTime.now().difference(ultima) < const Duration(minutes: 1)) {
+      return;
+    }
+
+    _restaurandoUbicacion = true;
+    try {
+      final resultado = await _ubicacionService.obtenerUbicacion(
+        solicitarPermiso: false,
+      );
+      if (_disposed) return;
+      _ultimaActualizacionUbicacion = DateTime.now();
+      final ubicacionAnterior = ubicacion;
+      if (resultado.estado == EstadoUbicacion.disponible &&
+          resultado.ubicacion != null) {
+        estadoUbicacion = EstadoUbicacion.disponible;
+        ubicacion = resultado.ubicacion;
+        mensajeUbicacion = null;
+        notifyListeners();
+        await buscar();
+        if (_disposed) return;
+        await cargarRecomendaciones();
+        return;
+      }
+
+      estadoUbicacion = resultado.estado;
+      mensajeUbicacion = resultado.mensaje;
+      final permisoRevocado =
+          resultado.estado == EstadoUbicacion.permisoDenegado ||
+          resultado.estado == EstadoUbicacion.permisoDenegadoPermanentemente;
+      if (permisoRevocado) ubicacion = null;
+      notifyListeners();
+      if (permisoRevocado && ubicacionAnterior != null && alReanudar) {
+        // Sin permiso se vuelve al catálogo general; no se reutiliza una
+        // coordenada vieja para una consulta de cercanía.
+        await buscar();
+        if (_disposed) return;
+        await cargarRecomendaciones();
+      }
+    } catch (_) {
+      if (_disposed) return;
+      estadoUbicacion = EstadoUbicacion.error;
+      mensajeUbicacion =
+          'No pudimos actualizar la ubicación. Inténtalo de nuevo.';
+      notifyListeners();
+    } finally {
+      _restaurandoUbicacion = false;
     }
   }
 
@@ -270,6 +339,8 @@ class ExplorarController extends ChangeNotifier {
 
   @override
   void dispose() {
+    _disposed = true;
+    _versionConsulta++;
     _temporizadorBusqueda?.cancel();
     super.dispose();
   }

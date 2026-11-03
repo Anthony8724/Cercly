@@ -7,7 +7,11 @@ void main() {
     tester,
   ) async {
     await tester.pumpWidget(
-      const MaterialApp(home: Scaffold(body: StagingProximityDiagnostics())),
+      const MaterialApp(
+        home: Scaffold(
+          body: SingleChildScrollView(child: StagingProximityDiagnostics()),
+        ),
+      ),
     );
 
     if (const bool.fromEnvironment('CERCLY_STAGING')) {
@@ -29,7 +33,11 @@ void main() {
   ) async {
     if (!const bool.fromEnvironment('CERCLY_STAGING')) return;
     await tester.pumpWidget(
-      const MaterialApp(home: Scaffold(body: StagingProximityDiagnostics())),
+      const MaterialApp(
+        home: Scaffold(
+          body: SingleChildScrollView(child: StagingProximityDiagnostics()),
+        ),
+      ),
     );
 
     await tester.tap(find.text('Consultar ubicación'));
@@ -40,5 +48,33 @@ void main() {
     await tester.tap(find.text('Cancelar'));
     await tester.pumpAndSettle();
     expect(find.text('Consultar ubicación para la prueba'), findsNothing);
+  });
+
+  testWidgets('muestra las pruebas de pantalla bloqueada solo en Staging', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(
+          body: SingleChildScrollView(child: StagingProximityDiagnostics()),
+        ),
+      ),
+    );
+    if (const bool.fromEnvironment('CERCLY_STAGING')) {
+      expect(
+        find.text('Programar prueba con pantalla bloqueada'),
+        findsOneWidget,
+      );
+      expect(find.text('Cancelar prueba programada'), findsOneWidget);
+      expect(
+        find.textContaining('no acredita una entrada geográfica'),
+        findsOneWidget,
+      );
+    } else {
+      expect(
+        find.text('Programar prueba con pantalla bloqueada'),
+        findsNothing,
+      );
+    }
   });
 }

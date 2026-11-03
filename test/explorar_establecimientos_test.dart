@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:cercly/features/categorias/models/categoria_model.dart';
 import 'package:cercly/features/categorias/models/subcategoria_model.dart';
 import 'package:cercly/features/categorias/services/categoria_publica_service.dart';
@@ -12,6 +14,7 @@ import 'package:cercly/features/explorar/services/mapas_externos_service.dart';
 import 'package:cercly/features/explorar/services/ubicacion_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 const categoria = CategoriaPublicaModel(
   id: 'categoria-1',
@@ -65,6 +68,19 @@ class UbicacionFalsa implements UbicacionService {
     solicitudes++;
     pidioPermiso = solicitarPermiso;
     return resultado;
+  }
+}
+
+class UbicacionDiferida extends UbicacionFalsa {
+  UbicacionDiferida()
+    : super(const ResultadoUbicacion(estado: EstadoUbicacion.error));
+
+  final resultadoPendiente = Completer<ResultadoUbicacion>();
+
+  @override
+  Future<ResultadoUbicacion> obtenerUbicacion({bool solicitarPermiso = false}) {
+    pidioPermiso = solicitarPermiso;
+    return resultadoPendiente.future;
   }
 }
 
@@ -164,6 +180,78 @@ ExplorarController crearController({
 
 void main() {
   group('ExplorarController', () {
+    test(
+      'restaura ubicación con consentimiento previo sin pedir permiso',
+      () async {
+        SharedPreferences.setMockInitialValues({
+          'cercly_uso_ubicacion_cercania_aceptado': true,
+        });
+        final ubicacion = UbicacionFalsa(
+          const ResultadoUbicacion(
+            estado: EstadoUbicacion.disponible,
+            ubicacion: UbicacionUsuario(latitud: 0.80525, longitud: -77.73434),
+          ),
+        );
+        final controller = crearController(ubicacion: ubicacion);
+
+        await controller.restaurarUbicacionConsentida(alReanudar: true);
+
+        expect(controller.ubicacion?.latitud, 0.80525);
+        expect(controller.ubicacion?.longitud, -77.73434);
+        expect(ubicacion.solicitudes, 1);
+        expect(ubicacion.pidioPermiso, isFalse);
+        controller.dispose();
+      },
+    );
+
+    test(
+      'elimina ubicación en memoria cuando Android revoca el permiso',
+      () async {
+        SharedPreferences.setMockInitialValues({
+          'cercly_uso_ubicacion_cercania_aceptado': true,
+        });
+        final ubicacion = UbicacionFalsa(
+          const ResultadoUbicacion(
+            estado: EstadoUbicacion.permisoDenegado,
+            mensaje: 'Permiso denegado',
+          ),
+        );
+        final controller = crearController(ubicacion: ubicacion);
+        controller.ubicacion = const UbicacionUsuario(
+          latitud: 0.80525,
+          longitud: -77.73434,
+        );
+
+        await controller.restaurarUbicacionConsentida(alReanudar: true);
+
+        expect(controller.ubicacion, isNull);
+        expect(controller.estadoUbicacion, EstadoUbicacion.permisoDenegado);
+        expect(ubicacion.pidioPermiso, isFalse);
+        controller.dispose();
+      },
+    );
+
+    test('ignora una ubicación tardía si se destruye el controlador', () async {
+      SharedPreferences.setMockInitialValues({
+        'cercly_uso_ubicacion_cercania_aceptado': true,
+      });
+      final ubicacion = UbicacionDiferida();
+      final controller = crearController(ubicacion: ubicacion);
+      final restauracion = controller.restaurarUbicacionConsentida(
+        alReanudar: true,
+      );
+      controller.dispose();
+      ubicacion.resultadoPendiente.complete(
+        const ResultadoUbicacion(
+          estado: EstadoUbicacion.disponible,
+          ubicacion: UbicacionUsuario(latitud: 0.80525, longitud: -77.73434),
+        ),
+      );
+
+      await expectLater(restauracion, completes);
+      expect(ubicacion.pidioPermiso, isFalse);
+    });
+
     test('permite explorar el catálogo sin conceder ubicación', () async {
       final service = EstablecimientoServiceFalso(
         respuesta: [establecimiento()],

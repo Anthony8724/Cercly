@@ -52,6 +52,7 @@ class ControlNotificacionesPromocion {
     Iterable<PromocionDestacadaModel> promociones, {
     required DateTime ahora,
     int radioUsuarioMetros = 500,
+    bool conservarPromocionesDentro = false,
   }) {
     _recortarHistorial(ahora);
     final dentroAhora = <String>{};
@@ -86,9 +87,13 @@ class ControlNotificacionesPromocion {
       }
     }
 
-    _promocionesDentro
-      ..clear()
-      ..addAll(dentroAhora);
+    if (conservarPromocionesDentro) {
+      _promocionesDentro.addAll(dentroAhora);
+    } else {
+      _promocionesDentro
+        ..clear()
+        ..addAll(dentroAhora);
+    }
 
     if (notificables.isEmpty || _limiteGlobalActivo(ahora)) {
       return const [];

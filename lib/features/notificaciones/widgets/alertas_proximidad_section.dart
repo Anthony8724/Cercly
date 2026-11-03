@@ -5,6 +5,7 @@ import '../../explorar/services/ubicacion_service.dart';
 import '../../../shared/ui/cercly_ui.dart';
 import '../../../sky/sky_theme.dart';
 import '../models/configuracion_alertas_proximidad.dart';
+import 'monitor_proximidad_app.dart';
 import '../services/notificacion_local_service.dart';
 import '../services/preferencias_alertas_proximidad.dart';
 
@@ -40,7 +41,10 @@ class _AlertasProximidadSectionState extends State<AlertasProximidadSection>
   bool _guardando = false;
   bool _permisoNotificaciones = false;
   EstadoUbicacion? _estadoUbicacion;
+  bool? _ubicacionPrecisa;
+  DateTime? _ultimaComprobacion;
   String? _mensaje;
+  String? _diagnostico;
   bool _mensajeError = false;
 
   @override
@@ -52,7 +56,7 @@ class _AlertasProximidadSectionState extends State<AlertasProximidadSection>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed && _configuracion.activadas) {
+    if (state == AppLifecycleState.resumed) {
       _actualizarPermisos();
     }
   }
@@ -65,7 +69,13 @@ class _AlertasProximidadSectionState extends State<AlertasProximidadSection>
         _configuracion = configuracion;
         _cargando = false;
       });
-      if (configuracion.activadas) await _actualizarPermisos();
+      await _actualizarPermisos();
+      if (!mounted) return;
+      final monitor = MonitorProximidadScope.maybeOf(context);
+      final ultima = await monitor?.cargarUltimaComprobacion();
+      if (mounted && ultima != null) {
+        setState(() => _ultimaComprobacion = ultima.toLocal());
+      }
     } catch (_) {
       if (!mounted) return;
       setState(() {
@@ -80,10 +90,14 @@ class _AlertasProximidadSectionState extends State<AlertasProximidadSection>
     try {
       final permisoNotificaciones = await _consultarPermisoNotificaciones();
       final estadoUbicacion = await _ubicacion.consultarEstadoPermiso();
+      final precision = _ubicacion is PrecisionUbicacionService
+          ? await (_ubicacion as PrecisionUbicacionService).ubicacionPrecisa()
+          : null;
       if (!mounted) return;
       setState(() {
         _permisoNotificaciones = permisoNotificaciones;
         _estadoUbicacion = estadoUbicacion;
+        _ubicacionPrecisa = precision;
         if (_configuracion.activadas &&
             (!permisoNotificaciones ||
                 estadoUbicacion != EstadoUbicacion.disponible)) {
@@ -259,6 +273,54 @@ class _AlertasProximidadSectionState extends State<AlertasProximidadSection>
     }
   }
 
+  Future<void> _diagnosticarAhora() async {
+    final monitor = MonitorProximidadScope.maybeOf(context);
+    if (monitor == null) {
+      setState(
+        () => _diagnostico = 'El monitor no está disponible en esta pantalla.',
+      );
+      return;
+    }
+    setState(() => _diagnostico = 'Comprobando permisos y promociones…');
+    await monitor.verificarAhora();
+    if (!mounted) return;
+    setState(() {
+      _diagnostico = _textoDiagnostico(monitor.ultimoResultadoDiagnostico);
+      _ultimaComprobacion = DateTime.now();
+    });
+  }
+
+  String _textoDiagnostico(String resultado) => switch (resultado) {
+    'notificacion_enviada' =>
+      'Prueba completada: Android aceptó la notificación.',
+    'notificacion_bloqueada' => 'El envío local fue rechazado por Android. Revisa el permiso de notificaciones.',
+    'canal_notificaciones_bloqueado' =>
+      'El canal “Promociones cercanas” está bloqueado en Android.',
+    'permiso_notificaciones_pendiente' =>
+      'Falta habilitar notificaciones para Cercly.',
+    'permiso_notificaciones_indeterminado' =>
+      'Android no pudo confirmar el permiso de notificaciones.',
+    'error_permiso_notificaciones' => 'Falló la consulta nativa del permiso de notificaciones. Revisa el registro cercly.notifications.',
+    'permiso_ubicacion_pendiente' || 'permiso_ubicacion_revocado' =>
+      'Falta el permiso de ubicación en primer plano.',
+    'ubicacion_servicio_desactivado' =>
+      'Activa el servicio de ubicación del teléfono.',
+    'error_ubicacion' => 'No se pudo obtener la ubicación. Inténtalo mientras Cercly esté abierta.',
+    'ubicacion_imprecisa_o_desactualizada' => 'La posición es aproximada o tiene más de dos minutos; las alertas requieren una lectura precisa.',
+    'sin_promociones_vigentes' =>
+      'No hay promociones vigentes publicadas para evaluar ahora.',
+    'sin_promociones_en_radio' =>
+      'Hay promociones vigentes, pero ninguna está dentro del radio efectivo.',
+    'sin_promociones_elegibles' =>
+      'No se encontraron promociones elegibles en el radio.',
+    'cooldown_limite_o_misma_zona' => 'No se envió: cooldown, límite global o sigues dentro de una zona ya notificada.',
+    'alertas_desactivadas' =>
+      'Activa voluntariamente las alertas antes de comprobarlas.',
+    'evaluacion_en_curso' => 'Ya hay una comprobación en curso.',
+    'error_evaluacion' => 'La comprobación falló por un error de red, GPS o sistema. No se registraron coordenadas.',
+    _ => 'Aún no se ha ejecutado una comprobación.',
+  };
+
   void _mostrarError(String mensaje, EstadoUbicacion estado) {
     if (!mounted) return;
     setState(() {
@@ -294,23 +356,60 @@ class _AlertasProximidadSectionState extends State<AlertasProximidadSection>
     };
   }
 
+  String get _textoEstadoUbicacion => switch (_estadoUbicacion) {
+    EstadoUbicacion.disponible => 'permitida en primer plano',
+    EstadoUbicacion.permisoDenegado ||
+    EstadoUbicacion.permisoDenegadoPermanentemente => 'no permitida',
+    EstadoUbicacion.servicioDesactivado => 'servicio del teléfono apagado',
+    _ => 'sin comprobar',
+  };
+
+  String get _textoUltimaComprobacion {
+    final momento = _ultimaComprobacion;
+    if (momento == null) return 'Aún no se ha comprobado';
+    final hora = momento.hour.toString().padLeft(2, '0');
+    final minuto = momento.minute.toString().padLeft(2, '0');
+    return '${momento.day.toString().padLeft(2, '0')}/${momento.month.toString().padLeft(2, '0')} $hora:$minuto';
+  }
+
   Future<void> _abrirAjustes() async {
+    var abierto = false;
     try {
       if (_estadoUbicacion != EstadoUbicacion.disponible) {
-        await _ubicacion.abrirAjustesAplicacion();
-        return;
+        abierto = await _ubicacion.abrirAjustesAplicacion();
+      } else {
+        abierto = await _notificaciones.abrirAjustesNotificaciones();
+        // Algunos sistemas MagicOS no resuelven el intent de ajustes de
+        // notificaciones. Geolocator abre la ficha estándar de la app.
+        if (!abierto) abierto = await _ubicacion.abrirAjustesAplicacion();
       }
-      final android = _notificaciones;
-      await android.abrirAjustesNotificaciones();
     } catch (_) {
-      if (mounted) {
-        setState(() {
-          _mensaje =
-              'Abre Ajustes de Android para revisar los permisos de Cercly.';
-          _mensajeError = true;
-        });
+      try {
+        abierto = await _ubicacion.abrirAjustesAplicacion();
+      } catch (_) {
+        abierto = false;
       }
     }
+    if (!abierto && mounted) await _mostrarInstruccionesAjustes();
+  }
+
+  Future<void> _mostrarInstruccionesAjustes() async {
+    await showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Ajustes de Cercly'),
+        content: const Text(
+          'Abre Ajustes del teléfono → Aplicaciones → Cercly → Permisos o Notificaciones. '
+          'En Honor/MagicOS, busca “Cercly” en Ajustes si no aparece esa ruta.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Entendido'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -344,6 +443,31 @@ class _AlertasProximidadSectionState extends State<AlertasProximidadSection>
                 'Si las activas, Cercly usa tu ubicación precisa solo mientras la app está abierta. Las coordenadas se comparan en el dispositivo y no guardamos un historial de tus recorridos.',
                 style: TextStyle(color: sky.muted, height: 1.4, fontSize: 12),
               ),
+              const SizedBox(height: 10),
+              _EstadoAlertaRow(
+                etiqueta: 'Notificaciones',
+                valor: _permisoNotificaciones ? 'activadas' : 'desactivadas',
+              ),
+              _EstadoAlertaRow(
+                etiqueta: 'Ubicación',
+                valor: _textoEstadoUbicacion,
+              ),
+              _EstadoAlertaRow(
+                etiqueta: 'Precisión',
+                valor: switch (_ubicacionPrecisa) {
+                  true => 'precisa',
+                  false => 'aproximada',
+                  null => 'sin comprobar',
+                },
+              ),
+              const _EstadoAlertaRow(
+                etiqueta: 'Segundo plano',
+                valor: 'no disponible en esta versión',
+              ),
+              _EstadoAlertaRow(
+                etiqueta: 'Última comprobación',
+                valor: _textoUltimaComprobacion,
+              ),
               const SizedBox(height: 12),
               SwitchListTile.adaptive(
                 key: const Key('alertas-proximidad-switch'),
@@ -368,6 +492,27 @@ class _AlertasProximidadSectionState extends State<AlertasProximidadSection>
                 const LinearProgressIndicator(),
               ],
               if (_configuracion.activadas) ...[
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: TextButton.icon(
+                    key: const Key('diagnosticar-alertas'),
+                    onPressed: _guardando ? null : _diagnosticarAhora,
+                    icon: const Icon(Icons.fact_check_outlined),
+                    label: const Text('Comprobar alertas ahora'),
+                  ),
+                ),
+                if (_diagnostico != null) ...[
+                  Semantics(
+                    liveRegion: true,
+                    child: Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: Text(
+                        _diagnostico!,
+                        key: const Key('diagnostico-alertas-resultado'),
+                      ),
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 10),
                 Text(
                   'Radio máximo',
@@ -435,8 +580,7 @@ class _AlertasProximidadSectionState extends State<AlertasProximidadSection>
                 ),
               ],
               if (_mensajeError &&
-                  (_estadoUbicacion ==
-                          EstadoUbicacion.permisoDenegadoPermanentemente ||
+                  (_estadoUbicacion != EstadoUbicacion.disponible ||
                       !_permisoNotificaciones)) ...[
                 const SizedBox(height: 8),
                 Align(
@@ -452,6 +596,36 @@ class _AlertasProximidadSectionState extends State<AlertasProximidadSection>
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _EstadoAlertaRow extends StatelessWidget {
+  const _EstadoAlertaRow({required this.etiqueta, required this.valor});
+
+  final String etiqueta;
+  final String valor;
+
+  @override
+  Widget build(BuildContext context) {
+    final sky = SkyPalette.of(context);
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 148,
+            child: Text(
+              etiqueta,
+              style: TextStyle(color: sky.muted, fontSize: 12),
+            ),
+          ),
+          Expanded(
+            child: Text(valor, style: TextStyle(color: sky.text, fontSize: 12)),
+          ),
+        ],
       ),
     );
   }

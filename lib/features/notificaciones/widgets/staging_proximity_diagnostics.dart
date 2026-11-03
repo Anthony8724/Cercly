@@ -6,6 +6,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../explorar/models/ubicacion_usuario.dart';
 import '../../explorar/services/ubicacion_service.dart';
 import '../services/notificacion_local_service.dart';
+import '../services/geofencing_experimental_service.dart';
 import '../services/preferencias_alertas_proximidad.dart';
 import 'monitor_proximidad_app.dart';
 
@@ -25,11 +26,46 @@ class StagingProximityDiagnostics extends StatefulWidget {
 }
 
 class _StagingProximityDiagnosticsState
-    extends State<StagingProximityDiagnostics> {
+    extends State<StagingProximityDiagnostics>
+    with WidgetsBindingObserver {
   final _ubicacion = GeolocatorUbicacionService();
+  final _geofencing = GeofencingExperimentalService();
   UbicacionUsuario? _posicion;
+  GeofencingExperimentalStatus _geofenceStatus =
+      const GeofencingExperimentalStatus();
   String? _resultado;
   bool _ocupado = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _actualizarEstadoGeofence();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) _actualizarEstadoGeofence();
+  }
+
+  Future<void> _actualizarEstadoGeofence() async {
+    try {
+      final status = await _geofencing.status();
+      if (mounted) setState(() => _geofenceStatus = status);
+    } catch (_) {
+      if (mounted) {
+        setState(
+          () => _resultado = 'No se pudo consultar el estado QA nativo.',
+        );
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
 
   Future<void> _obtenerUbicacionConConsentimiento() async {
     final continuar = await showDialog<bool>(
@@ -183,9 +219,9 @@ class _StagingProximityDiagnosticsState
     final confirmar = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Restablecer historial local de prueba'),
+        title: const Text('Reiniciar cooldown de pruebas'),
         content: const Text(
-          'Se borrará solo el cooldown y el historial local de alertas de este dispositivo. No se cambiarán datos de Supabase.',
+          'Se borrará únicamente el historial local de notificaciones de proximidad de esta app Staging y los contadores QA nativos. No cambiará promociones, permisos Android ni datos de Supabase.',
         ),
         actions: [
           TextButton(
@@ -194,17 +230,164 @@ class _StagingProximityDiagnosticsState
           ),
           FilledButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Restablecer'),
+            child: const Text('Reiniciar cooldown'),
           ),
         ],
       ),
     );
     if (confirmar != true) return;
-    await controller.reiniciarHistorialLocalDiagnostico();
-    if (mounted) {
-      setState(() => _resultado = 'Historial local de alertas restablecido.');
+    setState(() => _ocupado = true);
+    try {
+      await controller.reiniciarHistorialLocalDiagnostico();
+      await _actualizarEstadoGeofence();
+      if (mounted) {
+        setState(
+          () => _resultado = 'Cooldown individual, global y límite diario de Staging reiniciados. Permisos y datos remotos sin cambios.',
+        );
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(
+          () => _resultado = 'No se completó el reinicio QA; revisa el estado local y vuelve a intentar.',
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _ocupado = false);
     }
   }
+
+  Future<void> _simularEntrada() async {
+    final controller = MonitorProximidadScope.maybeOf(context);
+    if (controller == null) {
+      setState(
+        () =>
+            _resultado = 'El motor foreground no está disponible para simular.',
+      );
+      return;
+    }
+    setState(() => _ocupado = true);
+    try {
+      final resultado = await controller.simularEntradaUpec();
+      await _geofencing.recordSimulationResult(resultado);
+      await _actualizarEstadoGeofence();
+      if (mounted) {
+        setState(
+          () => _resultado =
+              'SIMULACIÓN QA (no es evento geográfico Android): ${_mensajeResultadoSimulacion(resultado)}',
+        );
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(
+          () => _resultado = 'SIMULACIÓN QA: falló la evaluación; no se afirma entrada geográfica.',
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _ocupado = false);
+    }
+  }
+
+  Future<void> _senalReceptorInterno() async {
+    setState(() => _ocupado = true);
+    try {
+      final enviada = await _geofencing.sendQaReceiverSignal();
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+      await _actualizarEstadoGeofence();
+      if (mounted) {
+        setState(
+          () => _resultado = enviada
+              ? 'Señal QA enviada al receiver interno no exportado. No es una transición real de GeofencingClient.'
+              : 'El receiver QA interno no está disponible en este build.',
+        );
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() => _resultado = 'Falló la señal al receiver interno QA.');
+      }
+    } finally {
+      if (mounted) setState(() => _ocupado = false);
+    }
+  }
+
+  Future<void> _programarPantallaBloqueada() async {
+    setState(() => _ocupado = true);
+    try {
+      final result = await _geofencing.scheduleScreenLockQa();
+      await _actualizarEstadoGeofence();
+      if (!mounted) return;
+      setState(
+        () => _resultado = switch (result) {
+          'scheduled_inexact' => 'Prueba programada para aproximadamente 30 segundos. Android puede retrasarla por ahorro de batería; no es una entrada geográfica. Bloquea la pantalla y espera.',
+          'already_scheduled' => 'Ya existe una prueba programada. Cancélala antes de programar otra para evitar duplicados.',
+          'notification_permission_denied' => 'Android no permite notificaciones o el canal está bloqueado. Habilítalos en Ajustes y vuelve a comprobar; no se solicitó el permiso automáticamente.',
+          'unavailable' =>
+            'Esta herramienta solo está disponible en Cercly STAGING.',
+          _ => 'No se pudo programar la prueba ($result).',
+        },
+      );
+    } catch (_) {
+      if (mounted) {
+        setState(
+          () => _resultado = 'Falló la programación nativa de la prueba.',
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _ocupado = false);
+    }
+  }
+
+  Future<void> _cancelarPantallaBloqueada() async {
+    setState(() => _ocupado = true);
+    try {
+      final canceled = await _geofencing.cancelScreenLockQa();
+      await _actualizarEstadoGeofence();
+      if (mounted) {
+        setState(
+          () => _resultado = canceled
+              ? 'Prueba programada cancelada. No cambió permisos ni cooldown comercial.'
+              : 'No se pudo confirmar la cancelación de la prueba.',
+        );
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(
+          () => _resultado = 'Falló la cancelación nativa de la prueba.',
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _ocupado = false);
+    }
+  }
+
+  String _mensajeResultadoSimulacion(String result) => switch (result) {
+    'simulacion_notificacion_enviada' =>
+      'promoción de Staging elegible; notificación marcada como simulada.',
+    'simulacion_sin_consentimiento' =>
+      'alertas de proximidad desactivadas o sin consentimiento.',
+    'simulacion_permiso_ubicacion_denegado' =>
+      'Android no concede ubicación foreground; no se solicitó permiso.',
+    'simulacion_permiso_notificaciones_denegado' =>
+      'Android no concede notificaciones.',
+    'simulacion_canal_notificaciones_bloqueado' => 'canal Android bloqueado.',
+    'simulacion_sin_promocion_vigente' =>
+      'la promoción ficticia no está publicada y vigente.',
+    'simulacion_bloqueada_cooldown_o_radio' =>
+      'bloqueada por radio, cooldown, deduplicación o límite diario.',
+    'simulacion_notificacion_bloqueada' => 'Android bloqueó la notificación.',
+    _ => 'no se pudo completar ($result).',
+  };
+
+  String _duracion(int millis) {
+    if (millis <= 0) return 'libre';
+    final minutos = (millis / 60000).ceil();
+    final horas = minutos ~/ 60;
+    final resto = minutos % 60;
+    return horas > 0 ? '${horas}h ${resto}m' : '${minutos}m';
+  }
+
+  String _fechaQA(int millis) => millis <= 0
+      ? 'ninguno'
+      : DateTime.fromMillisecondsSinceEpoch(millis).toLocal().toString();
 
   Future<void> _consultarPermiso() async {
     setState(() => _ocupado = true);
@@ -239,9 +422,22 @@ class _StagingProximityDiagnosticsState
     'alertas_desactivadas' =>
       'Activa voluntariamente las alertas antes de evaluar.',
     'permiso_ubicacion_pendiente' => 'Falta permiso o servicio de ubicación.',
+    'permiso_ubicacion_revocado' => 'Permiso de ubicación revocado en Android.',
+    'ubicacion_servicio_desactivado' =>
+      'El GPS o servicio de ubicación está desactivado.',
+    'error_ubicacion' => 'Error consultando u obteniendo la posición.',
     'permiso_notificaciones_pendiente' => 'Falta permiso de notificaciones.',
+    'permiso_notificaciones_indeterminado' =>
+      'Android no devolvió el estado de notificaciones.',
+    'error_permiso_notificaciones' =>
+      'Error técnico consultando permiso de notificaciones.',
+    'canal_notificaciones_bloqueado' =>
+      'Canal de promociones bloqueado en Android.',
     'ubicacion_imprecisa_o_desactualizada' =>
       'La ubicación es imprecisa o tiene más de dos minutos.',
+    'sin_promociones_vigentes' => 'No hay promociones vigentes publicadas.',
+    'sin_promociones_en_radio' =>
+      'Hay promociones vigentes, pero ninguna está dentro del radio efectivo.',
     'evaluacion_en_curso' => 'Ya hay una evaluación en curso.',
     _ => 'Falló la evaluación. Comprueba conexión, permisos y logs técnicos seguros.',
   };
@@ -277,7 +473,36 @@ class _StagingProximityDiagnosticsState
             ),
             const SizedBox(height: 6),
             const Text(
-              'Solo consulta ubicación tras consentimiento. No registra coordenadas ni envía ubicaciones a Supabase.',
+              'Solo Staging. No registra coordenadas ni envía ubicaciones a Supabase. La simulación usa distancia 0 al punto UPEC de prueba, consulta el registro público actual y comprueba permisos reales; nunca se etiqueta como entrada GPS.',
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'Android: ubicación foreground ${_geofenceStatus.foregroundLocation ? 'permitida' : 'denegada'} (${_geofenceStatus.preciseLocation ? 'precisa' : 'aproximada/no disponible'}); background ${_geofenceStatus.backgroundLocation ? 'permitida' : 'denegada'}; notificaciones ${_geofenceStatus.notifications ? 'permitidas' : 'denegadas'}; canal ${_geofenceStatus.notificationChannel ? 'activo' : 'bloqueado/no creado'}; Play Services ${_geofenceStatus.googlePlayServices ? 'disponible' : 'no disponible'}.',
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Consentimiento alertas: ${_geofenceStatus.foregroundAlerts ? 'activo' : 'apagado'}; consentimiento independiente background: ${_geofenceStatus.consent ? 'activo' : 'apagado'}. Geofence: ${_geofenceStatus.registered && _geofenceStatus.registrationState == 'confirmed_by_play_services' ? 'Play Services confirmó el alta (no hay API para consultar inventario actual)' : _geofenceStatus.registrationState}.',
+            ),
+            Text(
+              'Cooldown UPEC: ${_duracion(_geofenceStatus.promotionCooldownRemainingMs)} · global: ${_duracion(_geofenceStatus.globalCooldownRemainingMs)} · hoy: ${_geofenceStatus.dailyNotificationCount}/3 (restan ${_geofenceStatus.dailyRemaining}).',
+            ),
+            Text(
+              'Último resultado motor: ${MonitorProximidadScope.maybeOf(context)?.ultimoResultadoDiagnostico ?? 'no disponible'}',
+            ),
+            Text(
+              'Último evento Android recibido: ${_fechaQA(_geofenceStatus.lastAndroidEventAt)} (${_geofenceStatus.lastAndroidEventResult.isEmpty ? 'ninguno' : _geofenceStatus.lastAndroidEventResult}).',
+            ),
+            Text(
+              'Geofencing real Android: entrada ${_fechaQA(_geofenceStatus.lastAndroidEnterAt)} · salida ${_fechaQA(_geofenceStatus.lastAndroidExitAt)} · último error ${_geofenceStatus.lastNativeError.isEmpty ? 'ninguno registrado' : _geofenceStatus.lastNativeError}.',
+            ),
+            Text(
+              'Notificación tras entrada real: ${_fechaQA(_geofenceStatus.lastRealEntryNotificationAt)} (${_geofenceStatus.lastRealEntryNotificationResult.isEmpty ? 'ninguna' : _geofenceStatus.lastRealEntryNotificationResult}).',
+            ),
+            Text(
+              'Prueba programada independiente: ${_geofenceStatus.screenLockQaResult.isEmpty ? 'ninguna' : _geofenceStatus.screenLockQaResult}; programada ${_fechaQA(_geofenceStatus.screenLockQaScheduledAt)}; entrega ${_fechaQA(_geofenceStatus.screenLockQaDeliveredAt)}; vence ${_fechaQA(_geofenceStatus.screenLockQaDueAt)}. Esta prueba no acredita una entrada geográfica.',
+            ),
+            Text(
+              'Última simulación QA: ${_fechaQA(_geofenceStatus.lastSimulationAt)} (${_geofenceStatus.lastSimulationResult.isEmpty ? 'ninguna' : _geofenceStatus.lastSimulationResult}). Señal receiver QA: ${_fechaQA(_geofenceStatus.lastQaReceiverSignalAt)}.',
             ),
             const SizedBox(height: 12),
             Wrap(
@@ -302,9 +527,25 @@ class _StagingProximityDiagnosticsState
                   onPressed: _ocupado ? null : _evaluarAhora,
                   child: const Text('Evaluar ahora'),
                 ),
+                FilledButton.tonal(
+                  onPressed: _ocupado ? null : _simularEntrada,
+                  child: const Text('Simular entrada en zona'),
+                ),
+                OutlinedButton(
+                  onPressed: _ocupado ? null : _senalReceptorInterno,
+                  child: const Text('Probar receiver QA interno'),
+                ),
+                FilledButton.tonal(
+                  onPressed: _ocupado ? null : _programarPantallaBloqueada,
+                  child: const Text('Programar prueba con pantalla bloqueada'),
+                ),
+                OutlinedButton(
+                  onPressed: _ocupado ? null : _cancelarPantallaBloqueada,
+                  child: const Text('Cancelar prueba programada'),
+                ),
                 TextButton(
                   onPressed: _ocupado ? null : _restablecerHistorial,
-                  child: const Text('Restablecer historial local'),
+                  child: const Text('Reiniciar cooldown de pruebas'),
                 ),
               ],
             ),

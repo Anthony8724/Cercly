@@ -1,4 +1,5 @@
 import 'package:geolocator/geolocator.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/ubicacion_usuario.dart';
 
@@ -14,7 +15,26 @@ abstract class UbicacionService {
   Future<bool> abrirAjustesAplicacion();
 }
 
-class GeolocatorUbicacionService implements UbicacionService {
+abstract interface class PrecisionUbicacionService {
+  /// `null` cuando Android no puede informar precisión aproximada o exacta.
+  Future<bool?> ubicacionPrecisa();
+}
+
+class GeolocatorUbicacionService
+    implements UbicacionService, PrecisionUbicacionService {
+  static const _permisoSolicitadoKey =
+      'cercly.permisos.ubicacion.solicitud_resuelta.v1';
+
+  @override
+  Future<bool?> ubicacionPrecisa() async {
+    try {
+      return await Geolocator.getLocationAccuracy() ==
+          LocationAccuracyStatus.precise;
+    } catch (_) {
+      return null;
+    }
+  }
+
   @override
   Future<EstadoUbicacion> consultarEstadoPermiso({
     bool solicitarPermiso = false,
@@ -25,8 +45,14 @@ class GeolocatorUbicacionService implements UbicacionService {
       }
 
       var permiso = await Geolocator.checkPermission();
+      final preferencias = SharedPreferencesAsync();
       if (permiso == LocationPermission.denied && solicitarPermiso) {
-        permiso = await Geolocator.requestPermission();
+        final solicitudResuelta =
+            await preferencias.getBool(_permisoSolicitadoKey) ?? false;
+        if (!solicitudResuelta) {
+          permiso = await Geolocator.requestPermission();
+          await preferencias.setBool(_permisoSolicitadoKey, true);
+        }
       }
 
       if (permiso == LocationPermission.denied) {
@@ -36,6 +62,10 @@ class GeolocatorUbicacionService implements UbicacionService {
       if (permiso == LocationPermission.deniedForever) {
         return EstadoUbicacion.permisoDenegadoPermanentemente;
       }
+
+      // El permiso real sigue siendo el estado autoritativo. Esta marca solo
+      // evita volver a lanzar el diálogo si Android lo revoca después.
+      await preferencias.setBool(_permisoSolicitadoKey, true);
 
       return EstadoUbicacion.disponible;
     } catch (_) {

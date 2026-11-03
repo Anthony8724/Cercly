@@ -12,7 +12,28 @@ abstract interface class PromocionesCercanasRepository {
   });
 }
 
-class PromocionPublicaService implements PromocionesCercanasRepository {
+class DiagnosticoPromocionesCercanas {
+  const DiagnosticoPromocionesCercanas({
+    required this.promocionesVigentes,
+    required this.promocionesEnRadio,
+  });
+
+  final int promocionesVigentes;
+  final List<PromocionDestacadaModel> promocionesEnRadio;
+}
+
+abstract interface class PromocionesCercanasDiagnosticoRepository {
+  Future<DiagnosticoPromocionesCercanas> diagnosticarCercanas({
+    required double latitudUsuario,
+    required double longitudUsuario,
+    required int radioUsuarioMetros,
+  });
+}
+
+class PromocionPublicaService
+    implements
+        PromocionesCercanasRepository,
+        PromocionesCercanasDiagnosticoRepository {
   PromocionPublicaService({SupabaseClient? supabase})
     : _supabase = supabase ?? Supabase.instance.client;
 
@@ -128,6 +149,20 @@ class PromocionPublicaService implements PromocionesCercanasRepository {
     required double longitudUsuario,
     int radioUsuarioMetros = 500,
   }) async {
+    final resultado = await diagnosticarCercanas(
+      latitudUsuario: latitudUsuario,
+      longitudUsuario: longitudUsuario,
+      radioUsuarioMetros: radioUsuarioMetros,
+    );
+    return resultado.promocionesEnRadio;
+  }
+
+  @override
+  Future<DiagnosticoPromocionesCercanas> diagnosticarCercanas({
+    required double latitudUsuario,
+    required double longitudUsuario,
+    required int radioUsuarioMetros,
+  }) async {
     if (radioUsuarioMetros <= 0) {
       throw ArgumentError.value(radioUsuarioMetros, 'radioUsuarioMetros');
     }
@@ -138,7 +173,7 @@ class PromocionPublicaService implements PromocionesCercanasRepository {
       resolverImagenes: false,
     );
 
-    return promociones
+    final enRadio = promociones
         .where((promocion) {
           final distancia = promocion.distanciaMetros;
 
@@ -149,6 +184,10 @@ class PromocionPublicaService implements PromocionesCercanasRepository {
           return distancia != null && distancia <= radioEfectivo;
         })
         .toList(growable: false);
+    return DiagnosticoPromocionesCercanas(
+      promocionesVigentes: promociones.length,
+      promocionesEnRadio: enRadio,
+    );
   }
 
   Future<PromocionDestacadaModel?> obtenerPorId(

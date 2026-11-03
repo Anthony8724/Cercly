@@ -38,7 +38,8 @@ class NavegacionPrincipalScreen extends StatefulWidget {
       _NavegacionPrincipalScreenState();
 }
 
-class _NavegacionPrincipalScreenState extends State<NavegacionPrincipalScreen> {
+class _NavegacionPrincipalScreenState extends State<NavegacionPrincipalScreen>
+    with WidgetsBindingObserver {
   late final ExplorarController _controller;
   late final bool _esPropio;
   int _indice = 0;
@@ -46,6 +47,7 @@ class _NavegacionPrincipalScreenState extends State<NavegacionPrincipalScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _esPropio = widget.controller == null;
     _controller = widget.controller ?? ExplorarController();
     if (widget.inicializarController) {
@@ -54,7 +56,15 @@ class _NavegacionPrincipalScreenState extends State<NavegacionPrincipalScreen> {
   }
 
   @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      unawaited(_controller.restaurarUbicacionConsentida(alReanudar: true));
+    }
+  }
+
+  @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     if (_esPropio) _controller.dispose();
     super.dispose();
   }

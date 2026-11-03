@@ -1,11 +1,13 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../establecimientos/models/establecimiento_publico_model.dart';
 import '../../establecimientos/services/establecimiento_publico_service.dart';
 import '../../explorar/screens/detalle_establecimiento_screen.dart';
 import '../controllers/monitor_proximidad_controller.dart';
+import '../services/geofencing_experimental_service.dart';
 
 class MonitorProximidadApp extends StatefulWidget {
   const MonitorProximidadApp({
@@ -27,6 +29,7 @@ class MonitorProximidadApp extends StatefulWidget {
 class _MonitorProximidadAppState extends State<MonitorProximidadApp>
     with WidgetsBindingObserver {
   late final MonitorProximidadController _controller;
+  static const _geofenceChannel = MethodChannel('cercly/geofence_experiment');
 
   @override
   void initState() {
@@ -38,6 +41,32 @@ class _MonitorProximidadAppState extends State<MonitorProximidadApp>
         );
     WidgetsBinding.instance.addObserver(this);
     unawaited(_controller.iniciar());
+    if (GeofencingExperimentalService.staging) {
+      _geofenceChannel.setMethodCallHandler(_onNativeMethod);
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        unawaited(_consumeNativeNotification());
+      });
+    }
+  }
+
+  Future<void> _onNativeMethod(MethodCall call) async {
+    if (call.method != 'notificationOpened' || call.arguments is! String) {
+      return;
+    }
+    await _abrirEstablecimiento(call.arguments as String);
+  }
+
+  Future<void> _consumeNativeNotification() async {
+    try {
+      final id = await _geofenceChannel.invokeMethod<String>(
+        'consumePendingNotification',
+      );
+      if (id != null && id.isNotEmpty) await _abrirEstablecimiento(id);
+    } on PlatformException {
+      // El canal solo existe en Android y el build experimental de Staging.
+    } on MissingPluginException {
+      // Facilita pruebas Flutter y otras plataformas.
+    }
   }
 
   Future<void> _abrirEstablecimiento(String id) async {
