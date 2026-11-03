@@ -68,15 +68,18 @@ select set_config('request.jwt.claim.sub', 'b6600000-0000-0000-0000-000000000001
 
 select lives_ok($sql$
   update public.solicitudes_establecimientos set estado = 'aprobada'
-  where tipo = 'registro'
+  where tipo = 'registro' and solicitante_id = 'b6600000-0000-0000-0000-000000000002'
 $sql$, 'el administrador no puede saltarse la RPC de revisión');
 
+reset role;
 select is(
-  (select estado::text from public.solicitudes_establecimientos where tipo = 'registro'),
+  (select estado::text from public.solicitudes_establecimientos
+   where tipo = 'registro' and solicitante_id = 'b6600000-0000-0000-0000-000000000002'),
   'pendiente',
   'la política filtra la actualización directa del administrador'
 );
 
+set local role authenticated;
 select lives_ok($sql$
   select public.responder_solicitud_establecimiento(
     (select id from public.solicitudes_establecimientos
