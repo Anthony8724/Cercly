@@ -240,7 +240,7 @@ class ExplorarScreen extends StatelessWidget {
 
     return [
       SliverPadding(
-        padding: const EdgeInsets.fromLTRB(14, 0, 14, 20),
+        padding: const EdgeInsets.fromLTRB(14, 0, 14, 40),
         sliver: SliverList.builder(
           itemCount:
               establecimientosVisibles.length +

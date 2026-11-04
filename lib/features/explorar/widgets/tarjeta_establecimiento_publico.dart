@@ -1,32 +1,25 @@
 import 'package:flutter/material.dart';
 
+import '../../../sky/sky_theme.dart';
 import '../../establecimientos/models/establecimiento_publico_model.dart';
 
-/// Tarjeta compartida por los resultados generales y las recomendaciones.
-/// Conserva toda la información de negocio en el modelo; aquí solo se presenta.
+/// Ficha compacta compartida por resultados y recomendaciones.
 class TarjetaEstablecimientoPublico extends StatelessWidget {
   const TarjetaEstablecimientoPublico({
     required this.establecimiento,
     required this.onTap,
     super.key,
   });
-
   final EstablecimientoPublicoModel establecimiento;
   final VoidCallback onTap;
 
-  static const _card = Color(0xFF19152D);
-  static const _border = Color(0xFF3A3157);
-  static const _accent = Color(0xFFBDA7FF);
-  static const _text = Color(0xFFF8F5FF);
-  static const _muted = Color(0xFFD0C9E4);
-
   @override
   Widget build(BuildContext context) {
-    final textScale = MediaQuery.textScalerOf(context).scale(1).clamp(1.0, 1.4);
-    final height = 148.0 * textScale;
+    final sky = SkyPalette.of(context);
     final category = establecimiento.categoria.nombre.trim();
     final distance = establecimiento.distanciaFormateada;
-
+    final icon = _iconoCategoria(establecimiento.categoria);
+    final hasPhoto = establecimiento.urlFotoPortada?.trim().isNotEmpty == true;
     return Semantics(
       button: true,
       label: [
@@ -37,85 +30,140 @@ class TarjetaEstablecimientoPublico extends StatelessWidget {
       ].join(', '),
       child: Material(
         key: Key('establecimiento-${establecimiento.id}'),
-        color: _card,
-        elevation: 3,
-        shadowColor: const Color(0x664E3D83),
+        color: sky.surface,
+        elevation: sky.environment == SkyEnvironment.noche ? 0 : .7,
+        shadowColor: sky.headerStart.withValues(alpha: .09),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(22),
-          side: const BorderSide(color: _border),
+          borderRadius: BorderRadius.circular(16),
+          side: BorderSide(color: sky.border, width: 1),
         ),
         clipBehavior: Clip.antiAlias,
         child: InkWell(
           onTap: onTap,
-          borderRadius: BorderRadius.circular(22),
-          splashColor: _accent.withValues(alpha: .12),
-          highlightColor: _accent.withValues(alpha: .06),
-          focusColor: _accent.withValues(alpha: .10),
-          child: SizedBox(
-            height: height,
+          splashColor: sky.interactive.withValues(alpha: .10),
+          highlightColor: sky.interactive.withValues(alpha: .05),
+          focusColor: sky.interactive.withValues(alpha: .10),
+          child: Padding(
+            padding: const EdgeInsets.all(10),
             child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                Padding(
-                  padding: const EdgeInsets.all(8),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(16),
-                    child: SizedBox(
-                      width: 106,
-                      height: height - 16,
-                      child: _FotoEstablecimiento(
-                        url: establecimiento.urlFotoPortada,
-                        icono: _iconoCategoria(establecimiento.categoria),
-                      ),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(11),
+                  child: SizedBox(
+                    width: hasPhoto ? 70 : 54,
+                    height: hasPhoto ? 70 : 54,
+                    child: _FotoEstablecimiento(
+                      url: establecimiento.urlFotoPortada,
+                      icono: icon,
+                      sky: sky,
                     ),
                   ),
                 ),
+                const SizedBox(width: 12),
                 Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(5, 12, 13, 12),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _CategoriaLabel(
-                          nombre: category,
-                          icono: _iconoCategoria(establecimiento.categoria),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        establecimiento.nombre,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: sky.text,
+                          fontSize: 15.5,
+                          height: 1.2,
+                          fontWeight: FontWeight.w800,
                         ),
-                        const SizedBox(height: 7),
-                        Expanded(
-                          child: Align(
-                            alignment: Alignment.centerLeft,
+                      ),
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          Icon(icon, size: 14, color: sky.interactive),
+                          const SizedBox(width: 5),
+                          Expanded(
                             child: Text(
-                              establecimiento.nombre,
-                              maxLines: 2,
+                              category.isEmpty ? 'Establecimiento' : category,
+                              maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                color: _text,
-                                fontSize: 17,
-                                height: 1.12,
-                                fontWeight: FontWeight.w800,
-                                letterSpacing: -.2,
+                              style: TextStyle(
+                                color: sky.muted,
+                                fontSize: 12,
+                                height: 1.2,
                               ),
                             ),
                           ),
-                        ),
+                        ],
+                      ),
+                      if (distance.isNotEmpty ||
+                          establecimiento.tienePromociones) ...[
+                        const SizedBox(height: 7),
                         Wrap(
-                          spacing: 7,
+                          spacing: 10,
                           runSpacing: 5,
                           crossAxisAlignment: WrapCrossAlignment.center,
                           children: [
                             if (distance.isNotEmpty)
-                              _MetaChip(
+                              Row(
                                 key: const Key('distancia-establecimiento'),
-                                icon: Icons.near_me_rounded,
-                                text: distance,
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    Icons.near_me_rounded,
+                                    size: 13,
+                                    color: sky.muted,
+                                  ),
+                                  const SizedBox(width: 3),
+                                  Text(
+                                    distance,
+                                    style: TextStyle(
+                                      color: sky.muted,
+                                      fontSize: 11.5,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
                               ),
                             if (establecimiento.tienePromociones)
-                              const _PromotionChip(),
+                              Container(
+                                key: const Key('indicador-promocion'),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 7,
+                                  vertical: 3,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: sky.soft,
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      Icons.local_offer_rounded,
+                                      size: 12,
+                                      color: sky.interactive,
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      'Promoción',
+                                      style: TextStyle(
+                                        color: sky.interactive,
+                                        fontSize: 10.5,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
                           ],
                         ),
                       ],
-                    ),
+                    ],
                   ),
                 ),
+                const SizedBox(width: 5),
+                Icon(Icons.chevron_right_rounded, size: 18, color: sky.muted),
               ],
             ),
           ),
@@ -169,40 +217,22 @@ class TarjetaEstablecimientoPublico extends StatelessWidget {
 }
 
 class _FotoEstablecimiento extends StatelessWidget {
-  const _FotoEstablecimiento({required this.url, required this.icono});
-
+  const _FotoEstablecimiento({
+    required this.url,
+    required this.icono,
+    required this.sky,
+  });
   final String? url;
   final IconData icono;
-
-  static const _accent = Color(0xFFBDA7FF);
-
+  final SkyPalette sky;
   @override
   Widget build(BuildContext context) {
-    final imageUrl = url?.trim();
     final fallback = DecoratedBox(
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Color(0xFF30284D), Color(0xFF211C3B), Color(0xFF17152C)],
-        ),
-      ),
-      child: Center(
-        child: DecoratedBox(
-          decoration: BoxDecoration(
-            color: _accent.withValues(alpha: .12),
-            shape: BoxShape.circle,
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(15),
-            child: Icon(icono, size: 34, color: _accent),
-          ),
-        ),
-      ),
+      decoration: BoxDecoration(color: sky.soft),
+      child: Center(child: Icon(icono, size: 25, color: sky.interactive)),
     );
-
+    final imageUrl = url?.trim();
     if (imageUrl == null || imageUrl.isEmpty) return fallback;
-
     return Stack(
       fit: StackFit.expand,
       children: [
@@ -210,124 +240,18 @@ class _FotoEstablecimiento extends StatelessWidget {
         Image.network(
           imageUrl,
           fit: BoxFit.cover,
-          cacheWidth: 480,
+          cacheWidth: 240,
           filterQuality: FilterQuality.medium,
-          frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
-            if (wasSynchronouslyLoaded) return child;
-            return AnimatedOpacity(
-              opacity: frame == null ? 0 : 1,
-              duration: const Duration(milliseconds: 220),
-              curve: Curves.easeOut,
-              child: child,
-            );
-          },
+          frameBuilder: (context, child, frame, loaded) => loaded
+              ? child
+              : AnimatedOpacity(
+                  opacity: frame == null ? 0 : 1,
+                  duration: const Duration(milliseconds: 220),
+                  child: child,
+                ),
           errorBuilder: (_, _, _) => fallback,
         ),
       ],
-    );
-  }
-}
-
-class _CategoriaLabel extends StatelessWidget {
-  const _CategoriaLabel({required this.nombre, required this.icono});
-
-  final String nombre;
-  final IconData icono;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Icon(icono, size: 15, color: TarjetaEstablecimientoPublico._accent),
-        const SizedBox(width: 5),
-        Expanded(
-          child: Text(
-            nombre.isEmpty ? 'Establecimiento' : nombre,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              color: TarjetaEstablecimientoPublico._muted,
-              fontSize: 11.5,
-              height: 1.1,
-              fontWeight: FontWeight.w600,
-              letterSpacing: .15,
-            ),
-          ),
-        ),
-        const SizedBox(width: 3),
-        const Icon(
-          Icons.arrow_outward_rounded,
-          size: 15,
-          color: TarjetaEstablecimientoPublico._accent,
-        ),
-      ],
-    );
-  }
-}
-
-class _MetaChip extends StatelessWidget {
-  const _MetaChip({required this.icon, required this.text, super.key});
-
-  final IconData icon;
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(icon, size: 13, color: TarjetaEstablecimientoPublico._muted),
-        const SizedBox(width: 4),
-        Text(
-          text,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: const TextStyle(
-            color: TarjetaEstablecimientoPublico._muted,
-            fontSize: 11,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _PromotionChip extends StatelessWidget {
-  const _PromotionChip();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      key: const Key('indicador-promocion'),
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-      decoration: BoxDecoration(
-        color: TarjetaEstablecimientoPublico._accent.withValues(alpha: .14),
-        borderRadius: BorderRadius.circular(99),
-        border: Border.all(
-          color: TarjetaEstablecimientoPublico._accent.withValues(alpha: .3),
-        ),
-      ),
-      child: const Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            Icons.local_offer_rounded,
-            size: 12,
-            color: TarjetaEstablecimientoPublico._accent,
-          ),
-          SizedBox(width: 4),
-          Text(
-            'Promoción',
-            maxLines: 1,
-            style: TextStyle(
-              color: TarjetaEstablecimientoPublico._accent,
-              fontSize: 10.5,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ],
-      ),
     );
   }
 }

@@ -3,6 +3,7 @@ import 'package:cercly/features/explorar/widgets/tarjeta_establecimiento_publico
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:cercly/sky/sky_theme.dart';
 
 const _categoria = CategoriaPublicaModel(
   id: 'categoria-cafe',
@@ -34,7 +35,7 @@ EstablecimientoPublicoModel _establecimiento({
 );
 
 Widget _host(EstablecimientoPublicoModel establecimiento) => MaterialApp(
-  theme: ThemeData.dark(useMaterial3: true),
+  theme: skyTheme(SkyPalette.forEnvironment(SkyEnvironment.noche)),
   home: Scaffold(
     body: ListView(
       padding: const EdgeInsets.all(14),
@@ -59,7 +60,7 @@ void main() {
     final image = tester.widget<Image>(find.byType(Image));
     expect(image.image, isA<ResizeImage>());
     final resized = image.image as ResizeImage;
-    expect(resized.width, 480);
+    expect(resized.width, 240);
     expect(
       (resized.imageProvider as NetworkImage).url,
       'https://images.example/cafe.webp',
@@ -122,33 +123,58 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('captura visual de revisión del Bloque 12', (tester) async {
-    await (FontLoader('Comfortaa')..addFont(
-          rootBundle.load('assets/branding/sky/fonts/Comfortaa-Bold.otf'),
-        ))
-        .load();
-    await (FontLoader(
-      'MaterialIcons',
-    )..addFont(rootBundle.load('fonts/MaterialIcons-Regular.otf'))).load();
-    tester.view.devicePixelRatio = 1;
-    tester.view.physicalSize = const Size(412, 240);
-    addTearDown(tester.view.resetPhysicalSize);
-    addTearDown(tester.view.resetDevicePixelRatio);
+  testWidgets(
+    'adapta la superficie y mantiene interacción en los cuatro temas',
+    (tester) async {
+      var taps = 0;
+      for (final environment in SkyEnvironment.values) {
+        final palette = SkyPalette.forEnvironment(environment);
+        await tester.pumpWidget(
+          MaterialApp(
+            theme: skyTheme(palette),
+            home: Scaffold(
+              body: Center(
+                child: SizedBox(
+                  width: 320,
+                  child: TarjetaEstablecimientoPublico(
+                    establecimiento: _establecimiento(promocion: true),
+                    onTap: () => taps++,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+        final card = tester.widget<Material>(
+          find.byKey(const Key('establecimiento-cafe-plaza')),
+        );
+        expect(card.color, palette.surface);
+        expect(tester.takeException(), isNull);
+        await tester.tap(find.byKey(const Key('establecimiento-cafe-plaza')));
+      }
+      expect(taps, SkyEnvironment.values.length);
+    },
+  );
 
-    await tester.pumpWidget(
-      MaterialApp(
-        theme: ThemeData(
-          useMaterial3: true,
-          brightness: Brightness.dark,
-          fontFamily: 'Comfortaa',
-        ),
-        home: Scaffold(
-          backgroundColor: const Color(0xFF100E1C),
-          body: Center(
-            child: SizedBox(
-              width: 388,
-              child: Padding(
-                padding: const EdgeInsets.all(8),
+  for (final environment in [SkyEnvironment.dia, SkyEnvironment.noche]) {
+    testWidgets('captura tarjeta compacta $environment', (tester) async {
+      await (FontLoader(
+        'MaterialIcons',
+      )..addFont(rootBundle.load('fonts/MaterialIcons-Regular.otf'))).load();
+      tester.view.devicePixelRatio = 1;
+      tester.view.physicalSize = const Size(412, 190);
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      final palette = SkyPalette.forEnvironment(environment);
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: skyTheme(palette),
+          home: Scaffold(
+            backgroundColor: palette.background,
+            body: Center(
+              child: SizedBox(
+                width: 388,
                 child: TarjetaEstablecimientoPublico(
                   establecimiento: _establecimiento(promocion: true),
                   onTap: () {},
@@ -157,11 +183,11 @@ void main() {
             ),
           ),
         ),
-      ),
-    );
-    await expectLater(
-      find.byKey(const Key('establecimiento-cafe-plaza')),
-      matchesGoldenFile('goldens/bloque12_tarjeta_establecimiento.png'),
-    );
-  });
+      );
+      await expectLater(
+        find.byKey(const Key('establecimiento-cafe-plaza')),
+        matchesGoldenFile('goldens/sky_tarjeta_${environment.name}.png'),
+      );
+    });
+  }
 }
