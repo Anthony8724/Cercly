@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../promociones/models/promocion_destacada_model.dart';
 import 'geofencing_experimental_service.dart';
+import 'production_geofencing_service.dart';
 
 abstract interface class NotificacionPromocionGateway {
   Future<void> inicializar();
@@ -286,14 +287,23 @@ class NotificacionLocalService
     await inicializar();
     if (!await tienePermisoParaNotificar()) return false;
 
-    if (GeofencingExperimentalService.staging) {
+    if (GeofencingExperimentalService.staging ||
+        ProductionGeofencingService.enabledBuild) {
       try {
-        final reserva = await const MethodChannel('cercly/geofence_experiment')
-            .invokeMethod<String>('reserveForegroundSlot', {
+        final reserva =
+            await const MethodChannel(
+              ProductionGeofencingService.enabledBuild
+                  ? ProductionGeofencingService.channelName
+                  : 'cercly/geofence_experiment',
+            ).invokeMethod<String>('reserveForegroundSlot', {
               'promotionId': promocion.id,
             });
+        if (ProductionGeofencingService.enabledBuild && reserva != 'reserved') {
+          return false;
+        }
         if (reserva == 'cooldown' || reserva == 'blocked') return false;
       } on MissingPluginException {
+        if (ProductionGeofencingService.enabledBuild) return false;
         // Tests y plataformas sin el módulo nativo conservan el control Dart.
       } on PlatformException catch (error, stackTrace) {
         _registrarFalloSeguro('geofence_shared_cooldown', error, stackTrace);

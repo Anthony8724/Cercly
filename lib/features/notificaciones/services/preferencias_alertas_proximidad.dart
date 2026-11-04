@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/configuracion_alertas_proximidad.dart';
+import 'production_geofencing_service.dart';
 
 abstract interface class PreferenciasAlertasProximidadRepository {
   Stream<ConfiguracionAlertasProximidad> get cambios;
@@ -55,9 +56,14 @@ class PreferenciasAlertasProximidadLocal
 
     final preferencias = await SharedPreferences.getInstance();
     if (!configuracion.activadas) {
-      if (const bool.fromEnvironment('CERCLY_STAGING')) {
+      if (const bool.fromEnvironment('CERCLY_STAGING') ||
+          ProductionGeofencingService.enabledBuild) {
         try {
-          const canal = MethodChannel('cercly/geofence_experiment');
+          const canal = MethodChannel(
+            ProductionGeofencingService.enabledBuild
+                ? ProductionGeofencingService.channelName
+                : 'cercly/geofence_experiment',
+          );
           await canal.invokeMethod<void>('setConsent', {'enabled': false});
           await canal.invokeMethod<void>('remove');
         } on MissingPluginException {
@@ -92,6 +98,9 @@ class PreferenciasAlertasProximidadLocal
   }
 
   Future<void> borrarDatosLocales() async {
+    if (ProductionGeofencingService.enabledBuild) {
+      await ProductionGeofencingService().setConsent(false);
+    }
     final preferencias = await SharedPreferences.getInstance();
     await preferencias.remove(_claveActivas);
     await preferencias.remove(_claveRadio);

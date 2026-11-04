@@ -8,6 +8,7 @@ import '../../establecimientos/services/establecimiento_publico_service.dart';
 import '../../explorar/screens/detalle_establecimiento_screen.dart';
 import '../controllers/monitor_proximidad_controller.dart';
 import '../services/geofencing_experimental_service.dart';
+import '../services/production_geofencing_service.dart';
 
 class MonitorProximidadApp extends StatefulWidget {
   const MonitorProximidadApp({
@@ -29,7 +30,11 @@ class MonitorProximidadApp extends StatefulWidget {
 class _MonitorProximidadAppState extends State<MonitorProximidadApp>
     with WidgetsBindingObserver {
   late final MonitorProximidadController _controller;
-  static const _geofenceChannel = MethodChannel('cercly/geofence_experiment');
+  static const _geofenceChannel = MethodChannel(
+    ProductionGeofencingService.enabledBuild
+        ? ProductionGeofencingService.channelName
+        : 'cercly/geofence_experiment',
+  );
 
   @override
   void initState() {
@@ -40,12 +45,28 @@ class _MonitorProximidadAppState extends State<MonitorProximidadApp>
           alAbrirEstablecimiento: _abrirEstablecimiento,
         );
     WidgetsBinding.instance.addObserver(this);
-    unawaited(_controller.iniciar());
-    if (GeofencingExperimentalService.staging) {
+    unawaited(_start());
+    if (GeofencingExperimentalService.staging ||
+        ProductionGeofencingService.enabledBuild) {
       _geofenceChannel.setMethodCallHandler(_onNativeMethod);
       WidgetsBinding.instance.addPostFrameCallback((_) {
         unawaited(_consumeNativeNotification());
       });
+    }
+  }
+
+  Future<void> _start() async {
+    if (ProductionGeofencingService.enabledBuild) {
+      try {
+        await ProductionGeofencingService().prepareHistory();
+      } catch (_) {
+        /* Native delivery fails closed until imported. */
+      }
+    }
+    if (!mounted) return;
+    await _controller.iniciar();
+    if (ProductionGeofencingService.enabledBuild) {
+      await ProductionGeofencingService().synchronize(automatic: true);
     }
   }
 
@@ -108,6 +129,9 @@ class _MonitorProximidadAppState extends State<MonitorProximidadApp>
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       unawaited(_controller.reanudar());
+      if (ProductionGeofencingService.enabledBuild) {
+        unawaited(ProductionGeofencingService().synchronize(automatic: true));
+      }
     } else if (state == AppLifecycleState.paused ||
         state == AppLifecycleState.inactive ||
         state == AppLifecycleState.detached) {

@@ -39,6 +39,7 @@ android {
         }
     val isUiEvaluation = "CERCLY_UI_EVALUATION=true" in dartDefineEntries
     val isDemoRelease = "CERCLY_DEMO_RELEASE=true" in dartDefineEntries
+    val isPrivateProximity = "CERCLY_PRIVATE_PROXIMITY=true" in dartDefineEntries
     val isCerclyStaging = "CERCLY_STAGING=true" in dartDefineEntries
     val configuredSupabaseUrl = dartDefineEntries
         .firstOrNull { it.startsWith("SUPABASE_URL=") }
@@ -62,6 +63,29 @@ android {
             "STAGING_SUPABASE_PUBLISHABLE_KEY",
             if (isCerclyStaging) configuredPublishableKey!!.asBuildConfigString() else "\"\"",
         )
+    }
+
+    // Private candidate is opt-in at build time. The public build stays foreground-only.
+    if (isPrivateProximity) {
+        if (isCerclyStaging || isUiEvaluation || isDemoRelease ||
+            configuredSupabaseUrl != "https://aimubazregckmjchnszf.supabase.co" ||
+            configuredPublishableKey?.startsWith("sb_publishable_") != true ||
+            dartDefineEntries.any { it.substringBefore("=") in setOf(
+                "SUPABASE_SERVICE_ROLE_KEY", "SUPABASE_SECRET_KEY", "DATABASE_URL",
+                "DB_PASSWORD", "POSTGRES_PASSWORD") }) {
+            throw GradleException("Private proximity requires Production and a publishable key only.")
+        }
+        sourceSets.getByName("main").manifest.srcFile("src/productionCandidate/AndroidManifest.xml")
+        sourceSets.getByName("test").kotlin.srcDir("src/productionCandidateTest/kotlin")
+    }
+    sourceSets.getByName("main").kotlin.setSrcDirs(listOf(
+        if (isCerclyStaging) "src/staging/kotlin"
+        else if (isPrivateProximity) "src/productionCandidate/kotlin"
+        else "src/production/kotlin",
+    ))
+    defaultConfig {
+        buildConfigField("String", "PROXIMITY_URL", if (isPrivateProximity) configuredSupabaseUrl!!.asBuildConfigString() else "\"\"")
+        buildConfigField("String", "PROXIMITY_KEY", if (isPrivateProximity) configuredPublishableKey!!.asBuildConfigString() else "\"\"")
     }
 
     if (isCerclyStaging) {
@@ -173,6 +197,7 @@ flutter {
 }
 
 dependencies {
+    testImplementation("junit:junit:4.13.2")
     implementation("com.google.android.gms:play-services-location:21.2.0")
     coreLibraryDesugaring(
         "com.android.tools:desugar_jdk_libs:2.1.4",
