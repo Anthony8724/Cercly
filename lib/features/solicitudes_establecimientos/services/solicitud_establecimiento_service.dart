@@ -1,6 +1,7 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../models/solicitud_establecimiento_model.dart';
+import '../../establecimientos/services/establecimiento_service.dart';
 
 class EstablecimientoSolicitudOpcion {
   const EstablecimientoSolicitudOpcion({
@@ -69,13 +70,23 @@ class SolicitudEstablecimientoDetalle {
 
 abstract interface class SolicitudEstablecimientoRepository {
   Future<List<EstablecimientoSolicitudOpcion>> listarEstablecimientosParaTipo(
+    String tipo, {
+    String busqueda = '',
+    int offset = 0,
+    String? id,
+  });
+
+  Future<List<EstablecimientoSolicitudOpcion>> listarAsociadosParaTipo(
     String tipo,
   );
 
+  Future<Map<String, dynamic>> datosParaCorreccion(String establecimientoId);
+  Future<List<Map<String, dynamic>>> categoriasParaCorreccion();
   Future<String> crear({
     required String establecimientoId,
     required String tipo,
     required String mensaje,
+    Map<String, dynamic>? cambios,
   });
 }
 
@@ -106,8 +117,11 @@ class SolicitudEstablecimientoService
 
   @override
   Future<List<EstablecimientoSolicitudOpcion>> listarEstablecimientosParaTipo(
-    String tipo,
-  ) async {
+    String tipo, {
+    String busqueda = '',
+    int offset = 0,
+    String? id,
+  }) async {
     if (!SolicitudEstablecimientoModel.tiposPermitidos.contains(tipo)) {
       throw ArgumentError('El tipo de solicitud no es válido.');
     }
@@ -127,13 +141,47 @@ class SolicitudEstablecimientoService
       consulta = consulta.not('propietario_id', 'is', null);
     }
 
-    final respuesta = await consulta.order('nombre');
+    if (offset < 0) throw ArgumentError('Página no válida.');
+    if (id != null) consulta = consulta.eq('id', id);
+    final texto = busqueda.trim();
+    if (texto.isNotEmpty) {
+      // Los comodines introducidos por el usuario se buscan literalmente.
+      final literal = texto
+          .replaceAll(r'\', r'\\')
+          .replaceAll('%', r'\%')
+          .replaceAll('_', r'\_');
+      consulta = consulta.ilike('nombre', '%$literal%');
+    }
+    final respuesta = await consulta
+        .order('nombre', ascending: true)
+        .order('id', ascending: true)
+        .range(offset, offset + 19);
 
     return respuesta
         .map<EstablecimientoSolicitudOpcion>(
           EstablecimientoSolicitudOpcion.fromSupabase,
         )
         .toList();
+  }
+
+  @override
+  Future<List<EstablecimientoSolicitudOpcion>> listarAsociadosParaTipo(
+    String tipo,
+  ) async {
+    // Reclamar y solicitar acceso nunca reutilizan una asociación como permiso.
+    if (tipo != SolicitudEstablecimientoModel.tipoCorreccion) return [];
+    final negocios = await EstablecimientoService(supabase: _supabase)
+        .listarEstablecimientosDelUsuario();
+    if (negocios.isEmpty) return [];
+    final respuesta = await _supabase
+        .from('establecimientos')
+        .select('id, nombre, direccion')
+        .inFilter('id', negocios.map((e) => e.id).toList())
+        .eq('estado', 'aprobado')
+        .eq('publicable', true)
+        .order('nombre', ascending: true)
+        .order('id', ascending: true);
+    return respuesta.map(EstablecimientoSolicitudOpcion.fromSupabase).toList();
   }
 
   Future<List<SolicitudEstablecimientoDetalle>> listarTodas() async {
@@ -225,10 +273,47 @@ class SolicitudEstablecimientoService
   }
 
   @override
+  Future<List<Map<String, dynamic>>> categoriasParaCorreccion() async {
+    final filas = await _supabase
+        .from('categorias')
+        .select('id,nombre')
+        .eq('activa', true)
+        .order('nombre', ascending: true);
+    return filas.map((f) => Map<String, dynamic>.from(f)).toList();
+  }
+
+  @override
+  Future<Map<String, dynamic>> datosParaCorreccion(
+    String establecimientoId,
+  ) async {
+    return await _supabase
+        .from('establecimientos')
+        .select(
+          'nombre, direccion, categoria_id, descripcion, telefono_publico, latitud, longitud',
+        )
+        .eq('id', establecimientoId)
+        .eq('estado', 'aprobado')
+        .eq('publicable', true)
+        .single();
+  }
+
+  Future<void> aplicarCorreccion({
+    required String solicitudId,
+    required String motivo,
+  }) async {
+    // Sin fallback a la RPC antigua: aprobar sin aplicar sería un falso éxito.
+    await _supabase.rpc(
+      'aplicar_correccion_establecimiento',
+      params: {'p_solicitud_id': solicitudId, 'p_motivo': motivo.trim()},
+    );
+  }
+
+  @override
   Future<String> crear({
     required String establecimientoId,
     required String tipo,
     required String mensaje,
+    Map<String, dynamic>? cambios,
   }) async {
     final usuario = _supabase.auth.currentUser;
 
@@ -260,7 +345,10 @@ class SolicitudEstablecimientoService
 
     final datosCrear = solicitud.toSupabaseParaCrear();
     if (tipo == SolicitudEstablecimientoModel.tipoCorreccion) {
-      datosCrear['datos_propuestos'] = {'descripcion_solicitud': texto};
+      if (cambios == null || cambios.isEmpty) {
+        throw ArgumentError('Selecciona cambios concretos.');
+      }
+      datosCrear['datos_propuestos'] = {'cambios': cambios};
     }
 
     final respuesta = await _supabase

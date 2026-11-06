@@ -1,4 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+
+import '../widgets/revisar_correccion_dialog.dart';
+
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 
@@ -46,12 +50,64 @@ class _SolicitudesAdministradorScreenState
     await _solicitudesFuture;
   }
 
+  Future<void> _aplicarCorreccion(
+    SolicitudEstablecimientoDetalle detalle,
+  ) async {
+    setState(() => _solicitudProcesando = detalle.solicitud.id);
+    try {
+      final categorias = await _categoriasFuture;
+      if (!mounted) return;
+      final revision = await showDialog<CorreccionRevisada>(
+        context: context,
+        builder: (_) => RevisarCorreccionDialog(
+          cambios:
+              detalle.datosPropuestos['cambios'] as Map<String, dynamic>? ??
+              const {},
+          categorias: categorias,
+          solicitud: detalle.solicitud.mensaje,
+        ),
+      );
+      if (revision == null || !mounted) return;
+      await _service.aplicarCorreccion(
+        solicitudId: detalle.solicitud.id,
+        motivo: revision.motivo,
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Corrección aplicada y registrada.')),
+      );
+      _cargar();
+    } catch (error) {
+      if (!mounted) return;
+      final sinFuncion =
+          error is PostgrestException && error.code == 'PGRST202';
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            sinFuncion
+                ? 'La aplicación de correcciones aún no está habilitada en el servidor. La solicitud sigue pendiente.'
+                : 'No se pudo aplicar la corrección. Recarga y revisa los datos antes de intentarlo de nuevo.',
+          ),
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _solicitudProcesando = null);
+    }
+  }
+
   Future<void> _responder(
     SolicitudEstablecimientoDetalle detalle,
     String nuevoEstado,
   ) async {
     final aprobando =
         nuevoEstado == SolicitudEstablecimientoModel.estadoAprobada;
+
+    if (aprobando &&
+        detalle.solicitud.tipo ==
+            SolicitudEstablecimientoModel.tipoCorreccion) {
+      await _aplicarCorreccion(detalle);
+      return;
+    }
 
     final motivo = await showDialog<String>(
       context: context,

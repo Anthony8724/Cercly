@@ -97,6 +97,8 @@ void main() {
               promo('inactiva', activa: false),
               promo('vencida', vencida: true),
             ],
+            resolverEstablecimiento: (_) async =>
+                fixtures.establecimiento(promocion: true),
             onEstablecimiento: (_) => abierto = true,
             onVerTodas: () => todas = true,
           ),
@@ -109,33 +111,36 @@ void main() {
     expect(find.byKey(const Key('promocion-vencida')), findsNothing);
     expect(find.text('a 350 m'), findsOneWidget);
     await tester.tap(find.byKey(const Key('promocion-vigente')));
+    await tester.pumpAndSettle();
     expect(abierto, isTrue);
     await tester.tap(find.byKey(const Key('ver-todas-promociones')));
     expect(todas, isTrue);
   });
 
-  testWidgets('sin candidatos no consulta ni reserva un carrusel vacío', (
-    tester,
-  ) async {
-    var consultas = 0;
-    await tester.pumpWidget(
-      MaterialApp(
-        home: Scaffold(
-          body: PromocionesExplorar(
-            establecimientos: [fixtures.establecimiento()],
-            cargarPromociones: () async {
-              consultas++;
-              return [];
-            },
-            onEstablecimiento: (_) {},
-            onVerTodas: () {},
+  testWidgets(
+    'consulta promociones aunque no haya candidatos en la primera página',
+    (tester) async {
+      var consultas = 0;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: PromocionesExplorar(
+              establecimientos: [fixtures.establecimiento()],
+              cargarPromociones: () async {
+                consultas++;
+                return [];
+              },
+              onEstablecimiento: (_) {},
+              onVerTodas: () {},
+            ),
           ),
         ),
-      ),
-    );
-    expect(consultas, 0);
-    expect(find.text('Promociones cerca de ti'), findsNothing);
-  });
+      );
+      await tester.pumpAndSettle();
+      expect(consultas, 1);
+      expect(find.text('Promociones cerca de ti'), findsNothing);
+    },
+  );
 
   testWidgets('loading, error y reintento sin cliente Supabase', (
     tester,

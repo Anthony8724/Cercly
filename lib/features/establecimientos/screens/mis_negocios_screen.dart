@@ -6,6 +6,7 @@ import '../../../sky/sky_theme.dart';
 import '../../solicitudes_establecimientos/models/solicitud_establecimiento_model.dart';
 import '../../solicitudes_establecimientos/screens/mis_solicitudes_screen.dart';
 import '../../solicitudes_establecimientos/screens/nueva_solicitud_screen.dart';
+import '../../solicitudes_establecimientos/services/solicitud_establecimiento_service.dart';
 import '../models/establecimiento_model.dart';
 import '../services/establecimiento_service.dart';
 import 'registro_establecimiento_screen.dart';
@@ -18,6 +19,7 @@ class MisNegociosScreen extends StatefulWidget {
     this.registroScreenBuilder,
     this.reclamoScreenBuilder,
     this.solicitudesScreenBuilder,
+    this.solicitudService,
   });
 
   final Future<List<EstablecimientoModel>> Function()? cargarNegocios;
@@ -25,6 +27,7 @@ class MisNegociosScreen extends StatefulWidget {
   final WidgetBuilder? registroScreenBuilder;
   final WidgetBuilder? reclamoScreenBuilder;
   final WidgetBuilder? solicitudesScreenBuilder;
+  final SolicitudEstablecimientoRepository? solicitudService;
 
   @override
   State<MisNegociosScreen> createState() => _MisNegociosScreenState();
@@ -192,15 +195,44 @@ class _MisNegociosScreenState extends State<MisNegociosScreen> {
                             children: [
                               for (final negocio in negocios)
                                 Card(
-                                  child: ListTile(
-                                    leading: const Icon(
-                                      Icons.storefront_rounded,
-                                    ),
-                                    title: Text(negocio.nombre),
-                                    subtitle: Text(
-                                      '${negocio.direccion}\nEstado: ${negocio.estado}',
-                                    ),
-                                    isThreeLine: true,
+                                  child: Column(
+                                    children: [
+                                      ListTile(
+                                        leading: const Icon(
+                                          Icons.storefront_rounded,
+                                        ),
+                                        title: Text(negocio.nombre),
+                                        subtitle: Text(
+                                          '${negocio.direccion}\nEstado: ${negocio.estado}',
+                                        ),
+                                        isThreeLine: true,
+                                      ),
+                                      Align(
+                                        alignment: Alignment.centerRight,
+                                        child: TextButton.icon(
+                                          label: const Text(
+                                            'Solicitar corrección',
+                                          ),
+                                          icon: const Icon(
+                                            Icons.edit_note_rounded,
+                                          ),
+                                          onPressed: () => Navigator.of(context).push(
+                                            MaterialPageRoute(
+                                              builder: (_) => NuevaSolicitudScreen(
+                                                service:
+                                                    widget.solicitudService,
+                                                tipoInicial:
+                                                    SolicitudEstablecimientoModel
+                                                        .tipoCorreccion,
+                                                establecimientoIdInicial:
+                                                    negocio.id,
+                                                bloquearTipo: true,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ),
                             ],
