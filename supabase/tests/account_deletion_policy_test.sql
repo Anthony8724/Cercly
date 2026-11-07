@@ -1,5 +1,5 @@
 begin;
-select plan(19);
+select plan(20);
 insert into auth.users(id,email,raw_user_meta_data) values
  ('b7200000-0000-0000-0000-000000000001','policy-owner@cercly.test','{}'),
  ('b7200000-0000-0000-0000-000000000002','policy-target@cercly.test','{}'),
@@ -44,10 +44,10 @@ select throws_ok($$update public.establecimientos set estado='rechazado'
  where id='b7210000-0000-0000-0000-000000000001'$$,
  '42501','Usar revisión administrativa',
  'administrador no desactiva por un atajo sin auditoría');
-select throws_ok($$delete from public.establecimientos
+select lives_ok($$delete from public.establecimientos
  where id='b7210000-0000-0000-0000-000000000001'$$,
- '42501','Negocio compartido en revisión',
  'administrador no borra negocio de una solicitud activa');
+select is((select count(*)::int from public.establecimientos where id='b7210000-0000-0000-0000-000000000001'),1,'RLS conserva negocio de solicitud activa');
 select is(public.revisar_eliminacion_cuenta(
  'b7200000-0000-0000-0000-000000000001','desactivar',
  'b7210000-0000-0000-0000-000000000001'),'revision',

@@ -124,6 +124,9 @@ declare
   e public.establecimientos%rowtype;
   cambios jsonb;
   campo text;
+  item jsonb;
+  nuevo text;
+  categoria uuid;
   antes jsonb := '{}'::jsonb;
   despues jsonb := '{}'::jsonb;
   motivo text := trim(coalesce(p_motivo,''));
@@ -148,18 +151,48 @@ begin
     raise exception 'La solicitud antigua no contiene cambios estructurados.';
   end if;
   for campo in select jsonb_object_keys(cambios) loop
-    if not (campo=any(array['nombre','direccion','categoria_id','descripcion','telefono_publico','latitud','longitud']))
-       or cambios->campo->'anterior' is distinct from to_jsonb(e)->campo then
+    if not (campo=any(array['nombre','direccion','categoria_id','descripcion','telefono_publico','latitud','longitud'])) then
+      raise exception 'La propuesta contiene un campo no permitido.';
+    end if;
+    item := cambios->campo;
+    if jsonb_typeof(item) is distinct from 'object'
+       or (select count(*) from jsonb_object_keys(item)) <> 2
+       or not (item ?& array['anterior','nuevo']) then
+      raise exception 'La propuesta antigua no contiene un cambio estructurado válido.';
+    end if;
+    if item->'anterior' is distinct from to_jsonb(e)->campo then
       raise exception 'La ficha cambió o la propuesta no es válida. Solicita una revisión nueva.';
+    end if;
+    if item->'nuevo' is not distinct from item->'anterior' then
+      raise exception 'La propuesta no cambia el valor de %.', campo;
+    end if;
+    if campo in ('latitud','longitud') then
+      if jsonb_typeof(item->'nuevo') is distinct from 'number'
+         or (campo='latitud' and (item->>'nuevo')::double precision not between -90 and 90)
+         or (campo='longitud' and (item->>'nuevo')::double precision not between -180 and 180) then
+        raise exception 'Coordenada inválida.';
+      end if;
+    else
+      if jsonb_typeof(item->'nuevo') is distinct from 'string' then
+        raise exception 'Valor de texto inválido.';
+      end if;
+      nuevo := item->>'nuevo';
+      if nuevo is distinct from trim(nuevo) then raise exception 'Elimina espacios sobrantes.'; end if;
+      if (campo='nombre' and char_length(nuevo) not between 2 and 120)
+         or (campo='direccion' and char_length(nuevo) not between 1 and 250)
+         or (campo='descripcion' and char_length(nuevo)>1000)
+         or (campo='telefono_publico' and char_length(nuevo)>20) then
+        raise exception 'Longitud de texto inválida.';
+      end if;
+      if campo='categoria_id' then
+        categoria := nuevo::uuid;
+        if not exists(select 1 from public.categorias c where c.id=categoria and c.activa) then
+          raise exception 'La categoría propuesta ya no está disponible.';
+        end if;
+      end if;
     end if;
     antes := antes || jsonb_build_object(campo,to_jsonb(e)->campo);
   end loop;
-  if cambios ? 'categoria_id' and not exists (
-    select 1 from public.categorias c
-    where c.id=(cambios->'categoria_id'->>'nuevo')::uuid and c.activa
-  ) then
-    raise exception 'La categoría propuesta ya no está disponible.';
-  end if;
   update public.establecimientos set
     nombre=coalesce(cambios->'nombre'->>'nuevo',e.nombre),
     direccion=coalesce(cambios->'direccion'->>'nuevo',e.direccion),

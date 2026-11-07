@@ -53,9 +53,42 @@ select auth.uid(),'b8800000-0000-0000-0000-000000000010','correccion','Duplicado
 '23505','duplicate key value violates unique constraint "solicitud_pendiente_unica"','duplicado pendiente rechazado');
 select throws_ok($$select public.aplicar_correccion_establecimiento('b8800000-0000-0000-0000-000000000020','motivo')$$,
 'P0001','Solo un administrador autenticado puede aprobar correcciones.','propietario no se autoaprueba');
+select throws_ok($$select public.moderar_estado_establecimiento('b8800000-0000-0000-0000-000000000010','aprobado',true)$$,
+'42501','Administrador autenticado requerido','propietario no modera estado');
+select ok(not has_function_privilege('anon','public.moderar_estado_establecimiento(uuid,public.estado_establecimiento,boolean)','EXECUTE'),'anon no modera');
 select ok(not has_function_privilege('anon','public.aplicar_correccion_establecimiento(uuid,text)','EXECUTE'),'anon sin permiso RPC');
 select ok(not has_table_privilege('authenticated','public.correcciones_aplicadas','INSERT,UPDATE,DELETE'),'cliente sin escritura del historial');
 select set_config('request.jwt.claim.sub','b8800000-0000-0000-0000-000000000001',true);
+select ok(not has_table_privilege('authenticated','public.establecimientos','UPDATE'),'sin UPDATE general de establecimiento');
+select throws_ok($$update public.establecimientos set nombre='Intrusión admin'
+where id='b8800000-0000-0000-0000-000000000010'$$,
+'42501','El administrador solo puede moderar el estado directamente','admin no edita información directa');
+select throws_ok($$update public.establecimientos set nombre='Intrusión',estado='rechazado'
+where id='b8800000-0000-0000-0000-000000000010'$$,
+'42501','El administrador solo puede moderar el estado directamente','mezclar moderación y datos se rechaza');
+select throws_ok($$update public.establecimientos set categoria_id=categoria_id
+where id='b8800000-0000-0000-0000-000000000010'$$,
+'42501',null,'sin privilegio directo sobre categoría');
+select throws_ok($$insert into public.establecimiento_categorias(establecimiento_id,subcategoria_id,es_principal)
+select 'b8800000-0000-0000-0000-000000000010',id,true from public.subcategorias where activa limit 1$$,
+'42501',null,'admin no usa trigger de categoría para eludir aprobación');
+select throws_ok($$select public.reemplazar_horarios_establecimiento(
+'b8800000-0000-0000-0000-000000000010',
+'[{"dia_semana":1,"apertura_minutos":480,"cierre_minutos":1080}]'::jsonb)$$,
+'42501',null,'RPC invoker de horarios no permite eludir responsabilidad');
+select throws_ok($$insert into public.fotos_establecimiento(establecimiento_id,ruta_storage)
+values ('b8800000-0000-0000-0000-000000000010','qa/no-existe.jpg')$$,
+'42501',null,'admin no modifica fotos como responsable');
+select ok(not has_function_privilege('service_role','public.aplicar_correccion_establecimiento(uuid,text)','EXECUTE'),'RPC de corrección no concede entrada server innecesaria');
+select lives_ok($$update public.establecimientos set estado='rechazado'
+where id='b8800000-0000-0000-0000-000000000010'$$,'moderación de rechazo sigue disponible');
+select is((select publicable from public.establecimientos where id='b8800000-0000-0000-0000-000000000010'),false,'rechazo retira publicación');
+select lives_ok($$select public.moderar_estado_establecimiento('b8800000-0000-0000-0000-000000000010','aprobado',true)$$,'RPC de moderación aprueba y publica explícitamente');
+select is((select nombre from public.establecimientos where id='b8800000-0000-0000-0000-000000000010'),'Nombre anterior','moderación no altera información');
+select set_config('cercly.correction_rpc','true',true);
+select throws_ok($$update public.establecimientos set nombre='GUC falsificado'
+where id='b8800000-0000-0000-0000-000000000010'$$,
+'42501',null,'un flag del cliente no autoriza edición');
 select throws_ok($$select public.responder_solicitud_establecimiento('b8800000-0000-0000-0000-000000000020','aprobada','sin cambios')$$,
 'P0001','La corrección debe aplicarse y auditarse antes de aprobar.','RPC antigua no aprueba');
 select throws_ok($$select public.aplicar_correccion_establecimiento('b8800000-0000-0000-0000-000000000020','')$$,
@@ -83,6 +116,27 @@ select throws_ok($$select public.aplicar_correccion_establecimiento('b8800000-00
 'P0001','La categoría propuesta ya no está disponible.','categoría desactivada entre solicitud y aprobación impide aplicar');
 reset role;
 update public.categorias set activa=true where id=(select (datos->'cambios'->'categoria_id'->>'nuevo')::uuid from propuesta);
+
+-- Simula una solicitud heredada anterior al trigger. La RPC debe validar
+-- también el contenido interno, no asumir que todas las filas pasaron por él.
+alter table public.solicitudes_establecimientos disable trigger validar_correccion_estructurada;
+update public.solicitudes_establecimientos
+set datos_propuestos=jsonb_build_object('cambios',jsonb_build_object(
+  'nombre',jsonb_build_object('anterior','Nombre anterior')))
+where id='b8800000-0000-0000-0000-000000000020';
+alter table public.solicitudes_establecimientos enable trigger validar_correccion_estructurada;
+set local role authenticated;
+select set_config('request.jwt.claim.sub','b8800000-0000-0000-0000-000000000001',true);
+select throws_ok($$select public.aplicar_correccion_establecimiento('b8800000-0000-0000-0000-000000000020','Verificado')$$,
+'P0001','La propuesta antigua no contiene un cambio estructurado válido.','RPC rechaza propuesta heredada incompleta');
+select is((select nombre from public.establecimientos where id='b8800000-0000-0000-0000-000000000010'),'Nombre anterior','propuesta heredada inválida no modifica negocio');
+reset role;
+alter table public.solicitudes_establecimientos disable trigger validar_correccion_estructurada;
+update public.solicitudes_establecimientos
+set datos_propuestos=(select datos from propuesta)
+where id='b8800000-0000-0000-0000-000000000020';
+alter table public.solicitudes_establecimientos enable trigger validar_correccion_estructurada;
+
 set local role authenticated;
 select set_config('request.jwt.claim.sub','b8800000-0000-0000-0000-000000000001',true);
 select lives_ok($$select public.aplicar_correccion_establecimiento('b8800000-0000-0000-0000-000000000020','Verificado')$$,
@@ -117,5 +171,17 @@ select set_config('request.jwt.claim.sub','b8800000-0000-0000-0000-000000000001'
 select lives_ok($$select public.responder_solicitud_establecimiento('b8800000-0000-0000-0000-000000000021','rechazada','No procede')$$,'rechazo permitido');
 select is((select nombre from public.establecimientos where id='b8800000-0000-0000-0000-000000000010'),'Nombre propuesto','rechazo no cambia negocio');
 select is((select count(*)::integer from public.correcciones_aplicadas),1,'rechazo sin auditoría de aplicación');
+reset role;
+select ok(cercly_account_private.tiene_dependencias('b8800000-0000-0000-0000-000000000002'),'eliminación de cuenta detecta solicitudes auditadas');
+select throws_ok($$delete from auth.users where id='b8800000-0000-0000-0000-000000000002'$$,
+'23503',null,'borrado de identidad no borra historial en cascada');
+select throws_ok($$delete from public.establecimientos where id='b8800000-0000-0000-0000-000000000010'$$,
+'23503',null,'ficha con historial exige tratamiento explícito de retención');
+set local role authenticated;
+select set_config('request.jwt.claim.sub','b8800000-0000-0000-0000-000000000001',true);
+select throws_ok($$update public.correcciones_aplicadas set motivo='Borrar trazabilidad'$$,
+'42501',null,'admin de aplicación no reescribe auditoría');
+delete from public.solicitudes_establecimientos where id='b8800000-0000-0000-0000-000000000021';
+select is((select count(*)::int from public.solicitudes_establecimientos where id='b8800000-0000-0000-0000-000000000021'),1,'rechazo conserva la decisión cerrada');
 select * from finish();
 rollback;

@@ -33,7 +33,7 @@ select set_config('request.jwt.claim.sub','b4000000-0000-0000-0000-000000000002'
 
 select lives_ok($test$update public.establecimientos set estado='aprobado' where id='b4100000-0000-0000-0000-000000000002'$test$,'no puede aprobar una ficha por actualización directa');
 select is((select count(*)::integer from public.establecimientos where id='b4100000-0000-0000-0000-000000000002'),0,'no se crea ficha pública antes de la aprobación por solicitud');
-select lives_ok($test$update public.establecimientos set publicable=true where id='b4100000-0000-0000-0000-000000000002'$test$,'no puede publicar una ficha por actualización directa');
+select throws_ok($test$update public.establecimientos set publicable=true where id='b4100000-0000-0000-0000-000000000002'$test$,'42501',null,'publicación requiere procedimiento autorizado incluso sin filas visibles');
 select is((select count(*)::integer from public.establecimientos where id='b4100000-0000-0000-0000-000000000002'),0,'no hay ficha publicable antes de la aprobación');
 select throws_ok($test$insert into public.establecimientos(propietario_id,categoria_id,nombre,direccion,latitud,longitud,verificado_en,verificado_por) select auth.uid(),id,'Verificación falsa','Tulcán',0.8,-77.7,now(),auth.uid() from public.categorias where activa limit 1$test$, '42501', null, 'no puede falsificar verificacion al insertar');
 select throws_ok($test$insert into public.promociones(establecimiento_id,titulo,fecha_inicio,fecha_fin) values ('b4100000-0000-0000-0000-000000000001','Ataque',now(),now()+interval '1 day')$test$, '42501', null, 'no crea promociones de otro negocio');
@@ -60,7 +60,7 @@ set local role authenticated;
 select set_config('request.jwt.claim.sub','b4000000-0000-0000-0000-000000000002',true);
 select lives_ok($test$update public.promociones set titulo='Oferta editada B4' where id='b4200000-0000-0000-0000-000000000001'$test$, 'colaborador activo edita promocion');
 select ok((select titulo='Oferta editada B4' from public.promociones where id='b4200000-0000-0000-0000-000000000001'), 'edicion del colaborador efectiva');
-select throws_ok($test$update public.establecimientos set propietario_id=auth.uid() where id='b4100000-0000-0000-0000-000000000001'$test$, 'P0001', null, 'colaborador no roba propiedad');
+select throws_ok($test$update public.establecimientos set propietario_id=auth.uid() where id='b4100000-0000-0000-0000-000000000001'$test$, '42501', null, 'colaborador no recibe privilegio de cambiar propiedad');
 reset role;
 set local role authenticated;
 select set_config('request.jwt.claim.sub','b4000000-0000-0000-0000-000000000001',true);

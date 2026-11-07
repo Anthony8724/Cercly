@@ -135,10 +135,21 @@ def main():
             '20261029032754_revoke_elevated_preference_grants.sql',
         )
         pending = [ROOT / 'supabase/migrations' / n for n in pending_names]
-        if any(p.name > pending_names[-1] for p in migrations):
+        # Lista cerrada: las migraciones nuevas no idempotentes se aplican una
+        # sola vez después de probar la reaplicación de las antiguas.
+        forward_names = (
+            '20261029085433_preferences_rpc_only_write.sql',
+            '20261029183540_revoke_service_role_preferences_rpc.sql',
+            '20261106034310_aplicar_correcciones_estructuradas.sql',
+            '20261107121537_cerrar_actualizacion_administrativa_directa.sql',
+        )
+        forward = [ROOT / 'supabase/migrations' / n for n in forward_names]
+        if any(not p.is_file() for p in pending + forward):
+            raise RuntimeError('Falta una migración revisada del manifiesto')
+        if any(p.name > pending_names[-1] and p not in forward for p in migrations):
             raise RuntimeError('Hay migraciones posteriores: revisar el alcance del arnés')
         for path in migrations:
-            if path not in pending and not args.restored_verification:
+            if path not in pending + forward and not args.restored_verification:
                 sql(path.stem, path.read_text())
         if args.diagnose_auth:
             catalog_audit = (ROOT / 'scripts/sql/auth_catalog_audit.sql').read_text()
@@ -152,7 +163,7 @@ begin
   for t in select schemaname,tablename from pg_tables
     where schemaname in ('public','auth')
       -- Nuevas tablas vacías añadidas por la migración no son datos preexistentes.
-      and tablename not in ('preferencias_usuario','preferencias_usuario_categorias')
+      and tablename not in ('preferencias_usuario','preferencias_usuario_categorias','correcciones_aplicadas')
     order by schemaname,tablename
   loop
     execute format('select md5(coalesce(string_agg(row_data, chr(10) order by row_data), '''')) from (select to_jsonb(x)::text row_data from %I.%I x) s', t.schemaname,t.tablename) into h;
@@ -207,6 +218,13 @@ update public.usuarios set rol='propietario' where id='b4900000-0000-0000-0000-0
             if before != after:
                 raise RuntimeError('Las migraciones alteraron datos existentes de Auth/public')
         print('Reaplicación y conservación de datos Auth/public: PASS', flush=True)
+        for path in forward:
+            sql(path.stem, path.read_text())
+        if before != sql('profiles-after-forward', snapshot_query):
+            raise RuntimeError('Las migraciones nuevas alteraron datos preexistentes')
+        if sql('audit-initially-empty', 'select count(*) from public.correcciones_aplicadas;').strip() != '0':
+            raise RuntimeError('La migración creó historial no solicitado')
+        print('Migraciones nuevas y conservación de datos: PASS', flush=True)
         if args.diagnose_auth:
             sql('auth-catalog-after', catalog_audit)
             if not args.restored_verification:

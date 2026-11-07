@@ -1,5 +1,5 @@
 begin;
-select plan(4);
+select plan(5);
 
 select ok(
   not exists (
@@ -35,10 +35,17 @@ select ok(
 
 select ok(
   has_table_privilege('authenticated', 'public.establecimientos', 'INSERT')
-    and has_table_privilege('authenticated', 'public.establecimientos', 'UPDATE')
     and has_table_privilege('authenticated', 'public.establecimientos', 'DELETE'),
-  'authenticated CRUD remains available subject to RLS policies'
+  'authenticated INSERT/DELETE remain subject to RLS'
 );
 
+select ok(
+  not has_table_privilege('authenticated','public.establecimientos','UPDATE')
+  and not exists (
+    select 1 from pg_attribute where attrelid='public.establecimientos'::regclass
+      and attnum>0 and not attisdropped
+      and has_column_privilege('authenticated',attrelid,attnum,'UPDATE')
+          is distinct from (attname=any(array['nombre','descripcion','direccion','telefono_publico','estado']))
+  ), 'UPDATE limitado exactamente a columnas del contrato actual');
 select * from finish();
 rollback;
