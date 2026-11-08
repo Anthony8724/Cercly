@@ -20,6 +20,7 @@ void main() {
                       'nombre': {'anterior': 'Antes', 'nuevo': 'Después'},
                     },
                     solicitud: 'Corregir nombre',
+                    actuales: {'nombre': 'Antes'},
                   ),
                 );
               },
@@ -31,13 +32,14 @@ void main() {
     );
     await tester.tap(find.text('Revisar'));
     await tester.pumpAndSettle();
-    expect(find.text('Actual: Antes\nPropuesto: Después'), findsOneWidget);
+    expect(find.text('Actual: Antes'), findsOneWidget);
+    expect(find.text('Propuesto: Después'), findsOneWidget);
     expect(find.byType(TextFormField), findsOneWidget);
-    await tester.tap(find.text('Aprobar cambios solicitados'));
+    await tester.tap(find.text('Aprobar y aplicar'));
     await tester.pumpAndSettle();
     expect(respuesta, isNull);
     await tester.enterText(find.byType(TextFormField), 'Revisado');
-    await tester.tap(find.text('Aprobar cambios solicitados'));
+    await tester.tap(find.text('Aprobar y aplicar'));
     await tester.pumpAndSettle();
     expect(respuesta!.motivo, 'Revisado');
   });

@@ -10,6 +10,7 @@ import subprocess
 import tempfile
 import time
 import uuid
+from correcciones_concurrencia_local import verificar_concurrencia
 
 ROOT = Path(__file__).resolve().parents[1]
 IMAGE = 'public.ecr.aws/supabase/postgres@sha256:0450166354dc9c1d25f0322ac8b580774d4fb0184d2b087f6e4fe9499c66cf53'
@@ -49,6 +50,7 @@ def main():
         for path in sorted((ROOT / 'supabase/migrations').glob('*.sql')):
             sql(path)
         for path in [ROOT / 'supabase/tests/correcciones_aplicadas_test.sql',
+                     ROOT / 'supabase/tests/correcciones_casos_adicionales_test.sql',
                      ROOT / 'supabase/tests/registro_nuevo_establecimiento_test.sql',
                      ROOT / 'supabase/tests/reclamar_establecimiento_osm_test.sql']:
             output = sql(path)
@@ -57,6 +59,7 @@ def main():
             if len(plans) != 1 or len(passed) != int(plans[0]) or re.search(r'^not ok|^Bail out!', output, re.M):
                 raise RuntimeError(f'{path.name}: prueba fallida; consultar {logs}')
             print(f'{path.name}: {len(passed)}/{plans[0]} PASS', flush=True)
+        verificar_concurrencia(lambda query: run(['exec','-i',name,'psql','-X','-At','-U','postgres','-d','postgres','-v','ON_ERROR_STOP=1','-v','VERBOSITY=sqlstate'],query.encode()))
     finally:
         if started:
             result = run(['stop', '--time', '2', name])

@@ -53,9 +53,15 @@ class _SolicitudesAdministradorScreenState
   Future<void> _aplicarCorreccion(
     SolicitudEstablecimientoDetalle detalle,
   ) async {
+    var procesada = false;
     setState(() => _solicitudProcesando = detalle.solicitud.id);
     try {
-      final categorias = await _categoriasFuture;
+      final resultados = await Future.wait<dynamic>([
+        _categoriasFuture,
+        _service.datosParaCorreccion(detalle.solicitud.establecimientoId!),
+      ]);
+      final categorias = resultados[0] as List<Map<String, dynamic>>;
+      final actuales = resultados[1] as Map<String, dynamic>;
       if (!mounted) return;
       final revision = await showDialog<CorreccionRevisada>(
         context: context,
@@ -64,6 +70,10 @@ class _SolicitudesAdministradorScreenState
               detalle.datosPropuestos['cambios'] as Map<String, dynamic>? ??
               const {},
           categorias: categorias,
+          actuales: actuales,
+          establecimiento: detalle.nombreEstablecimiento,
+          solicitante: detalle.nombreSolicitante,
+          fecha: detalle.solicitud.creadoEn,
           solicitud: detalle.solicitud.mensaje,
         ),
       );
@@ -72,11 +82,15 @@ class _SolicitudesAdministradorScreenState
         solicitudId: detalle.solicitud.id,
         motivo: revision.motivo,
       );
+      procesada = true;
+      final confirmacion = await _service.obtenerDetalle(detalle.solicitud.id);
+      if (!confirmacion.aplicada) {
+        throw StateError('No se confirmó aplicación auditada');
+      }
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Corrección aplicada y registrada.')),
       );
-      _cargar();
     } catch (error) {
       if (!mounted) return;
       final sinFuncion =
@@ -86,12 +100,17 @@ class _SolicitudesAdministradorScreenState
           content: Text(
             sinFuncion
                 ? 'La aplicación de correcciones aún no está habilitada en el servidor. La solicitud sigue pendiente.'
-                : 'No se pudo aplicar la corrección. Recarga y revisa los datos antes de intentarlo de nuevo.',
+                : 'No se pudo confirmar la aplicación. Recarga y revisa el estado antes de reintentar.',
           ),
         ),
       );
     } finally {
-      if (mounted) setState(() => _solicitudProcesando = null);
+      if (mounted) {
+        setState(() {
+          _solicitudProcesando = null;
+          if (procesada) _cargar();
+        });
+      }
     }
   }
 
@@ -104,7 +123,8 @@ class _SolicitudesAdministradorScreenState
 
     if (aprobando &&
         detalle.solicitud.tipo ==
-            SolicitudEstablecimientoModel.tipoCorreccion) {
+            SolicitudEstablecimientoModel.tipoCorreccion &&
+        detalle.esEstructurada) {
       await _aplicarCorreccion(detalle);
       return;
     }
@@ -114,6 +134,7 @@ class _SolicitudesAdministradorScreenState
       builder: (_) {
         return _DialogoRespuesta(
           aprobando: aprobando,
+          correccionManual: detalle.esCorreccion && !detalle.esEstructurada,
           nombreEstablecimiento: detalle.nombreEstablecimiento,
         );
       },
@@ -147,7 +168,9 @@ class _SolicitudesAdministradorScreenState
         SnackBar(
           content: Text(
             aprobando
-                ? 'Solicitud aprobada correctamente.'
+                ? detalle.esCorreccion
+                      ? 'Revisión manual registrada. La ficha no se modificó automáticamente.'
+                      : 'Solicitud aprobada correctamente.'
                 : 'Solicitud rechazada correctamente.',
           ),
         ),
@@ -164,7 +187,7 @@ class _SolicitudesAdministradorScreenState
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('No se pudo responder: $error'),
-          backgroundColor: Colors.red,
+          backgroundColor: SkyPalette.of(context).error,
         ),
       );
     }
@@ -172,6 +195,12 @@ class _SolicitudesAdministradorScreenState
 
   void _mostrarDetalles(SolicitudEstablecimientoDetalle detalle) {
     final solicitud = detalle.solicitud;
+    final actuales = detalle.esEstructurada
+        ? Future.wait<dynamic>([
+            _service.datosParaCorreccion(solicitud.establecimientoId!),
+            _categoriasFuture,
+          ])
+        : null;
 
     showModalBottomSheet<void>(
       context: context,
@@ -197,6 +226,45 @@ class _SolicitudesAdministradorScreenState
                   etiqueta: 'Establecimiento',
                   valor: detalle.nombreEstablecimiento,
                 ),
+                _Detalle(etiqueta: 'Estado', valor: detalle.etiquetaEstado),
+                _Detalle(
+                  etiqueta: 'Fecha',
+                  valor: _formatearFecha(solicitud.creadoEn),
+                ),
+                _Detalle(
+                  etiqueta: 'Motivo',
+                  valor: solicitud.mensaje.isEmpty
+                      ? 'Sin motivo adicional'
+                      : solicitud.mensaje,
+                ),
+                if (detalle.esEstructurada)
+                  FutureBuilder<List<dynamic>>(
+                    future: actuales,
+                    builder: (context, snapshot) => Column(
+                      children: [
+                        if (snapshot.hasError)
+                          const Text(
+                            'No se pudo comprobar la ficha actual. No se autoriza aplicar sin validarla.',
+                          ),
+                        DiferenciasCorreccion(
+                          cambios: detalle.datosPropuestos['cambios'] is Map
+                              ? Map<String, dynamic>.from(
+                                  detalle.datosPropuestos['cambios'] as Map,
+                                )
+                              : {},
+                          actuales: snapshot.data?[0] as Map<String, dynamic>?,
+                          categorias:
+                              snapshot.data?[1]
+                                  as List<Map<String, dynamic>>? ??
+                              const [],
+                        ),
+                      ],
+                    ),
+                  ),
+                if (detalle.esCorreccion && !detalle.esEstructurada)
+                  const Text(
+                    'Solicitud manual: el texto no se aplicará automáticamente.',
+                  ),
                 _Detalle(
                   etiqueta: 'Dirección',
                   valor: detalle.direccionEstablecimiento,
@@ -244,10 +312,7 @@ class _SolicitudesAdministradorScreenState
                       ? 'Sin mensaje'
                       : solicitud.mensaje,
                 ),
-                _Detalle(
-                  etiqueta: 'Estado',
-                  valor: _nombreEstado(solicitud.estado),
-                ),
+                _Detalle(etiqueta: 'Estado', valor: detalle.etiquetaEstado),
                 _Detalle(
                   etiqueta: 'Fecha',
                   valor: _formatearFecha(solicitud.creadoEn),
@@ -401,11 +466,11 @@ class _SolicitudesAdministradorScreenState
   Color _colorEstado(String estado) {
     switch (estado) {
       case SolicitudEstablecimientoModel.estadoAprobada:
-        return Colors.green;
+        return SkyPalette.of(context).success;
       case SolicitudEstablecimientoModel.estadoRechazada:
-        return Colors.red;
+        return SkyPalette.of(context).error;
       default:
-        return Colors.orange;
+        return SkyPalette.of(context).warning;
     }
   }
 
@@ -700,7 +765,13 @@ class _SolicitudesAdministradorScreenState
                             final solicitud = detalle.solicitud;
                             final procesando =
                                 _solicitudProcesando == solicitud.id;
-                            final color = _colorEstado(solicitud.estado);
+                            final sinAplicacion =
+                                detalle.esEstructurada &&
+                                solicitud.fueAprobada &&
+                                !detalle.aplicada;
+                            final color = sinAplicacion
+                                ? SkyPalette.of(context).warning
+                                : _colorEstado(solicitud.estado);
 
                             return Container(
                               margin: const EdgeInsets.only(bottom: 12),
@@ -737,7 +808,11 @@ class _SolicitudesAdministradorScreenState
                                             ),
                                           ),
                                           child: Icon(
-                                            _iconoEstado(solicitud.estado),
+                                            sinAplicacion
+                                                ? Icons.warning_amber_rounded
+                                                : _iconoEstado(
+                                                    solicitud.estado,
+                                                  ),
                                             color: color,
                                             size: 21,
                                           ),
@@ -769,23 +844,32 @@ class _SolicitudesAdministradorScreenState
                                             ],
                                           ),
                                         ),
-                                        Chip(
-                                          backgroundColor: color.withValues(
-                                            alpha: 0.09,
-                                          ),
-                                          side: BorderSide.none,
-                                          visualDensity: VisualDensity.compact,
-                                          avatar: Icon(
-                                            _iconoEstado(solicitud.estado),
-                                            color: color,
-                                            size: 18,
-                                          ),
-                                          label: Text(
-                                            _nombreEstado(solicitud.estado),
-                                            style: TextStyle(
+                                        Flexible(
+                                          child: Chip(
+                                            backgroundColor: color.withValues(
+                                              alpha: 0.09,
+                                            ),
+                                            side: BorderSide.none,
+                                            visualDensity:
+                                                VisualDensity.compact,
+                                            avatar: Icon(
+                                              sinAplicacion
+                                                  ? Icons.warning_amber_rounded
+                                                  : _iconoEstado(
+                                                      solicitud.estado,
+                                                    ),
                                               color: color,
-                                              fontSize: 11,
-                                              fontWeight: FontWeight.w800,
+                                              size: 18,
+                                            ),
+                                            label: Text(
+                                              detalle.etiquetaEstado,
+                                              maxLines: 2,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: TextStyle(
+                                                color: color,
+                                                fontSize: 11,
+                                                fontWeight: FontWeight.w800,
+                                              ),
                                             ),
                                           ),
                                         ),
@@ -861,7 +945,9 @@ class _SolicitudesAdministradorScreenState
                                               icon: const Icon(Icons.close),
                                               label: const Text('Rechazar'),
                                               style: OutlinedButton.styleFrom(
-                                                foregroundColor: Colors.red,
+                                                foregroundColor: SkyPalette.of(
+                                                  context,
+                                                ).error,
                                               ),
                                             ),
                                             FilledButton.icon(
@@ -873,7 +959,13 @@ class _SolicitudesAdministradorScreenState
                                                 );
                                               },
                                               icon: const Icon(Icons.check),
-                                              label: const Text('Aprobar'),
+                                              label: Text(
+                                                detalle.esCorreccion
+                                                    ? (detalle.esEstructurada
+                                                          ? 'Aprobar y aplicar'
+                                                          : 'Registrar revisión manual')
+                                                    : 'Aprobar',
+                                              ),
                                             ),
                                           ],
                                         ],
@@ -901,8 +993,10 @@ class _DialogoRespuesta extends StatefulWidget {
   const _DialogoRespuesta({
     required this.aprobando,
     required this.nombreEstablecimiento,
+    this.correccionManual = false,
   });
 
+  final bool correccionManual;
   final bool aprobando;
   final String nombreEstablecimiento;
 
@@ -947,6 +1041,10 @@ class _DialogoRespuestaState extends State<_DialogoRespuesta> {
                   : 'Indica por qué se rechazará la solicitud para '
                         '"${widget.nombreEstablecimiento}".',
             ),
+            if (widget.correccionManual)
+              const Text(
+                'Esta decisión solo registra una revisión manual; no actualiza los datos de la ficha.',
+              ),
             const SizedBox(height: 16),
             TextFormField(
               controller: _motivoController,
@@ -982,7 +1080,9 @@ class _DialogoRespuestaState extends State<_DialogoRespuesta> {
           onPressed: _confirmar,
           style: widget.aprobando
               ? null
-              : FilledButton.styleFrom(backgroundColor: Colors.red),
+              : FilledButton.styleFrom(
+                  backgroundColor: SkyPalette.of(context).error,
+                ),
           child: Text(widget.aprobando ? 'Aprobar' : 'Rechazar'),
         ),
       ],
@@ -1019,9 +1119,9 @@ class _VistaMapaSolicitud extends StatelessWidget {
                   point: punto,
                   width: 42,
                   height: 42,
-                  child: const Icon(
+                  child: Icon(
                     Icons.location_on,
-                    color: Colors.red,
+                    color: SkyPalette.of(context).error,
                     size: 40,
                   ),
                 ),

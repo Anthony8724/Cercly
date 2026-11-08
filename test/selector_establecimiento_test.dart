@@ -39,6 +39,7 @@ class BusquedaFalsa implements SolicitudEstablecimientoRepository {
   final consultas = <(String, int, String?)>[];
   Future<List<EstablecimientoSolicitudOpcion>> Function(String, int)? buscar;
   String? enviado;
+  String? mensajeEnviado;
   Map<String, dynamic>? cambiosEnviados;
   @override
   Future<List<EstablecimientoSolicitudOpcion>> listarAsociadosParaTipo(
@@ -64,12 +65,45 @@ class BusquedaFalsa implements SolicitudEstablecimientoRepository {
     Map<String, dynamic>? cambios,
   }) async {
     enviado = establecimientoId;
+    mensajeEnviado = mensaje;
     cambiosEnviados = cambios;
     return 'solicitud';
   }
 }
 
 void main() {
+  testWidgets('propietario envía cambios válidos sin motivo opcional', (
+    tester,
+  ) async {
+    final repo = BusquedaFalsa()..asociados = [negocioA];
+    await tester.pumpWidget(
+      MaterialApp(
+        home: NuevaSolicitudScreen(service: repo, tipoInicial: 'correccion'),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(
+      find.byKey(const ValueKey('seleccionar-nombre')),
+    );
+    await tester.tap(find.byKey(const ValueKey('seleccionar-nombre')));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const ValueKey('nuevo-nombre')),
+      'Nombre propuesto válido',
+    );
+    await tester.ensureVisible(find.text('Enviar solicitud'));
+    await tester.tap(find.text('Enviar solicitud'));
+    await tester.pumpAndSettle();
+    expect(repo.enviado, 'a');
+    expect(repo.mensajeEnviado, '');
+    expect(repo.cambiosEnviados, {
+      'nombre': {
+        'anterior': 'Café Central',
+        'nuevo': 'Nombre propuesto válido',
+      },
+    });
+  });
+
   testWidgets(
     'único negocio asociado se selecciona y la ficha inicial tiene prioridad',
     (tester) async {

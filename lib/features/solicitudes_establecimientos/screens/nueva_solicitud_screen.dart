@@ -498,14 +498,24 @@ class _NuevaSolicitudScreenState extends State<NuevaSolicitudScreen> {
                                     minLines: 4,
                                     maxLines: 7,
                                     maxLength: 1000,
-                                    decoration: const InputDecoration(
-                                      labelText: 'Explicación de la solicitud',
+                                    decoration: InputDecoration(
+                                      labelText:
+                                          _tipo ==
+                                              SolicitudEstablecimientoModel
+                                                  .tipoCorreccion
+                                          ? 'Motivo (opcional)'
+                                          : 'Explicación de la solicitud',
                                       hintText: 'Describe el motivo y proporciona información que permita verificarlo.',
                                       alignLabelWithHint: true,
                                       prefixIcon: Icon(Icons.edit_note_rounded),
                                     ),
                                     validator: (valor) {
                                       final texto = valor?.trim() ?? '';
+                                      if (_tipo ==
+                                          SolicitudEstablecimientoModel
+                                              .tipoCorreccion) {
+                                        return null;
+                                      }
                                       if (texto.isEmpty) {
                                         return 'Escribe una explicación.';
                                       }

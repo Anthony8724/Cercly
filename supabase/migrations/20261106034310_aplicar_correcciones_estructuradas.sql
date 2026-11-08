@@ -24,7 +24,8 @@ create policy "revisor y solicitante leen correccion aplicada"
   using ((select public.es_administrador()) or solicitante_id = (select auth.uid()));
 
 -- Se ejecuta antes del validador existente. No revalida solicitudes antiguas
--- al cambiar solo estado/motivo; estas no pueden aprobarse sin aplicación auditada.
+-- al cambiar solo estado/motivo. Las estructuradas exigen aplicación auditada;
+-- las de texto conservan una revisión manual que no modifica la ficha.
 create function public.validar_correccion_estructurada()
 returns trigger language plpgsql security definer set search_path = '' as $$
 declare
@@ -36,10 +37,17 @@ declare
   categoria uuid;
   permitidos text[] := array['nombre','direccion','categoria_id','descripcion','telefono_publico','latitud','longitud'];
 begin
+  if tg_op='UPDATE' and old.tipo='correccion' and old.estado <> 'pendiente'
+     and (to_jsonb(new)-'actualizado_en') is distinct from (to_jsonb(old)-'actualizado_en') then
+    raise exception using errcode='42501', message='Una corrección cerrada no puede modificarse.';
+  end if;
   if new.tipo <> 'correccion' then return new; end if;
   if tg_op = 'UPDATE' and
      (new.establecimiento_id,new.tipo,new.datos_propuestos) is not distinct from
      (old.establecimiento_id,old.tipo,old.datos_propuestos) then return new; end if;
+  -- Compatibilidad con solicitudes de texto y clientes manuales existentes.
+  -- Nunca interpretar texto libre ni tratarlo como una propuesta aplicable.
+  if not (coalesce(new.datos_propuestos,'{}'::jsonb) ? 'cambios') then return new; end if;
   if auth.uid() is null or not public.puede_gestionar_como_propietario(new.establecimiento_id) then
     raise exception 'Solo el propietario o un colaborador activo puede solicitar una corrección.';
   end if;
@@ -105,7 +113,7 @@ create trigger validar_correccion_estructurada before insert or update on public
 create function public.validar_aprobacion_correccion()
 returns trigger language plpgsql security definer set search_path = '' as $$
 begin
-  if new.tipo='correccion' and new.estado='aprobada'
+  if new.tipo='correccion' and new.datos_propuestos ? 'cambios' and new.estado='aprobada'
      and old.estado is distinct from new.estado
      and not exists(select 1 from public.correcciones_aplicadas a where a.solicitud_id=new.id) then
     raise exception 'La corrección debe aplicarse y auditarse antes de aprobar.';
@@ -144,6 +152,13 @@ begin
   select * into e from public.establecimientos where id=s.establecimiento_id for update;
   if not found or e.estado is distinct from 'aprobado' or e.publicable is not true then
     raise exception 'El establecimiento no está disponible.';
+  end if;
+  if e.propietario_id is distinct from s.solicitante_id then
+    perform 1 from public.miembros_establecimiento m where m.establecimiento_id=e.id
+      and m.usuario_id=s.solicitante_id and m.activo for share;
+    if not found then
+      raise exception 'El solicitante ya no tiene permisos sobre el establecimiento.';
+    end if;
   end if;
   cambios := s.datos_propuestos->'cambios';
   if jsonb_typeof(cambios) is distinct from 'object'
@@ -203,6 +218,9 @@ begin
     longitud=coalesce((cambios->'longitud'->>'nuevo')::double precision,e.longitud)
   where id=e.id returning * into e;
   for campo in select jsonb_object_keys(cambios) loop
+    if to_jsonb(e)->campo is distinct from cambios->campo->'nuevo' then
+      raise exception 'El valor aplicado no coincide con la propuesta; operación revertida.';
+    end if;
     despues := despues || jsonb_build_object(campo,to_jsonb(e)->campo);
   end loop;
   insert into public.correcciones_aplicadas

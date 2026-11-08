@@ -1,6 +1,7 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../models/solicitud_establecimiento_model.dart';
+import '../models/propuesta_correccion.dart';
 import '../../establecimientos/services/establecimiento_service.dart';
 
 class EstablecimientoSolicitudOpcion {
@@ -32,6 +33,7 @@ class SolicitudEstablecimientoDetalle {
     required this.nombreEstablecimiento,
     required this.direccionEstablecimiento,
     this.datosPropuestos = const {},
+    this.aplicacion,
   });
 
   final SolicitudEstablecimientoModel solicitud;
@@ -39,16 +41,60 @@ class SolicitudEstablecimientoDetalle {
   final String nombreEstablecimiento;
   final String direccionEstablecimiento;
   final Map<String, dynamic> datosPropuestos;
+  final Map<String, dynamic>? aplicacion;
+  bool get esCorreccion =>
+      solicitud.tipo == SolicitudEstablecimientoModel.tipoCorreccion;
+  bool get esEstructurada =>
+      esCorreccion && datosPropuestos.containsKey('cambios');
+  Map<String, dynamic>? get cambiosValidos =>
+      PropuestaCorreccion.validar(datosPropuestos['cambios']);
+  bool get aplicada {
+    final a = aplicacion;
+    if (!esCorreccion ||
+        !solicitud.fueAprobada ||
+        a == null ||
+        a['solicitud_id'] != solicitud.id) {
+      return false;
+    }
+    final antes = a['antes'], despues = a['despues'];
+    return antes is Map &&
+        despues is Map &&
+        antes.isNotEmpty &&
+        antes.length == despues.length &&
+        antes.keys.every(
+          (k) =>
+              PropuestaCorreccion.etiquetas.containsKey(k) &&
+              despues.containsKey(k),
+        ) &&
+        antes.keys.any((k) => antes[k] != despues[k]);
+  }
+
+  String get etiquetaEstado {
+    if (solicitud.estaPendiente) return 'Pendiente';
+    if (solicitud.fueRechazada) return 'Rechazada';
+    if (!esCorreccion) return 'Aprobada';
+    if (aplicada) return 'Corrección aplicada';
+    return esEstructurada
+        ? 'Sin aplicación acreditada'
+        : 'Revisada manualmente';
+  }
 
   factory SolicitudEstablecimientoDetalle.fromSupabase(
     Map<String, dynamic> datos,
   ) {
+    final rawAplicacion = datos['aplicacion'];
+    final aplicacion = rawAplicacion is List && rawAplicacion.length == 1
+        ? rawAplicacion.single
+        : rawAplicacion;
     final solicitante = datos['solicitante'] as Map<String, dynamic>?;
 
     final establecimiento = datos['establecimiento'] as Map<String, dynamic>?;
 
     return SolicitudEstablecimientoDetalle(
       solicitud: SolicitudEstablecimientoModel.fromSupabase(datos),
+      aplicacion: aplicacion is Map
+          ? Map<String, dynamic>.from(aplicacion)
+          : null,
       nombreSolicitante:
           solicitante?['nombre'] as String? ?? 'Usuario desconocido',
       nombreEstablecimiento:
@@ -105,6 +151,9 @@ class SolicitudEstablecimientoService
     establecimiento:establecimientos!solicitudes_establecimientos_establecimiento_id_fkey(
       nombre,
       direccion
+    ),
+    aplicacion:correcciones_aplicadas!correcciones_aplicadas_solicitud_id_fkey(
+      solicitud_id, antes, despues, cerrado_en
     )
   ''';
 
@@ -182,6 +231,15 @@ class SolicitudEstablecimientoService
         .order('nombre', ascending: true)
         .order('id', ascending: true);
     return respuesta.map(EstablecimientoSolicitudOpcion.fromSupabase).toList();
+  }
+
+  Future<SolicitudEstablecimientoDetalle> obtenerDetalle(String id) async {
+    final fila = await _supabase
+        .from('solicitudes_establecimientos')
+        .select(_consultaConDetalles)
+        .eq('id', id)
+        .single();
+    return SolicitudEstablecimientoDetalle.fromSupabase(fila);
   }
 
   Future<List<SolicitudEstablecimientoDetalle>> listarTodas() async {
@@ -327,7 +385,7 @@ class SolicitudEstablecimientoService
 
     final texto = mensaje.trim();
 
-    if (texto.isEmpty) {
+    if (texto.isEmpty && tipo != SolicitudEstablecimientoModel.tipoCorreccion) {
       throw ArgumentError('Debes explicar el motivo de la solicitud.');
     }
 
@@ -345,8 +403,8 @@ class SolicitudEstablecimientoService
 
     final datosCrear = solicitud.toSupabaseParaCrear();
     if (tipo == SolicitudEstablecimientoModel.tipoCorreccion) {
-      if (cambios == null || cambios.isEmpty) {
-        throw ArgumentError('Selecciona cambios concretos.');
+      if (PropuestaCorreccion.validar(cambios) == null) {
+        throw ArgumentError('Selecciona cambios concretos y válidos.');
       }
       datosCrear['datos_propuestos'] = {'cambios': cambios};
     }

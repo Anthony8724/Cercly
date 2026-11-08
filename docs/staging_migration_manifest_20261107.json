@@ -175,7 +175,7 @@
   "pending": [
     {
       "source_file": "20261106034310_aplicar_correcciones_estructuradas.sql",
-      "source_sha256": "09eebe09879371759d5e41ee3f463f4bcdccab2a989c11a343fc934fdb18d56c"
+      "source_sha256": "562f197c5d6f309d2a40e0dc908777c67691ba7ad99e292b75c0fbb8a937c360"
     },
     {
       "source_file": "20261107121537_cerrar_actualizacion_administrativa_directa.sql",

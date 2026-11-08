@@ -30,9 +30,9 @@ select throws_ok($$insert into public.solicitudes_establecimientos(solicitante_i
 select auth.uid(),'b8800000-0000-0000-0000-000000000010','correccion','No soy propietario',datos from propuesta$$,
 'P0001','Solo el propietario o un colaborador activo puede solicitar una corrección.','tercero no propone corrección');
 select set_config('request.jwt.claim.sub','b8800000-0000-0000-0000-000000000002',true);
-select throws_ok($$insert into public.solicitudes_establecimientos(solicitante_id,establecimiento_id,tipo,mensaje,datos_propuestos)
-values(auth.uid(),'b8800000-0000-0000-0000-000000000010','correccion','Texto libre heredado','{"descripcion_solicitud":"algo"}')$$,
-'P0001','La propuesta debe contener únicamente cambios estructurados.','texto libre ya no se acepta');
+select lives_ok($$insert into public.solicitudes_establecimientos(id,solicitante_id,establecimiento_id,tipo,mensaje,datos_propuestos)
+values('b8800000-0000-0000-0000-000000000030',auth.uid(),'b8800000-0000-0000-0000-000000000011','correccion','Texto libre heredado','{"descripcion_solicitud":"algo"}')$$,
+'cliente manual sigue pudiendo presentar una solicitud');
 select throws_ok($$insert into public.solicitudes_establecimientos(solicitante_id,establecimiento_id,tipo,mensaje,datos_propuestos)
 select auth.uid(),'b8800000-0000-0000-0000-000000000010','correccion','Campo inesperado',
 jsonb_build_object('cambios',jsonb_build_object('propietario_id',jsonb_build_object('anterior',auth.uid(),'nuevo',null)))$$,
@@ -89,6 +89,9 @@ select set_config('cercly.correction_rpc','true',true);
 select throws_ok($$update public.establecimientos set nombre='GUC falsificado'
 where id='b8800000-0000-0000-0000-000000000010'$$,
 '42501',null,'un flag del cliente no autoriza edición');
+select lives_ok($$select public.responder_solicitud_establecimiento('b8800000-0000-0000-0000-000000000030','aprobada','Revisión manual')$$,'solicitud de texto puede revisarse manualmente');
+select is((select count(*)::int from public.correcciones_aplicadas),0,'revisión manual no inventa aplicación auditada');
+select is((select nombre from public.establecimientos where id='b8800000-0000-0000-0000-000000000011'),'Negocio ajeno','revisión manual no cambia ficha');
 select throws_ok($$select public.responder_solicitud_establecimiento('b8800000-0000-0000-0000-000000000020','aprobada','sin cambios')$$,
 'P0001','La corrección debe aplicarse y auditarse antes de aprobar.','RPC antigua no aprueba');
 select throws_ok($$select public.aplicar_correccion_establecimiento('b8800000-0000-0000-0000-000000000020','')$$,
@@ -183,5 +186,14 @@ select throws_ok($$update public.correcciones_aplicadas set motivo='Borrar traza
 '42501',null,'admin de aplicación no reescribe auditoría');
 delete from public.solicitudes_establecimientos where id='b8800000-0000-0000-0000-000000000021';
 select is((select count(*)::int from public.solicitudes_establecimientos where id='b8800000-0000-0000-0000-000000000021'),1,'rechazo conserva la decisión cerrada');
+select lives_ok($$update public.solicitudes_establecimientos set estado='pendiente'
+where id='b8800000-0000-0000-0000-000000000020'$$,'RLS filtra actualización administrativa cerrada');
+select is((select estado::text from public.solicitudes_establecimientos where id='b8800000-0000-0000-0000-000000000020'),'aprobada','admin no reabre aplicación auditada');
+select lives_ok($$update public.solicitudes_establecimientos set mensaje='Alterar propuesta cerrada'
+where id='b8800000-0000-0000-0000-000000000030'$$,'RLS filtra edición de revisión manual cerrada');
+select is((select mensaje from public.solicitudes_establecimientos where id='b8800000-0000-0000-0000-000000000030'),'Texto libre heredado','revisión manual conserva contenido');
+reset role;
+select throws_ok($$update public.solicitudes_establecimientos set estado='pendiente'
+where id='b8800000-0000-0000-0000-000000000020'$$,'42501','Una corrección cerrada no puede modificarse.','trigger también protege filas cerradas de rol de mantenimiento');
 select * from finish();
 rollback;

@@ -32,7 +32,10 @@ class _ProponerCorreccionState extends State<ProponerCorreccion> {
       if (campo != 'categoria_id')
         campo: TextEditingController(text: '${widget.actuales[campo] ?? ''}'),
   };
-  late String categoria = widget.actuales['categoria_id'] as String;
+  late String? categoria =
+      widget.categorias.any((c) => c['id'] == widget.actuales['categoria_id'])
+      ? widget.actuales['categoria_id'] as String?
+      : null;
   @override
   void dispose() {
     for (final c in controles.values) {
@@ -129,7 +132,7 @@ class _ProponerCorreccionState extends State<ProponerCorreccion> {
                       publicar();
                     }
                   },
-                  validator: (v) => v == widget.actuales[campo]
+                  validator: (v) => v == null || v == widget.actuales[campo]
                       ? 'Elige una categoría diferente.'
                       : null,
                 )

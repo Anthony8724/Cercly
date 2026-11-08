@@ -70,7 +70,9 @@ class _MisSolicitudesScreenState extends State<MisSolicitudesScreen> {
               onPressed: () {
                 Navigator.of(dialogContext).pop(true);
               },
-              style: FilledButton.styleFrom(backgroundColor: Colors.red),
+              style: FilledButton.styleFrom(
+                backgroundColor: SkyPalette.of(context).error,
+              ),
               child: const Text('Eliminar'),
             ),
           ],
@@ -112,7 +114,7 @@ class _MisSolicitudesScreenState extends State<MisSolicitudesScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('No se pudo eliminar: $error'),
-          backgroundColor: Colors.red,
+          backgroundColor: SkyPalette.of(context).error,
         ),
       );
     }
@@ -145,11 +147,11 @@ class _MisSolicitudesScreenState extends State<MisSolicitudesScreen> {
   Color _colorEstado(String estado) {
     switch (estado) {
       case SolicitudEstablecimientoModel.estadoAprobada:
-        return Colors.green;
+        return SkyPalette.of(context).success;
       case SolicitudEstablecimientoModel.estadoRechazada:
-        return Colors.red;
+        return SkyPalette.of(context).error;
       default:
-        return Colors.orange;
+        return SkyPalette.of(context).warning;
     }
   }
 
@@ -219,10 +221,10 @@ class _MisSolicitudesScreenState extends State<MisSolicitudesScreen> {
                             CerclySectionCard(
                               child: Column(
                                 children: [
-                                  const Icon(
+                                  Icon(
                                     Icons.error_outline_rounded,
                                     size: 52,
-                                    color: Colors.red,
+                                    color: SkyPalette.of(context).error,
                                   ),
                                   const SizedBox(height: 12),
                                   Text(
@@ -396,7 +398,11 @@ class _SolicitudCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final solicitud = detalle.solicitud;
-    final color = colorEstado(solicitud.estado);
+    final sinAplicacion =
+        detalle.esEstructurada && solicitud.fueAprobada && !detalle.aplicada;
+    final color = sinAplicacion
+        ? SkyPalette.of(context).warning
+        : colorEstado(solicitud.estado);
 
     return CerclySectionCard(
       margin: const EdgeInsets.only(bottom: 12),
@@ -414,7 +420,9 @@ class _SolicitudCard extends StatelessWidget {
                   borderRadius: BorderRadius.circular(15),
                 ),
                 child: Icon(
-                  iconoEstado(solicitud.estado),
+                  sinAplicacion
+                      ? Icons.warning_amber_rounded
+                      : iconoEstado(solicitud.estado),
                   color: color,
                   size: 24,
                 ),
@@ -444,18 +452,24 @@ class _SolicitudCard extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
-                decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.10),
-                  borderRadius: BorderRadius.circular(999),
-                ),
-                child: Text(
-                  nombreEstado(solicitud.estado),
-                  style: TextStyle(
-                    color: color,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w900,
+              Flexible(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 9,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: color.withValues(alpha: 0.10),
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Text(
+                    detalle.etiquetaEstado,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: color,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w900,
+                    ),
                   ),
                 ),
               ),
@@ -492,7 +506,9 @@ class _SolicitudCard extends StatelessWidget {
               decoration: BoxDecoration(
                 color: SkyPalette.of(context).soft,
                 borderRadius: BorderRadius.circular(15),
-                border: Border.all(color: const Color(0xFFCEE0FB)),
+                border: Border.all(
+                  color: Theme.of(context).colorScheme.outlineVariant,
+                ),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -531,7 +547,7 @@ class _SolicitudCard extends StatelessWidget {
                       icon: const Icon(Icons.delete_outline_rounded),
                       label: const Text('Eliminar'),
                       style: TextButton.styleFrom(
-                        foregroundColor: Colors.redAccent,
+                        foregroundColor: SkyPalette.of(context).error,
                       ),
                     ),
             ),
