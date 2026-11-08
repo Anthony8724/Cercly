@@ -1,0 +1,327 @@
+{
+  "source_relation_count": 73,
+  "restored_relation_count": 73,
+  "different_relation_count": 7,
+  "raw_order_only": false,
+  "differences": [
+    {
+      "schema": "extensions",
+      "name": "geography_columns",
+      "presence": "both",
+      "different_attributes": {
+        "owner": {
+          "source": "supabase_admin",
+          "restored": "cercly_restore_operator_7362510a"
+        }
+      },
+      "source_record": {
+        "name": "geography_columns",
+        "owner": "supabase_admin",
+        "schema": "extensions",
+        "relkind": "v",
+        "relrowsecurity": false,
+        "relforcerowsecurity": false
+      },
+      "restored_record": {
+        "name": "geography_columns",
+        "owner": "cercly_restore_operator_7362510a",
+        "schema": "extensions",
+        "relkind": "v",
+        "relrowsecurity": false,
+        "relforcerowsecurity": false
+      },
+      "archive_evidence": {
+        "toc_entries": [],
+        "ddl_owner_roles": [],
+        "ddl_rls_flags": [],
+        "schema_ddl_mentions_object": false
+      },
+      "source_security_inventory": {
+        "acl_entries": 17,
+        "policies": 0,
+        "triggers": 0
+      }
+    },
+    {
+      "schema": "extensions",
+      "name": "geometry_columns",
+      "presence": "both",
+      "different_attributes": {
+        "owner": {
+          "source": "supabase_admin",
+          "restored": "cercly_restore_operator_7362510a"
+        }
+      },
+      "source_record": {
+        "name": "geometry_columns",
+        "owner": "supabase_admin",
+        "schema": "extensions",
+        "relkind": "v",
+        "relrowsecurity": false,
+        "relforcerowsecurity": false
+      },
+      "restored_record": {
+        "name": "geometry_columns",
+        "owner": "cercly_restore_operator_7362510a",
+        "schema": "extensions",
+        "relkind": "v",
+        "relrowsecurity": false,
+        "relforcerowsecurity": false
+      },
+      "archive_evidence": {
+        "toc_entries": [],
+        "ddl_owner_roles": [],
+        "ddl_rls_flags": [],
+        "schema_ddl_mentions_object": false
+      },
+      "source_security_inventory": {
+        "acl_entries": 17,
+        "policies": 0,
+        "triggers": 0
+      }
+    },
+    {
+      "schema": "extensions",
+      "name": "pg_stat_statements",
+      "presence": "both",
+      "different_attributes": {
+        "owner": {
+          "source": "postgres",
+          "restored": "cercly_restore_operator_7362510a"
+        }
+      },
+      "source_record": {
+        "name": "pg_stat_statements",
+        "owner": "postgres",
+        "schema": "extensions",
+        "relkind": "v",
+        "relrowsecurity": false,
+        "relforcerowsecurity": false
+      },
+      "restored_record": {
+        "name": "pg_stat_statements",
+        "owner": "cercly_restore_operator_7362510a",
+        "schema": "extensions",
+        "relkind": "v",
+        "relrowsecurity": false,
+        "relforcerowsecurity": false
+      },
+      "archive_evidence": {
+        "toc_entries": [],
+        "ddl_owner_roles": [],
+        "ddl_rls_flags": [],
+        "schema_ddl_mentions_object": true
+      },
+      "source_security_inventory": {
+        "acl_entries": 17,
+        "policies": 0,
+        "triggers": 0
+      }
+    },
+    {
+      "schema": "extensions",
+      "name": "pg_stat_statements_info",
+      "presence": "both",
+      "different_attributes": {
+        "owner": {
+          "source": "postgres",
+          "restored": "cercly_restore_operator_7362510a"
+        }
+      },
+      "source_record": {
+        "name": "pg_stat_statements_info",
+        "owner": "postgres",
+        "schema": "extensions",
+        "relkind": "v",
+        "relrowsecurity": false,
+        "relforcerowsecurity": false
+      },
+      "restored_record": {
+        "name": "pg_stat_statements_info",
+        "owner": "cercly_restore_operator_7362510a",
+        "schema": "extensions",
+        "relkind": "v",
+        "relrowsecurity": false,
+        "relforcerowsecurity": false
+      },
+      "archive_evidence": {
+        "toc_entries": [],
+        "ddl_owner_roles": [],
+        "ddl_rls_flags": [],
+        "schema_ddl_mentions_object": true
+      },
+      "source_security_inventory": {
+        "acl_entries": 17,
+        "policies": 0,
+        "triggers": 0
+      }
+    },
+    {
+      "schema": "extensions",
+      "name": "spatial_ref_sys",
+      "presence": "both",
+      "different_attributes": {
+        "owner": {
+          "source": "supabase_admin",
+          "restored": "cercly_restore_operator_7362510a"
+        }
+      },
+      "source_record": {
+        "name": "spatial_ref_sys",
+        "owner": "supabase_admin",
+        "schema": "extensions",
+        "relkind": "r",
+        "relrowsecurity": false,
+        "relforcerowsecurity": false
+      },
+      "restored_record": {
+        "name": "spatial_ref_sys",
+        "owner": "cercly_restore_operator_7362510a",
+        "schema": "extensions",
+        "relkind": "r",
+        "relrowsecurity": false,
+        "relforcerowsecurity": false
+      },
+      "archive_evidence": {
+        "toc_entries": [
+          "4677; 0 18210 TABLE DATA extensions spatial_ref_sys supabase_admin"
+        ],
+        "ddl_owner_roles": [],
+        "ddl_rls_flags": [],
+        "schema_ddl_mentions_object": false
+      },
+      "source_security_inventory": {
+        "acl_entries": 17,
+        "policies": 0,
+        "triggers": 0
+      }
+    },
+    {
+      "schema": "vault",
+      "name": "decrypted_secrets",
+      "presence": "both",
+      "different_attributes": {
+        "owner": {
+          "source": "supabase_admin",
+          "restored": "cercly_restore_operator_7362510a"
+        }
+      },
+      "source_record": {
+        "name": "decrypted_secrets",
+        "owner": "supabase_admin",
+        "schema": "vault",
+        "relkind": "v",
+        "relrowsecurity": false,
+        "relforcerowsecurity": false
+      },
+      "restored_record": {
+        "name": "decrypted_secrets",
+        "owner": "cercly_restore_operator_7362510a",
+        "schema": "vault",
+        "relkind": "v",
+        "relrowsecurity": false,
+        "relforcerowsecurity": false
+      },
+      "archive_evidence": {
+        "toc_entries": [],
+        "ddl_owner_roles": [],
+        "ddl_rls_flags": [],
+        "schema_ddl_mentions_object": true
+      },
+      "source_security_inventory": {
+        "acl_entries": 14,
+        "policies": 0,
+        "triggers": 0
+      }
+    },
+    {
+      "schema": "vault",
+      "name": "secrets",
+      "presence": "both",
+      "different_attributes": {
+        "owner": {
+          "source": "supabase_admin",
+          "restored": "cercly_restore_operator_7362510a"
+        }
+      },
+      "source_record": {
+        "name": "secrets",
+        "owner": "supabase_admin",
+        "schema": "vault",
+        "relkind": "r",
+        "relrowsecurity": false,
+        "relforcerowsecurity": false
+      },
+      "restored_record": {
+        "name": "secrets",
+        "owner": "cercly_restore_operator_7362510a",
+        "schema": "vault",
+        "relkind": "r",
+        "relrowsecurity": false,
+        "relforcerowsecurity": false
+      },
+      "archive_evidence": {
+        "toc_entries": [
+          "4676; 0 16612 TABLE DATA vault secrets supabase_admin"
+        ],
+        "ddl_owner_roles": [],
+        "ddl_rls_flags": [],
+        "schema_ddl_mentions_object": true
+      },
+      "source_security_inventory": {
+        "acl_entries": 14,
+        "policies": 0,
+        "triggers": 0
+      }
+    }
+  ],
+  "database_metadata_recorded": false,
+  "database_toc_entries": 0,
+  "full_restore_performed": false,
+  "network": "none",
+  "target_acl_policies_archived_in_error_diagnostic": false,
+  "source_extensions": [
+    {
+      "schema": "extensions",
+      "extname": "pg_stat_statements",
+      "extversion": "1.11"
+    },
+    {
+      "schema": "extensions",
+      "extname": "pgcrypto",
+      "extversion": "1.3"
+    },
+    {
+      "schema": "pg_catalog",
+      "extname": "plpgsql",
+      "extversion": "1.0"
+    },
+    {
+      "schema": "extensions",
+      "extname": "postgis",
+      "extversion": "3.3.7"
+    },
+    {
+      "schema": "vault",
+      "extname": "supabase_vault",
+      "extversion": "0.3.1"
+    },
+    {
+      "schema": "extensions",
+      "extname": "uuid-ossp",
+      "extversion": "1.1"
+    }
+  ],
+  "extension_creation_statements": [
+    "CREATE EXTENSION IF NOT EXISTS pg_stat_statements WITH SCHEMA extensions;",
+    "CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA extensions;",
+    "CREATE EXTENSION IF NOT EXISTS postgis WITH SCHEMA extensions;",
+    "CREATE EXTENSION IF NOT EXISTS supabase_vault WITH SCHEMA vault;",
+    "CREATE EXTENSION IF NOT EXISTS \"uuid-ossp\" WITH SCHEMA extensions;"
+  ],
+  "extension_toc_entries": [
+    "2; 3079 16393 EXTENSION - pg_stat_statements ",
+    "6; 3079 17897 EXTENSION - postgis ",
+    "5; 3079 16608 EXTENSION - supabase_vault "
+  ]
+}
