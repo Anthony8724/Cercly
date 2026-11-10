@@ -295,6 +295,8 @@ class _PantallaSegunRol extends StatefulWidget {
 class _PantallaSegunRolState extends State<_PantallaSegunRol>
     with WidgetsBindingObserver {
   late Future<_EstadoModo> _estadoFuture;
+  // Permite explorar sin asumir permisos de cuenta cuando falla la consulta.
+  bool _exploracionPublicaTemporal = false;
 
   static String _claveModo(String id) => 'cercly_modo_cuenta_$id';
 
@@ -313,7 +315,9 @@ class _PantallaSegunRolState extends State<_PantallaSegunRol>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed && mounted) {
+    if (state == AppLifecycleState.resumed &&
+        mounted &&
+        !_exploracionPublicaTemporal) {
       setState(_cargarCapacidades);
     }
   }
@@ -325,6 +329,7 @@ class _PantallaSegunRolState extends State<_PantallaSegunRol>
   }
 
   void _cargarCapacidades() {
+    _exploracionPublicaTemporal = false;
     _estadoFuture = _obtenerEstado();
   }
 
@@ -413,6 +418,84 @@ class _PantallaSegunRolState extends State<_PantallaSegunRol>
     }
   }
 
+  /// Solo muestra Explorar y Mapa, más un aviso de cuenta no disponible.
+  /// No se utilizan capacidades guardadas para habilitar privilegios privados.
+  Widget _construirExploracionPublica() {
+    return Scaffold(
+      backgroundColor: CerclyColors.background,
+      body: SafeArea(
+        child: Column(
+          children: [
+            Material(
+              color: CerclyColors.background,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.cloud_off_outlined),
+                    const SizedBox(width: 8),
+                    const Expanded(
+                      child: Text(
+                        'No pudimos verificar tu cuenta. '
+                        'Puedes explorar, pero las funciones privadas '
+                        'necesitan una verificación en línea.',
+                        style: TextStyle(fontSize: 12),
+                      ),
+                    ),
+                    TextButton(
+                      onPressed: () => setState(_cargarCapacidades),
+                      child: const Text('Reintentar'),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            Expanded(
+              child: NavegacionPrincipalScreen(
+                terceraOpcionBuilder: (_) => Scaffold(
+                  backgroundColor: CerclyColors.background,
+                  body: Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.person_off_outlined, size: 40),
+                          const SizedBox(height: 12),
+                          const Text(
+                            'Cuenta temporalmente no disponible',
+                            textAlign: TextAlign.center,
+                          ),
+                          const SizedBox(height: 8),
+                          const Text(
+                            'Cuando recuperes la conexión, pulsa Reintentar '
+                            'para verificar el acceso a tu cuenta.',
+                            textAlign: TextAlign.center,
+                          ),
+                          const SizedBox(height: 16),
+                          OutlinedButton(
+                            onPressed: () => setState(_cargarCapacidades),
+                            child: const Text('Reintentar'),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                terceraOpcionLabel: 'Mi cuenta',
+                terceraOpcionIcon: Icons.person_outline,
+                terceraOpcionSelectedIcon: Icons.person,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return FutureBuilder<_EstadoModo>(
@@ -423,6 +506,9 @@ class _PantallaSegunRolState extends State<_PantallaSegunRol>
         }
 
         if (snapshot.hasError) {
+          if (_exploracionPublicaTemporal) {
+            return _construirExploracionPublica();
+          }
           return Scaffold(
             backgroundColor: CerclyColors.background,
             body: Column(
@@ -493,6 +579,16 @@ class _PantallaSegunRolState extends State<_PantallaSegunRol>
                                         fontWeight: FontWeight.w900,
                                       ),
                                     ),
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                OutlinedButton.icon(
+                                  onPressed: () => setState(() {
+                                    _exploracionPublicaTemporal = true;
+                                  }),
+                                  icon: const Icon(Icons.explore_outlined),
+                                  label: const Text(
+                                    'Explorar sin acceder a mi cuenta',
                                   ),
                                 ),
                                 const SizedBox(height: 8),
