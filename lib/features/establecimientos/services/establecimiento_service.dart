@@ -30,6 +30,7 @@ class EstablecimientoService implements RegistroEstablecimientoRepository {
     : _supabase = supabase ?? Supabase.instance.client;
 
   final SupabaseClient _supabase;
+  final Set<String> _moderacionesEnCurso = {};
 
   @override
   Future<String> crearSolicitudRegistro({
@@ -317,9 +318,10 @@ class EstablecimientoService implements RegistroEstablecimientoRepository {
         .toList();
   }
 
-  Future<void> cambiarEstado({
+  Future<EstablecimientoModel> cambiarEstado({
     required String establecimientoId,
     required String nuevoEstado,
+    bool? publicar,
   }) async {
     const estadosPermitidos = {'pendiente', 'aprobado', 'rechazado'};
 
@@ -327,16 +329,50 @@ class EstablecimientoService implements RegistroEstablecimientoRepository {
       throw ArgumentError('El estado indicado no es válido.');
     }
 
-    await _supabase
-        .from('establecimientos')
-        .update({'estado': nuevoEstado})
-        .eq('id', establecimientoId);
+    if (nuevoEstado == 'aprobado' && publicar == null) {
+      throw ArgumentError('Indica explícitamente si se publicará la ficha.');
+    }
+    if (nuevoEstado != 'aprobado' && publicar == true) {
+      throw ArgumentError('Solo una ficha aprobada puede publicarse.');
+    }
+    if (_supabase.auth.currentUser == null) {
+      throw StateError('Debes iniciar sesión.');
+    }
+    if (!_moderacionesEnCurso.add(establecimientoId)) {
+      throw StateError('Ya hay una moderación en curso para esta ficha.');
+    }
+    try {
+      final publicable = nuevoEstado == 'aprobado' && publicar == true;
+      await _supabase.rpc(
+        'moderar_estado_establecimiento',
+        params: {
+          'p_id': establecimientoId,
+          'p_estado': nuevoEstado,
+          'p_publicable': publicable,
+        },
+      );
+      final actualizado = await obtenerPorId(establecimientoId);
+      if (actualizado == null ||
+          actualizado.estado != nuevoEstado ||
+          actualizado.publicable != publicable) {
+        throw StateError(
+          'No se pudo confirmar el estado y la publicación. Recarga la ficha.',
+        );
+      }
+      return actualizado;
+    } finally {
+      _moderacionesEnCurso.remove(establecimientoId);
+    }
   }
 
-  Future<void> aprobar(String establecimientoId) async {
+  Future<void> aprobar(
+    String establecimientoId, {
+    required bool publicar,
+  }) async {
     await cambiarEstado(
       establecimientoId: establecimientoId,
       nuevoEstado: 'aprobado',
+      publicar: publicar,
     );
   }
 
@@ -372,10 +408,21 @@ class EstablecimientoService implements RegistroEstablecimientoRepository {
       );
     }
 
+    final vigente = await obtenerPorId(establecimiento.id);
+    if (vigente == null) throw StateError('La ficha ya no está disponible.');
+    if (vigente.requiereSolicitudCorreccion) {
+      throw StateError(
+        'La ficha está aprobada. Recarga y presenta una solicitud de corrección.',
+      );
+    }
+
     await _supabase
         .from('establecimientos')
         .update(establecimiento.toSupabaseParaActualizarInformacion())
-        .eq('id', establecimiento.id);
+        .eq('id', establecimiento.id)
+        .eq('estado', vigente.estado)
+        .select('id')
+        .single();
   }
 
   Future<EstablecimientoModel?> obtenerPorId(String id) async {

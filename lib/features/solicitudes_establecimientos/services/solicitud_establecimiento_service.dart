@@ -49,6 +49,7 @@ class SolicitudEstablecimientoDetalle {
   Map<String, dynamic>? get cambiosValidos =>
       PropuestaCorreccion.validar(datosPropuestos['cambios']);
   bool get aplicada {
+    if (solicitud.datosSuprimidos) return false;
     final a = aplicacion;
     if (!esCorreccion ||
         !solicitud.fueAprobada ||
@@ -70,6 +71,7 @@ class SolicitudEstablecimientoDetalle {
   }
 
   String get etiquetaEstado {
+    if (solicitud.datosSuprimidos) return 'Historial con datos suprimidos';
     if (solicitud.estaPendiente) return 'Pendiente';
     if (solicitud.fueRechazada) return 'Rechazada';
     if (!esCorreccion) return 'Aprobada';
@@ -96,7 +98,10 @@ class SolicitudEstablecimientoDetalle {
           ? Map<String, dynamic>.from(aplicacion)
           : null,
       nombreSolicitante:
-          solicitante?['nombre'] as String? ?? 'Usuario desconocido',
+          solicitante?['nombre'] as String? ??
+          (datos['datos_suprimidos'] == true
+              ? 'Cuenta eliminada'
+              : 'Usuario desconocido'),
       nombreEstablecimiento:
           establecimiento?['nombre'] as String? ??
           (datos['datos_propuestos'] as Map<String, dynamic>?)?['nombre']

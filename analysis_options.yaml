@@ -12,6 +12,9 @@ include: package:flutter_lints/flutter.yaml
 analyzer:
   exclude:
     - build/**
+    # Copias completas entregadas para revisión y evidencias, fuera del paquete.
+    # El código ejecutable y las pruebas de lib/ y test/ siguen analizándose.
+    - artifacts/**
     - android/**
     - ios/**
     - web/**

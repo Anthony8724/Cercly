@@ -14,6 +14,7 @@ class EstablecimientoModel {
     required Map<String, List<TurnoHorario>> horario,
     required this.zonaHoraria,
     this.estado = 'pendiente',
+    this.publicable = false,
   }) : horario = Map.unmodifiable({
          for (final entry in horario.entries)
            entry.key: List<TurnoHorario>.unmodifiable(entry.value),
@@ -61,14 +62,21 @@ class EstablecimientoModel {
   final Map<String, List<TurnoHorario>> horario;
   final String zonaHoraria;
   final String estado;
+  final bool publicable;
+
+  bool get requiereSolicitudCorreccion => estado == 'aprobado';
 
   Map<String, dynamic> toSupabaseParaActualizarInformacion() {
+    if (requiereSolicitudCorreccion) {
+      throw StateError(
+        'Una ficha aprobada requiere una solicitud de corrección.',
+      );
+    }
     return {
       'nombre': nombre.trim(),
       'descripcion': descripcion.trim(),
       'direccion': direccion.trim(),
       'telefono_publico': telefonoPublico.trim(),
-      if (estado == 'aprobado') 'estado': 'pendiente',
     };
   }
 
@@ -110,6 +118,7 @@ class EstablecimientoModel {
       horario: horario ?? {for (final dia in diasSemana) dia: <TurnoHorario>[]},
       zonaHoraria: datos['zona_horaria'] as String? ?? 'America/Guayaquil',
       estado: datos['estado'] as String? ?? 'pendiente',
+      publicable: datos['publicable'] == true,
     );
   }
 }

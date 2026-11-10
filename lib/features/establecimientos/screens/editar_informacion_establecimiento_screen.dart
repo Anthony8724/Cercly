@@ -10,14 +10,20 @@ import '../../../shared/ui/cercly_ui.dart';
 
 import '../models/establecimiento_model.dart';
 import '../services/establecimiento_service.dart';
+import '../../solicitudes_establecimientos/screens/nueva_solicitud_screen.dart';
+import '../../solicitudes_establecimientos/services/solicitud_establecimiento_service.dart';
 
 class EditarInformacionEstablecimientoScreen extends StatefulWidget {
   const EditarInformacionEstablecimientoScreen({
     required this.establecimiento,
+    this.service,
+    this.solicitudesService,
     super.key,
   });
 
   final EstablecimientoModel establecimiento;
+  final EstablecimientoService? service;
+  final SolicitudEstablecimientoRepository? solicitudesService;
 
   @override
   State<EditarInformacionEstablecimientoScreen> createState() =>
@@ -27,7 +33,7 @@ class EditarInformacionEstablecimientoScreen extends StatefulWidget {
 class _EditarInformacionEstablecimientoScreenState
     extends State<EditarInformacionEstablecimientoScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _service = EstablecimientoService();
+  late final _service = widget.service ?? EstablecimientoService();
 
   late final TextEditingController _nombreController;
   late final TextEditingController _descripcionController;
@@ -121,9 +127,7 @@ class _EditarInformacionEstablecimientoScreenState
         return;
       }
 
-      final mensaje = actual.estado == 'aprobado'
-          ? 'Información actualizada y enviada nuevamente a revisión.'
-          : 'Información actualizada correctamente.';
+      const mensaje = 'Información actualizada correctamente.';
 
       ScaffoldMessenger.of(context)
           .showSnackBar(SnackBar(content: Text(mensaje)));
@@ -158,7 +162,40 @@ class _EditarInformacionEstablecimientoScreenState
 
   @override
   Widget build(BuildContext context) {
-    final requiereRevision = widget.establecimiento.estado == 'aprobado';
+    if (widget.establecimiento.requiereSolicitudCorreccion) {
+      if (!widget.establecimiento.publicable) {
+        return Scaffold(
+          backgroundColor: SkyPalette.of(context).background,
+          body: SkySurface(
+            child: SafeArea(
+              child: Column(
+                children: [
+                  CerclyPageHeader(
+                    title: 'Ficha aprobada sin publicar',
+                    subtitle: widget.establecimiento.nombre,
+                    icon: Icons.visibility_off_outlined,
+                    onBack: () => Navigator.of(context).maybePop(),
+                  ),
+                  const Padding(
+                    padding: EdgeInsets.all(16),
+                    child: CerclyInfoBanner(
+                      text: 'Un administrador debe revisar la publicación de esta ficha antes de que puedas solicitar una corrección. No se han modificado sus datos.',
+                      icon: Icons.info_outline_rounded,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      }
+      return NuevaSolicitudScreen(
+        tipoInicial: 'correccion',
+        establecimientoIdInicial: widget.establecimiento.id,
+        bloquearTipo: true,
+        service: widget.solicitudesService,
+      );
+    }
 
     return Scaffold(
       backgroundColor: SkyPalette.of(context).background,
@@ -181,13 +218,6 @@ class _EditarInformacionEstablecimientoScreenState
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        if (requiereRevision) ...[
-                          const CerclyInfoBanner(
-                            text: 'Al guardar cambios en un establecimiento aprobado, volverá a estado pendiente para revisión.',
-                            icon: Icons.info_outline_rounded,
-                          ),
-                          const SizedBox(height: 16),
-                        ],
                         CerclySectionCard(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
