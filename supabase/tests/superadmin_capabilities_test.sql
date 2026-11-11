@@ -1,6 +1,6 @@
 -- Solo base local aislada; identidades sintéticas y rollback.
 begin;
-select plan(30);
+select plan(31);
 insert into auth.users(id,email,raw_user_meta_data) values
  ('b5900000-0000-0000-0000-000000000001','normal-b5@cercly.test','{"rol":"administrador"}'),
  ('b5900000-0000-0000-0000-000000000002','owner-b5@cercly.test','{}'),
@@ -158,9 +158,11 @@ select throws_ok($$select * from public.mis_capacidades()$$,
 reset role;
 select ok(not has_function_privilege('anon','public.mis_capacidades()','EXECUTE'),
   'RPC no concede ejecución anónima');
-delete from auth.users where id='b5900000-0000-0000-0000-000000000004';
+select throws_ok($$delete from auth.users where id='b5900000-0000-0000-0000-000000000004'$$,
+  '42501','Supresion requiere caso autorizado sin dependencias',
+  'capacidad revocada no autoriza borrar Auth directamente');
 select is((select count(*)::integer from cercly_auth_private.auditoria_superadministradores
   where usuario_id='b5900000-0000-0000-0000-000000000004'),2,
-  'auditoría conserva otorgamiento y revocación tras borrar cuenta revocada');
+  'auditoría conserva otorgamiento y revocación tras rechazo de borrado');
 select * from finish();
 rollback;

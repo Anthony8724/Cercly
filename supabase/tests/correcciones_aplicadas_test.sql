@@ -157,7 +157,7 @@ select is((select antes->>'nombre' from public.correcciones_aplicadas),'Nombre a
 select is((select despues->>'nombre' from public.correcciones_aplicadas),'Nombre propuesto','auditoría conserva después');
 select is((select solicitante_id from public.correcciones_aplicadas),'b8800000-0000-0000-0000-000000000002'::uuid,'historial guarda solicitante');
 select is((select revisado_por from public.correcciones_aplicadas),auth.uid(),'historial guarda revisor');
-select ok((select conservar_hasta >= cerrado_en + interval '24 months' - interval '1 minute' from public.correcciones_aplicadas),'retención 24 meses sin autoeliminación');
+select ok((select conservar_hasta is null from public.correcciones_aplicadas),'sin plazo automático hasta aprobación legal; historial conservado');
 select throws_ok($$select public.aplicar_correccion_establecimiento('b8800000-0000-0000-0000-000000000020','otra vez')$$,
 'P0001','Se requiere una corrección pendiente.','doble aprobación prohibida');
 select set_config('request.jwt.claim.sub','b8800000-0000-0000-0000-000000000003',true);
@@ -177,7 +177,7 @@ select is((select count(*)::integer from public.correcciones_aplicadas),1,'recha
 reset role;
 select ok(cercly_account_private.tiene_dependencias('b8800000-0000-0000-0000-000000000002'),'eliminación de cuenta detecta solicitudes auditadas');
 select throws_ok($$delete from auth.users where id='b8800000-0000-0000-0000-000000000002'$$,
-'23503',null,'borrado de identidad no borra historial en cascada');
+'42501','Supresion requiere caso autorizado sin dependencias','borrado de identidad no borra historial en cascada');
 select throws_ok($$delete from public.establecimientos where id='b8800000-0000-0000-0000-000000000010'$$,
 '23503',null,'ficha con historial exige tratamiento explícito de retención');
 set local role authenticated;

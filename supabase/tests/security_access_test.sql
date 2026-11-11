@@ -75,7 +75,7 @@ reset role;
 set local role authenticated;
 select set_config('request.jwt.claim.sub','b4000000-0000-0000-0000-000000000003',true);
 select ok(public.puede_gestionar_establecimiento('b4100000-0000-0000-0000-000000000001'), 'propietario legitimo conserva acceso');
-select lives_ok($test$update public.establecimientos set nombre='Propietario conserva acceso' where id='b4100000-0000-0000-0000-000000000001'$test$, 'propietario mantiene edicion');
+select throws_ok($test$update public.establecimientos set nombre='Propietario conserva acceso' where id='b4100000-0000-0000-0000-000000000001'$test$, '42501','Ficha aprobada: solicitud de correccion requerida', 'propietario conserva acceso pero una ficha aprobada requiere propuesta');
 reset role; select set_config('request.jwt.claim.sub','',true); set local role anon;
 select ok(exists(select 1 from public.establecimientos where id='b4100000-0000-0000-0000-000000000001'), 'anon consulta negocio publicado');
 select ok(exists(select 1 from public.promociones where id='b4200000-0000-0000-0000-000000000001'), 'anon consulta promocion publicada');
