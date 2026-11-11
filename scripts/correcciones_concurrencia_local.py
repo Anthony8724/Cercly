@@ -28,3 +28,56 @@ def verificar_concurrencia(execute):
         counts=checked(f"select (select count(*) from public.correcciones_aplicadas where establecimiento_id='{business}')||':'||(select count(*) from public.solicitudes_establecimientos where establecimiento_id='{business}' and estado='aprobada')||':'||(select count(*) from public.solicitudes_establecimientos where establecimiento_id='{business}' and estado='pendiente');")
         if counts!=('1:1:1' if distinct else '1:1:0'):raise RuntimeError('Concurrencia: auditoría/estado inconsistente')
         print(('Propuestas distintas del mismo negocio' if distinct else 'Doble aprobación de la misma solicitud')+': 1 aplicada / 1 rechazada; auditoría única PASS',flush=True)
+
+
+def verificar_concurrencia_moderacion(execute):
+    """Dos aprobaciones concurrentes producen una sola transición auditada."""
+    admin = 'b8600000-0000-0000-0000-000000000001'
+    business = 'b8600000-0000-0000-0000-000000000010'
+
+    def checked(query):
+        result = execute(query)
+        if result.returncode:
+            raise RuntimeError('Error en fixture local de moderación concurrente')
+        return result.stdout.decode().strip()
+
+    checked(
+        "insert into auth.users(id,email,raw_user_meta_data) "
+        f"values('{admin}','moderacion-concurrente@cercly.test','{{}}'); "
+        f"update public.usuarios set rol='administrador' where id='{admin}'; "
+        "insert into public.establecimientos"
+        "(id,propietario_id,categoria_id,nombre,direccion,latitud,longitud,estado,publicable) "
+        f"select '{business}','{admin}',id,'Moderación concurrente','Dirección',"
+        "0.8,-77.7,'pendiente',false from public.categorias "
+        "where activa order by id limit 1;"
+    )
+    barrier = threading.Barrier(2)
+
+    def moderate(_):
+        barrier.wait(timeout=10)
+        return execute(
+            "begin; set local role authenticated; "
+            "set local statement_timeout='5s'; "
+            f"select set_config('request.jwt.claim.sub','{admin}',true); "
+            f"select public.moderar_estado_establecimiento('{business}','aprobado',true); "
+            "select pg_sleep(0.3); commit;"
+        )
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        results = list(pool.map(moderate, range(2)))
+    if any(result.returncode for result in results):
+        raise RuntimeError('Moderación concurrente no es idempotente')
+
+    state = checked(
+        "select (select count(*) from public.auditoria_moderacion_establecimientos "
+        f"where establecimiento_id='{business}')::text || ':' || "
+        "(select count(*) from public.auditoria_moderacion_establecimientos "
+        f"where establecimiento_id='{business}' and actor_id='{admin}' "
+        "and estado_anterior='pendiente' and estado_nuevo='aprobado' "
+        "and publicable_anterior=false and publicable_nuevo=true)::text || ':' || "
+        "(select estado::text || ':' || publicable::text "
+        f"from public.establecimientos where id='{business}');"
+    )
+    if state != '1:1:aprobado:true':
+        raise RuntimeError('Moderación concurrente duplicó o alteró auditoría/estado')
+    print('Moderación concurrente: 2 respuestas correctas / 1 transición / 1 auditoría PASS', flush=True)

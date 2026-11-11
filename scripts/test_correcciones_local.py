@@ -10,7 +10,7 @@ import subprocess
 import tempfile
 import time
 import uuid
-from correcciones_concurrencia_local import verificar_concurrencia
+from correcciones_concurrencia_local import verificar_concurrencia, verificar_concurrencia_moderacion
 
 ROOT = Path(__file__).resolve().parents[1]
 IMAGE = 'public.ecr.aws/supabase/postgres@sha256:0450166354dc9c1d25f0322ac8b580774d4fb0184d2b087f6e4fe9499c66cf53'
@@ -60,6 +60,7 @@ def main():
                 raise RuntimeError(f'{path.name}: prueba fallida; consultar {logs}')
             print(f'{path.name}: {len(passed)}/{plans[0]} PASS', flush=True)
         verificar_concurrencia(lambda query: run(['exec','-i',name,'psql','-X','-At','-U','postgres','-d','postgres','-v','ON_ERROR_STOP=1','-v','VERBOSITY=sqlstate'],query.encode()))
+        verificar_concurrencia_moderacion(lambda query: run(['exec','-i',name,'psql','-X','-At','-U','postgres','-d','postgres','-v','ON_ERROR_STOP=1','-v','VERBOSITY=sqlstate'],query.encode()))
     finally:
         if started:
             result = run(['stop', '--time', '2', name])
