@@ -135,10 +135,24 @@ def main():
             '20261029032754_revoke_elevated_preference_grants.sql',
         )
         pending = [ROOT / 'supabase/migrations' / n for n in pending_names]
-        if any(p.name > pending_names[-1] for p in migrations):
+        # Lista cerrada: las migraciones nuevas no idempotentes se aplican una
+        # sola vez después de probar la reaplicación de las antiguas.
+        forward_names = (
+            '20261029085433_preferences_rpc_only_write.sql',
+            '20261029183540_revoke_service_role_preferences_rpc.sql',
+            '20261106034310_aplicar_correcciones_estructuradas.sql',
+            '20261107121537_cerrar_actualizacion_administrativa_directa.sql',
+            '20261108165118_compatibilidad_moderacion_y_privacidad.sql',
+            '20261109005658_supresion_revisada_historial_minimo.sql',
+            '20261109033653_conflictos_rpc_no_reintentables.sql',
+        )
+        forward = [ROOT / 'supabase/migrations' / n for n in forward_names]
+        if any(not p.is_file() for p in pending + forward):
+            raise RuntimeError('Falta una migración revisada del manifiesto')
+        if any(p.name > pending_names[-1] and p not in forward for p in migrations):
             raise RuntimeError('Hay migraciones posteriores: revisar el alcance del arnés')
         for path in migrations:
-            if path not in pending and not args.restored_verification:
+            if path not in pending + forward and not args.restored_verification:
                 sql(path.stem, path.read_text())
         if args.diagnose_auth:
             catalog_audit = (ROOT / 'scripts/sql/auth_catalog_audit.sql').read_text()
@@ -152,7 +166,7 @@ begin
   for t in select schemaname,tablename from pg_tables
     where schemaname in ('public','auth')
       -- Nuevas tablas vacías añadidas por la migración no son datos preexistentes.
-      and tablename not in ('preferencias_usuario','preferencias_usuario_categorias')
+      and tablename not in ('preferencias_usuario','preferencias_usuario_categorias','correcciones_aplicadas','auditoria_moderacion_establecimientos')
     order by schemaname,tablename
   loop
     execute format('select md5(coalesce(string_agg(row_data, chr(10) order by row_data), '''')) from (select to_jsonb(x)::text row_data from %I.%I x) s', t.schemaname,t.tablename) into h;
@@ -207,6 +221,13 @@ update public.usuarios set rol='propietario' where id='b4900000-0000-0000-0000-0
             if before != after:
                 raise RuntimeError('Las migraciones alteraron datos existentes de Auth/public')
         print('Reaplicación y conservación de datos Auth/public: PASS', flush=True)
+        for path in forward:
+            sql(path.stem, path.read_text())
+        if before != sql('profiles-after-forward', snapshot_query):
+            raise RuntimeError('Las migraciones nuevas alteraron datos preexistentes')
+        if sql('audit-initially-empty', 'select (select count(*) from public.correcciones_aplicadas)+(select count(*) from public.auditoria_moderacion_establecimientos);').strip() != '0':
+            raise RuntimeError('La migración creó historial no solicitado')
+        print('Migraciones nuevas y conservación de datos: PASS', flush=True)
         if args.diagnose_auth:
             sql('auth-catalog-after', catalog_audit)
             if not args.restored_verification:
@@ -314,6 +335,14 @@ commit;
                     + csv + '\n\\.\n')
             sql(name_sql, content)
         before_suites = sql('data-before-suites', integrity_query)
+        # Las tablas nuevas se excluyen del contraste antes/después de CREARLAS,
+        # pero su historial sí debe quedar intacto tras cada suite con rollback.
+        audit_integrity_query = """
+select jsonb_build_object(
+ 'correcciones', (select md5(coalesce(string_agg(to_jsonb(a)::text,chr(10) order by to_jsonb(a)::text),'')) from public.correcciones_aplicadas a),
+ 'moderacion', (select md5(coalesce(string_agg(to_jsonb(a)::text,chr(10) order by to_jsonb(a)::text),'')) from public.auditoria_moderacion_establecimientos a));
+"""
+        audits_before_suites = sql('audits-before-suites', audit_integrity_query)
         for path in sorted((ROOT / 'supabase/tests').glob('*test.sql')):
             if args.restored_verification and path.name not in (
                     'auth_access_test.sql', 'security_access_test.sql',
@@ -324,6 +353,8 @@ commit;
             sql(path.stem, path.read_text(), tap=True, user='supabase_admin')
         if before_suites != sql('data-after-suites', integrity_query):
             raise RuntimeError('Una suite modificó datos fuera de rollback')
+        if audits_before_suites != sql('audits-after-suites', audit_integrity_query):
+            raise RuntimeError('Una suite modificó auditorías fuera de rollback')
         if not args.restored_verification:
             sql('cleanup-preview', (ROOT / 'scripts/sql/vista_previa_limpieza.sql').read_text())
             if before_suites != sql('data-after-preview', integrity_query):

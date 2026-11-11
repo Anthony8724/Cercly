@@ -9,6 +9,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../shared/ui/cercly_ui.dart';
 
 import '../models/solicitud_establecimiento_model.dart';
+import '../widgets/selector_establecimiento.dart';
+import '../widgets/proponer_correccion.dart';
 import '../services/solicitud_establecimiento_service.dart';
 
 class NuevaSolicitudScreen extends StatefulWidget {
@@ -37,6 +39,12 @@ class _NuevaSolicitudScreenState extends State<NuevaSolicitudScreen> {
   late Future<List<EstablecimientoSolicitudOpcion>> _establecimientosFuture;
 
   String? _establecimientoId;
+  EstablecimientoSolicitudOpcion? _seleccion;
+  List<EstablecimientoSolicitudOpcion> _asociados = [];
+  int _versionCarga = 0;
+  bool _destinoNoDisponible = false;
+  Future<(Map<String, dynamic>, List<Map<String, dynamic>>)>? _datosCorreccion;
+  Map<String, dynamic> _cambios = {};
   late String _tipo;
   bool _guardando = false;
 
@@ -56,7 +64,54 @@ class _NuevaSolicitudScreenState extends State<NuevaSolicitudScreen> {
   }
 
   void _cargarEstablecimientos() {
-    _establecimientosFuture = _service.listarEstablecimientosParaTipo(_tipo);
+    _establecimientosFuture = _cargarOpciones();
+  }
+
+  Future<List<EstablecimientoSolicitudOpcion>> _cargarOpciones() async {
+    final version = ++_versionCarga;
+    final tipo = _tipo;
+    final id = _establecimientoId;
+    final asociados = await _service.listarAsociadosParaTipo(tipo);
+    final opciones =
+        tipo == SolicitudEstablecimientoModel.tipoCorreccion &&
+            (id == null || !asociados.any((e) => e.id == id))
+        ? <EstablecimientoSolicitudOpcion>[]
+        : await _service.listarEstablecimientosParaTipo(tipo, id: id);
+    if (!mounted || version != _versionCarga) return [];
+    _asociados = asociados;
+    final candidatos = {
+      for (final e in [...asociados, ...opciones]) e.id: e,
+    };
+    _seleccion = id != null
+        ? {for (final e in opciones) e.id: e}[id]
+        : asociados.length == 1
+        ? asociados.single
+        : null;
+    _destinoNoDisponible = id != null && _seleccion == null;
+    _establecimientoId = _seleccion?.id;
+    _cargarDatosCorreccion();
+    return candidatos.values.toList();
+  }
+
+  Future<void> _elegirEstablecimiento() async {
+    final seleccionado =
+        await showModalBottomSheet<EstablecimientoSolicitudOpcion>(
+          context: context,
+          isScrollControlled: true,
+          useSafeArea: true,
+          builder: (_) => SelectorEstablecimiento(
+            service: _service,
+            tipo: _tipo,
+            asociados: _asociados,
+          ),
+        );
+    if (!mounted || seleccionado == null) return;
+    setState(() {
+      _seleccion = seleccionado;
+      _destinoNoDisponible = false;
+      _establecimientoId = seleccionado.id;
+      _cargarDatosCorreccion();
+    });
   }
 
   void _recargar() {
@@ -67,8 +122,29 @@ class _NuevaSolicitudScreenState extends State<NuevaSolicitudScreen> {
     setState(() {
       _tipo = tipo;
       _establecimientoId = null;
+      _seleccion = null;
+      _destinoNoDisponible = false;
+      _datosCorreccion = null;
+      _cambios = {};
       _cargarEstablecimientos();
     });
+  }
+
+  void _cargarDatosCorreccion() {
+    _cambios = {};
+    _datosCorreccion =
+        _tipo == SolicitudEstablecimientoModel.tipoCorreccion &&
+            _establecimientoId != null
+        ? Future.wait<dynamic>([
+            _service.datosParaCorreccion(_establecimientoId!),
+            _service.categoriasParaCorreccion(),
+          ]).then(
+            (r) => (
+              r[0] as Map<String, dynamic>,
+              r[1] as List<Map<String, dynamic>>,
+            ),
+          )
+        : null;
   }
 
   String get _mensajeSinResultados {
@@ -78,7 +154,7 @@ class _NuevaSolicitudScreenState extends State<NuevaSolicitudScreen> {
       case SolicitudEstablecimientoModel.tipoAcceso:
         return 'No hay establecimientos administrados disponibles.';
       default:
-        return 'No hay establecimientos públicos disponibles.';
+        return 'No tienes negocios asociados disponibles para corregir.';
     }
   }
 
@@ -88,7 +164,7 @@ class _NuevaSolicitudScreenState extends State<NuevaSolicitudScreen> {
         return 'Solicita permiso para colaborar en la administración '
             'del establecimiento.';
       case SolicitudEstablecimientoModel.tipoCorreccion:
-        return 'Informa datos incorrectos que deben ser revisados.';
+        return 'Selecciona cada dato y escribe su valor propuesto. El administrador solo podrá aprobar o rechazar esos cambios.';
       default:
         return 'Solicita convertirte en el propietario principal '
             'del establecimiento.';
@@ -96,6 +172,11 @@ class _NuevaSolicitudScreenState extends State<NuevaSolicitudScreen> {
   }
 
   Future<void> _enviar() async {
+    if (_tipo == SolicitudEstablecimientoModel.tipoCorreccion &&
+        (_datosCorreccion == null || _cambios.isEmpty)) {
+      _formKey.currentState!.validate();
+      return;
+    }
     if (!_formKey.currentState!.validate()) {
       return;
     }
@@ -109,6 +190,9 @@ class _NuevaSolicitudScreenState extends State<NuevaSolicitudScreen> {
         establecimientoId: _establecimientoId!,
         tipo: _tipo,
         mensaje: _mensajeController.text,
+        cambios: _tipo == SolicitudEstablecimientoModel.tipoCorreccion
+            ? _cambios
+            : null,
       );
 
       if (!mounted) {
@@ -222,44 +306,6 @@ class _NuevaSolicitudScreenState extends State<NuevaSolicitudScreen> {
                     final establecimientos =
                         snapshot.data ?? <EstablecimientoSolicitudOpcion>[];
 
-                    if (establecimientos.isEmpty && widget.bloquearTipo) {
-                      return Center(
-                        child: Padding(
-                          padding: const EdgeInsets.all(20),
-                          child: CerclySectionCard(
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Container(
-                                  width: 68,
-                                  height: 68,
-                                  decoration: BoxDecoration(
-                                    color: SkyPalette.of(context).soft,
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: Icon(
-                                    Icons.storefront_outlined,
-                                    size: 34,
-                                    color: SkyPalette.of(context).primary,
-                                  ),
-                                ),
-                                const SizedBox(height: 14),
-                                Text(
-                                  _mensajeSinResultados,
-                                  textAlign: TextAlign.center,
-                                  style: TextStyle(
-                                    color: SkyPalette.of(context).text,
-                                    fontSize: 17,
-                                    fontWeight: FontWeight.w900,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      );
-                    }
-
                     return SingleChildScrollView(
                       padding: const EdgeInsets.fromLTRB(16, 18, 16, 28),
                       child: Form(
@@ -272,6 +318,13 @@ class _NuevaSolicitudScreenState extends State<NuevaSolicitudScreen> {
                               icon: Icons.info_outline_rounded,
                             ),
                             const SizedBox(height: 16),
+                            if (_destinoNoDisponible) ...[
+                              const CerclyInfoBanner(
+                                text: 'El establecimiento de origen no está disponible para esta solicitud. Puedes buscar otro.',
+                                icon: Icons.info_outline,
+                              ),
+                              const SizedBox(height: 16),
+                            ],
                             CerclySectionCard(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -289,79 +342,58 @@ class _NuevaSolicitudScreenState extends State<NuevaSolicitudScreen> {
                                     ),
                                     const SizedBox(height: 14),
                                   ],
-                                  DropdownButtonFormField<String>(
-                                    initialValue:
-                                        establecimientos.any(
-                                          (item) =>
-                                              item.id == _establecimientoId,
-                                        )
-                                        ? _establecimientoId
-                                        : null,
-                                    decoration: const InputDecoration(
-                                      labelText: 'Establecimiento',
-                                      prefixIcon: Icon(
-                                        Icons.storefront_rounded,
-                                      ),
+                                  FormField<String>(
+                                    key: ValueKey(
+                                      'seleccion-$_establecimientoId',
                                     ),
-                                    items: establecimientos.map((
-                                      establecimiento,
-                                    ) {
-                                      return DropdownMenuItem<String>(
-                                        value: establecimiento.id,
-                                        child: Text(
-                                          establecimiento.nombre,
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                      );
-                                    }).toList(),
-                                    onChanged:
-                                        _guardando || establecimientos.isEmpty
-                                        ? null
-                                        : (valor) {
-                                            setState(() {
-                                              _establecimientoId = valor;
-                                            });
-                                          },
-                                    validator: (valor) {
-                                      if (valor == null || valor.isEmpty) {
-                                        return 'Selecciona un establecimiento.';
-                                      }
-                                      return null;
-                                    },
-                                  ),
-                                  if (_establecimientoId != null) ...[
-                                    const SizedBox(height: 8),
-                                    Row(
+                                    initialValue: _establecimientoId,
+                                    validator: (id) => id == null
+                                        ? 'Selecciona un establecimiento.'
+                                        : null,
+                                    builder: (field) => Column(
                                       crossAxisAlignment:
-                                          CrossAxisAlignment.start,
+                                          CrossAxisAlignment.stretch,
                                       children: [
-                                        Icon(
-                                          Icons.location_on_rounded,
-                                          size: 17,
-                                          color: SkyPalette.of(context).primary,
-                                        ),
-                                        const SizedBox(width: 5),
-                                        Expanded(
-                                          child: Text(
-                                            establecimientos
-                                                .firstWhere(
-                                                  (establecimiento) =>
-                                                      establecimiento.id ==
-                                                      _establecimientoId,
-                                                )
-                                                .direccion,
-                                            style: TextStyle(
-                                              color: SkyPalette.of(context)
-                                                  .muted,
-                                              fontSize: 12.5,
+                                        Material(
+                                          color: Colors.transparent,
+                                          child: ListTile(
+                                            key: const Key(
+                                              'elegir-establecimiento',
                                             ),
+                                            contentPadding: EdgeInsets.zero,
+                                            leading: const Icon(
+                                              Icons.storefront_outlined,
+                                            ),
+                                            title: Text(
+                                              _seleccion?.nombre ??
+                                                  'Buscar establecimiento',
+                                            ),
+                                            subtitle: Text(
+                                              _seleccion?.direccion ?? 'Busca por nombre y comprueba la dirección',
+                                            ),
+                                            trailing: const Icon(
+                                              Icons.search_rounded,
+                                            ),
+                                            onTap: _guardando
+                                                ? null
+                                                : _elegirEstablecimiento,
                                           ),
                                         ),
+                                        if (field.hasError)
+                                          Text(
+                                            field.errorText!,
+                                            style: TextStyle(
+                                              color: Theme.of(context)
+                                                  .colorScheme
+                                                  .error,
+                                            ),
+                                          ),
                                       ],
                                     ),
-                                  ],
+                                  ),
                                   const SizedBox(height: 18),
                                   DropdownButtonFormField<String>(
+                                    isExpanded: true,
                                     initialValue: _tipo,
                                     decoration: const InputDecoration(
                                       labelText: 'Tipo de solicitud',
@@ -369,10 +401,19 @@ class _NuevaSolicitudScreenState extends State<NuevaSolicitudScreen> {
                                     ),
                                     items: SolicitudEstablecimientoModel
                                         .tiposPermitidos
+                                        .where(
+                                          (tipo) =>
+                                              tipo !=
+                                              SolicitudEstablecimientoModel
+                                                  .tipoRegistro,
+                                        )
                                         .map((tipo) {
                                           return DropdownMenuItem<String>(
                                             value: tipo,
-                                            child: Text(_etiquetaTipo(tipo)),
+                                            child: Text(
+                                              _etiquetaTipo(tipo),
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
                                           );
                                         })
                                         .toList(),
@@ -394,6 +435,53 @@ class _NuevaSolicitudScreenState extends State<NuevaSolicitudScreen> {
                               ),
                             ),
                             const SizedBox(height: 16),
+                            if (_tipo ==
+                                    SolicitudEstablecimientoModel
+                                        .tipoCorreccion &&
+                                _datosCorreccion != null) ...[
+                              FutureBuilder<
+                                (
+                                  Map<String, dynamic>,
+                                  List<Map<String, dynamic>>,
+                                )
+                              >(
+                                future: _datosCorreccion,
+                                builder: (context, snapshot) {
+                                  if (snapshot.connectionState !=
+                                      ConnectionState.done) {
+                                    return const Center(
+                                      child: CircularProgressIndicator(),
+                                    );
+                                  }
+                                  if (snapshot.hasError || !snapshot.hasData) {
+                                    return Column(
+                                      children: [
+                                        const Text(
+                                          'No se pudieron cargar los datos actuales. No se enviará una corrección sin ellos.',
+                                        ),
+                                        TextButton(
+                                          onPressed: () =>
+                                              setState(_cargarDatosCorreccion),
+                                          child: const Text('Reintentar'),
+                                        ),
+                                      ],
+                                    );
+                                  }
+                                  return CerclySectionCard(
+                                    child: ProponerCorreccion(
+                                      key: ValueKey(
+                                        'propuesta-$_establecimientoId',
+                                      ),
+                                      actuales: snapshot.data!.$1,
+                                      categorias: snapshot.data!.$2,
+                                      onChanged: (cambios) =>
+                                          _cambios = cambios,
+                                    ),
+                                  );
+                                },
+                              ),
+                              const SizedBox(height: 16),
+                            ],
                             CerclySectionCard(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -410,14 +498,24 @@ class _NuevaSolicitudScreenState extends State<NuevaSolicitudScreen> {
                                     minLines: 4,
                                     maxLines: 7,
                                     maxLength: 1000,
-                                    decoration: const InputDecoration(
-                                      labelText: 'Explicación de la solicitud',
+                                    decoration: InputDecoration(
+                                      labelText:
+                                          _tipo ==
+                                              SolicitudEstablecimientoModel
+                                                  .tipoCorreccion
+                                          ? 'Motivo (opcional)'
+                                          : 'Explicación de la solicitud',
                                       hintText: 'Describe el motivo y proporciona información que permita verificarlo.',
                                       alignLabelWithHint: true,
                                       prefixIcon: Icon(Icons.edit_note_rounded),
                                     ),
                                     validator: (valor) {
                                       final texto = valor?.trim() ?? '';
+                                      if (_tipo ==
+                                          SolicitudEstablecimientoModel
+                                              .tipoCorreccion) {
+                                        return null;
+                                      }
                                       if (texto.isEmpty) {
                                         return 'Escribe una explicación.';
                                       }

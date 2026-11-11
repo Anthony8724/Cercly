@@ -1,5 +1,5 @@
 begin;
-select plan(19);
+select plan(20);
 insert into auth.users(id,email,raw_user_meta_data) values
  ('b7200000-0000-0000-0000-000000000001','policy-owner@cercly.test','{}'),
  ('b7200000-0000-0000-0000-000000000002','policy-target@cercly.test','{}'),
@@ -44,10 +44,10 @@ select throws_ok($$update public.establecimientos set estado='rechazado'
  where id='b7210000-0000-0000-0000-000000000001'$$,
  '42501','Usar revisión administrativa',
  'administrador no desactiva por un atajo sin auditoría');
-select throws_ok($$delete from public.establecimientos
+select lives_ok($$delete from public.establecimientos
  where id='b7210000-0000-0000-0000-000000000001'$$,
- '42501','Negocio compartido en revisión',
  'administrador no borra negocio de una solicitud activa');
+select is((select count(*)::int from public.establecimientos where id='b7210000-0000-0000-0000-000000000001'),1,'RLS conserva negocio de solicitud activa');
 select is(public.revisar_eliminacion_cuenta(
  'b7200000-0000-0000-0000-000000000001','desactivar',
  'b7210000-0000-0000-0000-000000000001'),'revision',
@@ -64,17 +64,18 @@ select is((select propietario_id from public.establecimientos
  where id='b7210000-0000-0000-0000-000000000001'),
  'b7200000-0000-0000-0000-000000000002'::uuid,
  'propiedad cambia sin borrar negocio');
-select is(public.revisar_eliminacion_cuenta(
- 'b7200000-0000-0000-0000-000000000001','aprobar'),'aprobada',
- 'admin aprueba al resolver dependencias');
+select throws_ok($$select public.revisar_eliminacion_cuenta(
+ 'b7200000-0000-0000-0000-000000000001','aprobar')$$,
+ '23503','Dependencias sin resolver',
+ 'historial auditado exige revisión de privacidad tras transferir negocio');
 reset role;
 select is((select count(*)::integer from cercly_account_private.auditoria_eliminacion
- where sujeto_id='b7200000-0000-0000-0000-000000000001'),3,
+ where sujeto_id='b7200000-0000-0000-0000-000000000001'),2,
  'auditoría registra acciones efectivas');
 set local role service_role;
 select is(public.validar_eliminacion_cuenta(
- 'b7200000-0000-0000-0000-000000000001'),true,
- 'servicio revalida antes de borrar Auth');
+ 'b7200000-0000-0000-0000-000000000001'),false,
+ 'servicio bloquea borrado con historial pendiente');
 reset role;
 create table public.deletion_fk_sintetica (
   usuario_id uuid references public.usuarios(id) on delete cascade
@@ -91,8 +92,8 @@ update public.usuarios set rol='administrador'
   where id='b7200000-0000-0000-0000-000000000001';
 set local role service_role;
 select is(public.validar_eliminacion_cuenta(
- 'b7200000-0000-0000-0000-000000000001'),true,
- 'dos administradores permiten procedimiento especial');
+ 'b7200000-0000-0000-0000-000000000001'),false,
+ 'dos administradores no evitan revisión de historial pendiente');
 reset role;
 update public.usuarios set rol='usuario'
   where id='b7200000-0000-0000-0000-000000000003';
@@ -103,7 +104,7 @@ select is(public.validar_eliminacion_cuenta(
 reset role;
 select throws_ok($$delete from auth.users
  where id='b7200000-0000-0000-0000-000000000001'$$,
- '42501','Último administrador activo',
- 'trigger transaccional protege incluso un borrado Auth directo');
+ '42501','Supresion requiere caso autorizado sin dependencias',
+ 'trigger transaccional bloquea borrado Auth directo sin revisión');
 select * from finish();
 rollback;

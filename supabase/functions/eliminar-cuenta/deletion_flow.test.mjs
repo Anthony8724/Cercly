@@ -3,20 +3,28 @@ import test from 'node:test';
 import { completeDeletion } from './deletion_flow.mjs';
 
 const userId = 'b7000000-0000-0000-0000-000000000001';
+const verifiedToken = 'synthetic-verified-token';
 
 function admin({ deletionError = null, finalizeError = null,
-  validationError = null, allowed = true } = {}) {
+  validationError = null, allowed = true, signOutError = null,
+  secondAllowed = allowed, secondValidationError = null } = {}) {
   const calls = [];
+  let validations = 0;
   return {
     calls,
-    auth: { admin: { async deleteUser(id, soft) {
+    auth: { admin: { async signOut(token, scope) {
+      calls.push(['signOut', token, scope]);
+      return { error: signOutError };
+    }, async deleteUser(id, soft) {
       calls.push(['delete', id, soft]);
       return { error: deletionError };
     } } },
     async rpc(name, params) {
       calls.push(['rpc', name, params]);
       return name === 'validar_eliminacion_cuenta'
-        ? { data: allowed, error: validationError }
+        ? (++validations === 1
+          ? { data: allowed, error: validationError }
+          : { data: secondAllowed, error: secondValidationError })
         : { error: finalizeError };
     },
   };
@@ -24,9 +32,11 @@ function admin({ deletionError = null, finalizeError = null,
 
 test('cuenta simple elimina Auth y luego limpia el registro', async () => {
   const fake = admin();
-  const result = await completeDeletion('pendiente', userId, fake);
+  const result = await completeDeletion('pendiente', userId, fake, verifiedToken);
   assert.deepEqual(result, { status: 200, body: { estado: 'eliminada' } });
   assert.deepEqual(fake.calls, [
+    ['rpc', 'validar_eliminacion_cuenta', { p_usuario_id: userId }],
+    ['signOut', verifiedToken, 'global'],
     ['rpc', 'validar_eliminacion_cuenta', { p_usuario_id: userId }],
     ['delete', userId, false],
     ['rpc', 'finalizar_eliminacion_cuenta', { p_usuario_id: userId }],
@@ -42,14 +52,14 @@ test('propietario o administrador no dispara borrado', async () => {
 
 test('fallo de Auth deja solicitud pendiente y no finaliza', async () => {
   const fake = admin({ deletionError: new Error('storage') });
-  const result = await completeDeletion('pendiente', userId, fake);
+  const result = await completeDeletion('pendiente', userId, fake, verifiedToken);
   assert.deepEqual(result, { status: 503, body: { estado: 'solicitud_pendiente' } });
-  assert.equal(fake.calls.length, 2);
+  assert.equal(fake.calls.length, 4);
 });
 
 test('fallo después de borrar Auth informa registro pendiente', async () => {
   const fake = admin({ finalizeError: new Error('database') });
-  const result = await completeDeletion('pendiente', userId, fake);
+  const result = await completeDeletion('pendiente', userId, fake, verifiedToken);
   assert.deepEqual(result, {
     status: 200,
     body: { estado: 'eliminada', registro_pendiente: true },
@@ -74,7 +84,7 @@ test('dependencias nuevas impiden el borrado aunque la solicitud esté pendiente
 
 test('aprobación administrativa aún requiere la identidad del propio titular', async () => {
   const fake = admin();
-  const result = await completeDeletion('aprobada', userId, fake);
+  const result = await completeDeletion('aprobada', userId, fake, verifiedToken);
   assert.equal(result.body.estado, 'eliminada');
 });
 
@@ -85,4 +95,32 @@ test('fallo de revalidación no se interpreta como revisión confirmada', async 
   assert.deepEqual(fake.calls, [
     ['rpc', 'validar_eliminacion_cuenta', { p_usuario_id: userId }],
   ]);
+});
+
+test('sin token verificado no se revocan sesiones ni elimina Auth', async () => {
+  const fake = admin();
+  const result = await completeDeletion('pendiente', userId, fake);
+  assert.equal(result.status, 503);
+  assert.equal(fake.calls.length, 1);
+});
+
+test('si falla la revocación global no se borra la identidad', async () => {
+  const fake = admin({ signOutError: new Error('synthetic failure') });
+  const result = await completeDeletion('pendiente', userId, fake, verifiedToken);
+  assert.equal(result.status, 503);
+  assert.equal(fake.calls.some(c => c[0] === 'delete'), false);
+});
+
+test('una dependencia posterior a la revocación impide el borrado', async () => {
+  const fake = admin({ secondAllowed: false });
+  const result = await completeDeletion('pendiente', userId, fake, verifiedToken);
+  assert.equal(result.body.estado, 'revision');
+  assert.equal(fake.calls.some(c => c[0] === 'delete'), false);
+});
+
+test('un fallo de segunda validación conserva el caso pendiente', async () => {
+  const fake = admin({ secondValidationError: new Error('synthetic failure') });
+  const result = await completeDeletion('pendiente', userId, fake, verifiedToken);
+  assert.equal(result.body.estado, 'solicitud_pendiente');
+  assert.equal(fake.calls.some(c => c[0] === 'delete'), false);
 });

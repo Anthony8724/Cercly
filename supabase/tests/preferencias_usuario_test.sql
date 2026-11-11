@@ -1,6 +1,6 @@
 -- Identidades y categoría sintéticas; todo se revierte al terminar.
 begin;
-select plan(39);
+select plan(40);
 insert into auth.users(id,email,raw_user_meta_data) values
  ('b8100000-0000-0000-0000-000000000001','pref-uno@cercly.test','{}'),
  ('b8100000-0000-0000-0000-000000000002','pref-dos@cercly.test','{}');
@@ -52,7 +52,7 @@ select throws_ok($$insert into public.preferencias_usuario_categorias(usuario_id
 select throws_ok($$update public.preferencias_usuario_categorias set categoria_id='b8110000-0000-0000-0000-000000000002' where usuario_id=auth.uid()$$,'42501',null,'usuario no puede actualizar categorías directamente');
 select throws_ok($$delete from public.preferencias_usuario_categorias where usuario_id=auth.uid()$$,'42501',null,'usuario no puede borrar categorías directamente');
 select throws_ok($$select public.guardar_preferencias_usuario(array[]::uuid[],2000,false,1)$$,'22023',null,'radio fuera de lista rechazado');
-select throws_ok($$select public.guardar_preferencias_usuario(array[]::uuid[],5000,false,0)$$,'40001',null,'revisión obsoleta no sobrescribe cambios');
+select throws_ok($$select public.guardar_preferencias_usuario(array[]::uuid[],5000,false,0)$$,'PT409','Las preferencias cambiaron en otro dispositivo','revisión obsoleta no sobrescribe cambios');
 select throws_ok($$select public.guardar_preferencias_usuario(array['b8110000-0000-0000-0000-000000000002']::uuid[],5000,false,1)$$,'22023',null,'categoría inactiva no se asocia');
 select throws_ok($$insert into public.preferencias_usuario(usuario_id) values ('b8100000-0000-0000-0000-000000000002')$$,'42501',null,'no escribe preferencias de otro usuario');
 reset role;
@@ -66,7 +66,8 @@ select set_config('request.jwt.claim.sub','b8100000-0000-0000-0000-000000000002'
 select is((select count(*)::integer from public.preferencias_usuario),0,'otro usuario no ve preferencias ajenas');
 reset role;
 
-delete from auth.users where id='b8100000-0000-0000-0000-000000000001';
-select is((select count(*)::integer from public.preferencias_usuario where usuario_id='b8100000-0000-0000-0000-000000000001'),0,'borrar cuenta elimina la fila de preferencias');
+select throws_ok($$delete from auth.users where id='b8100000-0000-0000-0000-000000000001'$$,
+ '42501','Supresion requiere caso autorizado sin dependencias','borrado directo de Auth requiere caso autorizado');
+select is((select count(*)::integer from public.preferencias_usuario where usuario_id='b8100000-0000-0000-0000-000000000001'),1,'borrado rechazado conserva preferencias');
 select * from finish();
 rollback;

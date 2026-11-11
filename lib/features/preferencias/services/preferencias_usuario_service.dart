@@ -67,7 +67,14 @@ class SupabasePreferenciasRemotas implements PreferenciasRemotas {
         'Respuesta inválida al guardar preferencias.',
       );
     } on PostgrestException catch (error) {
-      if (error.code == '40001') throw const PreferenciasConflictException();
+      // Compatibilidad con el servidor anterior: solo su mensaje de negocio,
+      // nunca una serialización real del motor, se interpreta como conflicto.
+      if (error.code == 'PT409' ||
+          (error.code == '40001' &&
+              error.message ==
+                  'Las preferencias cambiaron en otro dispositivo')) {
+        throw const PreferenciasConflictException();
+      }
       rethrow;
     }
   }

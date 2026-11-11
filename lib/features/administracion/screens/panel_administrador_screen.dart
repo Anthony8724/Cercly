@@ -5,6 +5,7 @@ import '../../../sky/sky_logo.dart';
 import '../../../sky/sky_theme.dart';
 
 import '../../auth/services/auth_service.dart';
+import '../widgets/moderacion_establecimiento_dialog.dart';
 import '../../auth/screens/account_mode_selector.dart';
 import '../../auth/screens/account_settings_screen.dart';
 import '../../notificaciones/widgets/monitor_proximidad_app.dart';
@@ -80,43 +81,22 @@ class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
   ) async {
     final esAprobacion = nuevoEstado == 'aprobado';
 
-    final confirmar = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        title: Text(
-          esAprobacion ? 'Aprobar establecimiento' : 'Rechazar establecimiento',
-        ),
-        content: Text(
-          'Â¿Deseas ${esAprobacion ? 'aprobar' : 'rechazar'} '
-          '"${establecimiento.nombre}"?',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('Cancelar'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(dialogContext).pop(true),
-            style: FilledButton.styleFrom(
-              backgroundColor: esAprobacion
-                  ? SkyPalette.of(context).primary
-                  : const Color(0xFFE5484D),
-            ),
-            child: Text(esAprobacion ? 'Aprobar' : 'Rechazar'),
-          ),
-        ],
-      ),
-    );
-
-    if (confirmar != true || !mounted) return;
-
+    if (_establecimientoProcesando != null) return;
     setState(() => _establecimientoProcesando = establecimiento.id);
-
     try {
+      final decision = await showDialog<DecisionModeracion>(
+        context: context,
+        builder: (_) => ModeracionEstablecimientoDialog(
+          nombre: establecimiento.nombre,
+          aprobar: esAprobacion,
+        ),
+      );
+      if (decision == null || !mounted) return;
+
       await _service.cambiarEstado(
         establecimientoId: establecimiento.id,
         nuevoEstado: nuevoEstado,
+        publicar: decision.publicar,
       );
 
       if (!mounted) return;
@@ -130,7 +110,9 @@ class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
         SnackBar(
           content: Text(
             esAprobacion
-                ? 'Establecimiento aprobado correctamente.'
+                ? (decision.publicar
+                      ? 'Ficha aprobada y publicada.'
+                      : 'Ficha aprobada sin publicar.')
                 : 'Establecimiento rechazado correctamente.',
           ),
         ),
@@ -144,6 +126,8 @@ class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
           backgroundColor: Colors.red,
         ),
       );
+    } finally {
+      if (mounted) setState(() => _establecimientoProcesando = null);
     }
   }
 
@@ -249,7 +233,8 @@ class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
                 ),
                 _Detalle(
                   etiqueta: 'Estado',
-                  valor: _nombreEstado(establecimiento.estado),
+                  valor:
+                      '${_nombreEstado(establecimiento.estado)} · ${establecimiento.publicable ? 'Publicada' : 'No publicada'}',
                 ),
                 const SizedBox(height: 8),
                 SizedBox(
@@ -315,7 +300,11 @@ class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const SkyHorizontalLogo(markSize: 43, wordSize: 31, onDark: true),
+        const FittedBox(
+          fit: BoxFit.scaleDown,
+          alignment: Alignment.centerLeft,
+          child: SkyHorizontalLogo(markSize: 43, wordSize: 31, onDark: true),
+        ),
         const SizedBox(height: 3),
         Text(
           'Descubre lo que te rodea',
@@ -575,12 +564,16 @@ class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
                                   color: SkyPalette.of(context).primary,
                                 ),
                                 SizedBox(width: 4),
-                                Text(
-                                  'Administrador',
-                                  style: TextStyle(
-                                    color: SkyPalette.of(context).primary,
-                                    fontSize: 9.5,
-                                    fontWeight: FontWeight.w900,
+                                Flexible(
+                                  child: Text(
+                                    'Administrador',
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      color: SkyPalette.of(context).primary,
+                                      fontSize: 9.5,
+                                      fontWeight: FontWeight.w900,
+                                    ),
                                   ),
                                 ),
                               ],
@@ -762,37 +755,41 @@ class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
     }
 
     if (establecimiento.estado == 'pendiente') {
-      return Row(
+      return Wrap(
+        spacing: 10,
+        runSpacing: 8,
         children: [
-          Expanded(
-            child: OutlinedButton.icon(
-              onPressed: () => _cambiarEstado(establecimiento, 'rechazado'),
-              icon: const Icon(Icons.close_rounded, size: 17),
-              label: const Text('Rechazar'),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: const Color(0xFFE5484D),
-                side: const BorderSide(color: Color(0xFFFFB9BB)),
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(13),
-                ),
-              ),
+          OutlinedButton.icon(
+            onPressed: () => _cambiarEstado(establecimiento, 'rechazado'),
+            icon: const Icon(Icons.close_rounded, size: 17),
+            label: const Text('Rechazar'),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: SkyPalette.of(context).error,
+              side: BorderSide(color: SkyPalette.of(context).error),
             ),
           ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: FilledButton.icon(
-              onPressed: () => _cambiarEstado(establecimiento, 'aprobado'),
-              icon: const Icon(Icons.check_rounded, size: 17),
-              label: const Text('Aprobar'),
-              style: FilledButton.styleFrom(
-                backgroundColor: SkyPalette.of(context).primary,
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(13),
-                ),
-              ),
-            ),
+          FilledButton.icon(
+            onPressed: () => _cambiarEstado(establecimiento, 'aprobado'),
+            icon: const Icon(Icons.check_rounded, size: 17),
+            label: const Text('Aprobar'),
+          ),
+        ],
+      );
+    }
+
+    if (establecimiento.estado == 'aprobado' && !establecimiento.publicable) {
+      return Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        children: [
+          FilledButton.icon(
+            onPressed: () => _cambiarEstado(establecimiento, 'aprobado'),
+            icon: const Icon(Icons.visibility_outlined),
+            label: const Text('Publicar ficha aprobada'),
+          ),
+          OutlinedButton(
+            onPressed: () => _cambiarEstado(establecimiento, 'rechazado'),
+            child: const Text('Rechazar'),
           ),
         ],
       );

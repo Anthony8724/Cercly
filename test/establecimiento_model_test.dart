@@ -57,15 +57,11 @@ void main() {
     expect(datos.containsKey('longitud'), isFalse);
   });
 
-  test(
-    'un establecimiento aprobado vuelve a pendiente al editar información',
-    () {
-      final datos = crearEstablecimiento(estado: 'aprobado')
-          .toSupabaseParaActualizarInformacion();
-
-      expect(datos['estado'], 'pendiente');
-    },
-  );
+  test('una ficha aprobada requiere solicitud y no genera UPDATE', () {
+    final e = crearEstablecimiento(estado: 'aprobado');
+    expect(e.requiereSolicitudCorreccion, isTrue);
+    expect(e.toSupabaseParaActualizarInformacion, throwsStateError);
+  });
 
   test('permite leer un OSM sin propietario desde Supabase', () {
     final establecimiento = EstablecimientoModel.fromSupabase({
@@ -84,6 +80,7 @@ void main() {
 
     expect(establecimiento.propietarioId, isEmpty);
     expect(establecimiento.nombre, 'Negocio OSM');
+    expect(establecimiento.publicable, isFalse);
   });
 
   test('rechaza un nombre vacío', () {

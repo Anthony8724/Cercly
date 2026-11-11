@@ -5,12 +5,31 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 class SolicitudRepositoryFalso implements SolicitudEstablecimientoRepository {
+  @override
+  Future<Map<String, dynamic>> datosParaCorreccion(String id) async => {
+    'nombre': 'Café Central',
+    'direccion': 'Bolívar 10',
+    'categoria_id': 'cat',
+    'descripcion': 'Café',
+    'telefono_publico': '',
+    'latitud': 0.8,
+    'longitud': -77.7,
+  };
+  @override
+  Future<List<Map<String, dynamic>>> categoriasParaCorreccion() async => [
+    {'id': 'cat', 'nombre': 'Cafeterías'},
+    {'id': 'cat2', 'nombre': 'Restaurantes'},
+  ];
+
   final List<String> tiposConsultados = [];
 
   @override
   Future<List<EstablecimientoSolicitudOpcion>> listarEstablecimientosParaTipo(
-    String tipo,
-  ) async {
+    String tipo, {
+    String busqueda = '',
+    int offset = 0,
+    String? id,
+  }) async {
     tiposConsultados.add(tipo);
     return const [
       EstablecimientoSolicitudOpcion(
@@ -22,10 +41,16 @@ class SolicitudRepositoryFalso implements SolicitudEstablecimientoRepository {
   }
 
   @override
+  Future<List<EstablecimientoSolicitudOpcion>> listarAsociadosParaTipo(
+    String tipo,
+  ) async => [];
+
+  @override
   Future<String> crear({
     required String establecimientoId,
     required String tipo,
     required String mensaje,
+    Map<String, dynamic>? cambios,
   }) async => 'solicitud-1';
 }
 

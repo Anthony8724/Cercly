@@ -1,0 +1,185 @@
+{
+  "project_ref": "dlajxviqhkdcqnmczhvr",
+  "verified_on": "2026-11-07",
+  "security_commit": "b10a889421b52faea266767f50da0cefc8cb92c6",
+  "historical": [
+    {
+      "remote_version": "20260912000438",
+      "remote_name": "20260912000438_remote_schema",
+      "source_file": "20260912000438_remote_schema.sql",
+      "source_sha256": "81f876d319612a53b40e078f785cce522b3e7627113dbdb64a39c1f8c770eeb0",
+      "equivalence": "identical_sql"
+    },
+    {
+      "remote_version": "20260912001054",
+      "remote_name": "20260912001054_storage_buckets",
+      "source_file": "20260912001054_storage_buckets.sql",
+      "source_sha256": "c711097d7a591013de6cf08302a444756bbda730e3d8823227a983aea581e87a",
+      "equivalence": "identical_sql"
+    },
+    {
+      "remote_version": "20260912005223",
+      "remote_name": "20260912005223_categorias_iniciales",
+      "source_file": "20260912005223_categorias_iniciales.sql",
+      "source_sha256": "8f6b4fe0ff774a5fcb9e0e83568dc4365c407e9a8f98756f2f767d304fa6126c",
+      "equivalence": "identical_sql"
+    },
+    {
+      "remote_version": "20260912024346",
+      "remote_name": "20260912024346_guardar_horarios_establecimiento",
+      "source_file": "20260912024346_guardar_horarios_establecimiento.sql",
+      "source_sha256": "81a0226f6e356b1bc58aedb4993a90e89b9784f0026953cf6f7a5d552d33249b",
+      "equivalence": "identical_sql"
+    },
+    {
+      "remote_version": "20260912043748",
+      "remote_name": "20260912043748_gestionar_solicitudes_establecimiento",
+      "source_file": "20260912043748_gestionar_solicitudes_establecimiento.sql",
+      "source_sha256": "6f252cfd5c7177e4171f0997db6abf71c76d087decbb0430c0bce8ff43b0b731",
+      "equivalence": "identical_sql"
+    },
+    {
+      "remote_version": "20260912061744",
+      "remote_name": "20260912061744_permitir_storage_a_colaboradores",
+      "source_file": "20260912061744_permitir_storage_a_colaboradores.sql",
+      "source_sha256": "b64c68383b4b527a18f9e7379ebbc2e75c4eb6c0fd6371b9c77751650560ffff",
+      "equivalence": "identical_sql"
+    },
+    {
+      "remote_version": "20260913010000",
+      "remote_name": "20260913010000_modelo_osm_postgis",
+      "source_file": "20260913010000_modelo_osm_postgis.sql",
+      "source_sha256": "cc55ed1d1bbae55f63718592fb3a20780da34908b42a75d39acc8d8f60eb161a",
+      "equivalence": "identical_sql"
+    },
+    {
+      "remote_version": "20260913060000",
+      "remote_name": "20260913060000_refinar_taxonomia_osm",
+      "source_file": "20260913060000_refinar_taxonomia_osm.sql",
+      "source_sha256": "5fe0f1059141f1b79bf12af1f4ef038fb6753a8f7943b5b8c6fdcdb928db8255",
+      "equivalence": "identical_sql"
+    },
+    {
+      "remote_version": "20260914010000",
+      "remote_name": "20260914010000_busqueda_establecimientos",
+      "source_file": "20260914010000_busqueda_establecimientos.sql",
+      "source_sha256": "b031ef8a4671104316c78b7e1c4a721785c5060c1005970a5d104d49dcfd3c00",
+      "equivalence": "identical_sql"
+    },
+    {
+      "remote_version": "20260914120000",
+      "remote_name": "20260914120000_corregir_reclamo_establecimiento_osm",
+      "source_file": "20260914120000_corregir_reclamo_establecimiento_osm.sql",
+      "source_sha256": "bf3b74e6595e503e4612ed57f171a52b5177cf6eb805f021a947e793d2909aaf",
+      "equivalence": "identical_sql"
+    },
+    {
+      "remote_version": "20261017233138",
+      "remote_name": "20261017233138_fortalecer_acceso_perfiles",
+      "source_file": "20261017233138_fortalecer_acceso_perfiles.sql",
+      "source_sha256": "51063a2200fb362a7c05e18781ea5634023c6e8a052ecda1ec2940d4247baea2",
+      "equivalence": "identical_sql"
+    },
+    {
+      "remote_version": "20261018000337",
+      "remote_name": "20261018000337_validar_seguridad_acceso",
+      "source_file": "20261018000337_validar_seguridad_acceso.sql",
+      "source_sha256": "ad454b029313b2c164524b179f0bcfe23f5be307026547db75787babdf39458f",
+      "equivalence": "identical_sql"
+    },
+    {
+      "remote_version": "20261022033531",
+      "remote_name": "20261022033531_recuperar_perfil_autenticado",
+      "source_file": "20261022033531_recuperar_perfil_autenticado.sql",
+      "source_sha256": "ddad7a3b4898df4f003e015d3f273be5a7ec2beb2c92c1d8a94dfcc47804dbd2",
+      "equivalence": "identical_sql"
+    },
+    {
+      "remote_version": "20261025225101",
+      "remote_name": "20261025225101_solicitar_eliminacion_cuenta",
+      "source_file": "20261025225101_solicitar_eliminacion_cuenta.sql",
+      "source_sha256": "05528cdad4571d2830bc14cbfe93fe29b0f76fd6b46a17382471866856876203",
+      "equivalence": "identical_sql"
+    },
+    {
+      "remote_version": "20261026033929",
+      "remote_name": "20261026033929_politica_eliminacion_revision",
+      "source_file": "20261026033929_politica_eliminacion_revision.sql",
+      "source_sha256": "98620cf23c340af12f2139731dd0e999db46f7fb11512bd78d9dcdc91629a6ea",
+      "equivalence": "identical_sql"
+    },
+    {
+      "remote_version": "20261026064908",
+      "remote_name": "20261026064908_capacidad_superadministrador",
+      "source_file": "20261026064908_capacidad_superadministrador.sql",
+      "source_sha256": "97e179d8075f2d5124a5989598e2c535a4a2aa90e346881374539d08a2cd25ca",
+      "equivalence": "identical_sql"
+    },
+    {
+      "remote_version": "20261026072156",
+      "remote_name": "20261026072156_aislar_operaciones_propietario_y_auditar_superadmin",
+      "source_file": "20261026072156_aislar_operaciones_propietario_y_auditar_superadmin.sql",
+      "source_sha256": "3a73ef2174cc8289f1c801bfd9f14a367b1f81de621827cabef3be7983a73f46",
+      "equivalence": "identical_sql"
+    },
+    {
+      "remote_version": "20261027001121",
+      "remote_name": "20261027001121_registrar_nuevo_establecimiento",
+      "source_file": "20261027001121_registrar_nuevo_establecimiento.sql",
+      "source_sha256": "2c28716005a0e2cf8c7bc2e0c866cff14cba1438b0f9780261a66ae9153e4d94",
+      "equivalence": "identical_sql"
+    },
+    {
+      "remote_version": "20261027001217",
+      "remote_name": "20261027001217_configurar_solicitud_registro_establecimiento",
+      "source_file": "20261027001217_configurar_solicitud_registro_establecimiento.sql",
+      "source_sha256": "9d54195610a82892b61b2832c3f99ab0dc03bcc40d54be1ae7be13e388558c4c",
+      "equivalence": "identical_sql"
+    },
+    {
+      "remote_version": "20261028071611",
+      "remote_name": "restringir_grants_rpc_anon",
+      "source_file": "20261028071611_restringir_grants_rpc_anon.sql",
+      "source_sha256": "f5f01a03e516d2db3706f2e34e6c18d149929b9e46720fbeb0a5cc3b7892f29e",
+      "equivalence": "statement_boundaries_and_blank_lines"
+    },
+    {
+      "remote_version": "20261029025918",
+      "remote_name": "preferencias_personalizadas_usuario",
+      "source_file": "20261029025918_preferencias_personalizadas_usuario.sql",
+      "source_sha256": "a85bb19c7966769cc66db4a2a21192232b08c1acb53c01d3cc23beb1461603a9",
+      "equivalence": "statement_boundaries_and_blank_lines"
+    },
+    {
+      "remote_version": "20261029032754",
+      "remote_name": "revoke_elevated_preference_grants",
+      "source_file": "20261029032754_revoke_elevated_preference_grants.sql",
+      "source_sha256": "7f150da2dffbe89b59dec6a101ba3006a3332b76f0a0a667e5c5482403af1bac",
+      "equivalence": "statement_boundaries_and_blank_lines"
+    },
+    {
+      "remote_version": "20261029145558",
+      "remote_name": "preferences_rpc_only_write_20261029085433",
+      "source_file": "20261029085433_preferences_rpc_only_write.sql",
+      "source_sha256": "1d68820d1aacf4ae5b78ab0b6f76c5ab4408c906900bf4733be2c531ac36101c",
+      "equivalence": "identical_sql"
+    },
+    {
+      "remote_version": "20261029183557",
+      "remote_name": "revoke_service_role_preferences_rpc",
+      "source_file": "20261029183540_revoke_service_role_preferences_rpc.sql",
+      "source_sha256": "275326bee2fed35d94cdbe9790cd7e696b4943a65a4dfcc53a875b253c7b74e4",
+      "equivalence": "identical_sql"
+    }
+  ],
+  "pending": [
+    {
+      "source_file": "20261106034310_aplicar_correcciones_estructuradas.sql",
+      "source_sha256": "562f197c5d6f309d2a40e0dc908777c67691ba7ad99e292b75c0fbb8a937c360"
+    },
+    {
+      "source_file": "20261107121537_cerrar_actualizacion_administrativa_directa.sql",
+      "source_sha256": "205bf9281326c198db8f7b400a1420084402f1f79de78b9895fcf63e4a51c39c"
+    }
+  ]
+}

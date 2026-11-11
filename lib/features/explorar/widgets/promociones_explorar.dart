@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../sky/sky_theme.dart';
 
 import '../../establecimientos/models/establecimiento_publico_model.dart';
+import '../../establecimientos/services/establecimiento_publico_service.dart';
 import '../../promociones/models/promocion_destacada_model.dart';
 import '../../promociones/services/promocion_publica_service.dart';
 
@@ -15,6 +16,7 @@ class PromocionesExplorar extends StatefulWidget {
     required this.onEstablecimiento,
     required this.onVerTodas,
     this.cargarPromociones,
+    this.resolverEstablecimiento,
     this.latitudUsuario,
     this.longitudUsuario,
     this.radioMaximoMetros,
@@ -25,6 +27,8 @@ class PromocionesExplorar extends StatefulWidget {
   final ValueChanged<EstablecimientoPublicoModel> onEstablecimiento;
   final VoidCallback onVerTodas;
   final CargarPromocionesExplorar? cargarPromociones;
+  final Future<EstablecimientoPublicoModel?> Function(String id)?
+  resolverEstablecimiento;
   final double? latitudUsuario;
   final double? longitudUsuario;
   final double? radioMaximoMetros;
@@ -38,6 +42,48 @@ class _PromocionesExplorarState extends State<PromocionesExplorar> {
   bool _cargando = false;
   bool _error = false;
   int _version = 0;
+  String? _abriendoId;
+
+  Future<void> _abrir(String id) async {
+    // Una única navegación pendiente, incluso si varias promociones pertenecen
+    // al mismo negocio. Revalidar evita abrir una ficha retirada desde la carga.
+    if (_abriendoId != null) return;
+    setState(() => _abriendoId = id);
+    try {
+      final resolver = widget.resolverEstablecimiento;
+      final establecimiento = resolver != null
+          ? await resolver(id)
+          : await EstablecimientoPublicoService().obtenerPorId(
+              id,
+              latitudUsuario: widget.latitudUsuario,
+              longitudUsuario: widget.longitudUsuario,
+            );
+      if (!mounted) return;
+      if (establecimiento == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Este establecimiento ya no está disponible públicamente.',
+            ),
+          ),
+        );
+      } else {
+        widget.onEstablecimiento(establecimiento);
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'No se pudo abrir el establecimiento. Inténtalo de nuevo.',
+            ),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _abriendoId = null);
+    }
+  }
 
   @override
   void initState() {
@@ -65,14 +111,6 @@ class _PromocionesExplorarState extends State<PromocionesExplorar> {
     final cargaInyectada = widget.cargarPromociones;
     final tieneUbicacion =
         widget.latitudUsuario != null && widget.longitudUsuario != null;
-
-    // Mantiene el comportamiento de las pruebas/inyectores: si el RPC de
-    // establecimientos no marca candidatos, no hace una consulta innecesaria.
-    if (cargaInyectada != null &&
-        !widget.establecimientos.any((e) => e.tienePromociones)) {
-      _cargando = false;
-      return;
-    }
 
     // En producción se permiten promociones cercanas aunque el negocio no haya
     // entrado todavía en la primera página del listado de establecimientos.
@@ -211,9 +249,10 @@ class _PromocionesExplorarState extends State<PromocionesExplorar> {
                 key: Key('promocion-${promocion.id}'),
                 establecimiento: establecimiento,
                 promocion: promocion,
-                onTap: establecimiento == null
+                cargando: _abriendoId == promocion.establecimientoId,
+                onTap: _abriendoId != null
                     ? null
-                    : () => widget.onEstablecimiento(establecimiento),
+                    : () => _abrir(promocion.establecimientoId),
               );
             },
           ),
@@ -228,12 +267,14 @@ class _TarjetaPromocion extends StatelessWidget {
     required this.establecimiento,
     required this.promocion,
     required this.onTap,
+    required this.cargando,
     super.key,
   });
 
   final EstablecimientoPublicoModel? establecimiento;
   final PromocionDestacadaModel promocion;
   final VoidCallback? onTap;
+  final bool cargando;
 
   @override
   Widget build(BuildContext context) {
@@ -267,6 +308,12 @@ class _TarjetaPromocion extends StatelessWidget {
                       promocion: promocion,
                       establecimiento: establecimiento,
                     ),
+                    if (cargando)
+                      const Center(
+                        child: CircularProgressIndicator(
+                          semanticsLabel: 'Abriendo establecimiento',
+                        ),
+                      ),
                     Positioned(
                       top: 7,
                       right: 7,

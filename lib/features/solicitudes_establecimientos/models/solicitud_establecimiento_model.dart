@@ -9,6 +9,7 @@ class SolicitudEstablecimientoModel {
     this.motivoRespuesta = '',
     this.creadoEn,
     this.actualizadoEn,
+    this.datosSuprimidos = false,
   }) {
     if (solicitanteId.trim().isEmpty) {
       throw ArgumentError('El solicitante es obligatorio.');
@@ -47,6 +48,7 @@ class SolicitudEstablecimientoModel {
 
   final String id;
   final String solicitanteId;
+  final bool datosSuprimidos;
   final String? establecimientoId;
   final String mensaje;
   final String tipo;
@@ -60,6 +62,11 @@ class SolicitudEstablecimientoModel {
   bool get fueRechazada => estado == estadoRechazada;
 
   Map<String, dynamic> toSupabaseParaCrear() {
+    if (datosSuprimidos) {
+      throw StateError(
+        'Un historial con datos suprimidos no puede reenviarse.',
+      );
+    }
     return {
       'solicitante_id': solicitanteId,
       if (establecimientoId != null) 'establecimiento_id': establecimientoId,
@@ -77,7 +84,10 @@ class SolicitudEstablecimientoModel {
   ) {
     return SolicitudEstablecimientoModel(
       id: datos['id'] as String,
-      solicitanteId: datos['solicitante_id'] as String,
+      solicitanteId:
+          datos['solicitante_id'] as String? ??
+          ((datos['datos_suprimidos'] == true) ? 'cuenta-eliminada' : ''),
+      datosSuprimidos: datos['datos_suprimidos'] == true,
       establecimientoId: datos['establecimiento_id'] as String?,
       mensaje: datos['mensaje'] as String? ?? '',
       tipo: datos['tipo'] as String? ?? tipoReclamar,
