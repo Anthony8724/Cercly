@@ -277,6 +277,41 @@ void main() {
     expect(preferencias.escrituras, 2);
   });
 
+  testWidgets(
+    'selector de frecuencia y descanso funciona con alertas apagadas',
+    (tester) async {
+      final preferencias = _PreferenciasFalsas();
+      final ubicacion = _UbicacionFalsa();
+      final notificaciones = _NotificacionesFalsas();
+      await montar(
+        tester,
+        preferencias: preferencias,
+        ubicacion: ubicacion,
+        notificaciones: notificaciones,
+      );
+      for (final nivel in FrecuenciaAlertasProximidad.values) {
+        final chip = find.byKey(Key('frecuencia-${nivel.name}'));
+        await tester.ensureVisible(chip);
+        await tester.tap(chip);
+        await tester.pumpAndSettle();
+        expect(preferencias.configuracion.frecuencia, nivel);
+      }
+      final descanso = find.byKey(const Key('horario-descanso-switch'));
+      await tester.ensureVisible(descanso);
+      await tester.tap(descanso);
+      await tester.pumpAndSettle();
+      expect(preferencias.configuracion.horarioDescanso, isNotNull);
+      expect(preferencias.configuracion.activadas, isFalse);
+      expect(ubicacion.obtenciones, 0);
+      expect(notificaciones.solicitudesPermiso, 0);
+      final inicio = find.byKey(const Key('descanso-inicio'));
+      await tester.ensureVisible(inicio);
+      await tester.tap(inicio);
+      await tester.pumpAndSettle();
+      expect(find.byType(TimePickerDialog), findsOneWidget);
+    },
+  );
+
   testWidgets('permiso de ubicación muestra su mensaje sin guardar', (
     tester,
   ) async {
@@ -533,6 +568,8 @@ void main() {
     );
     await cambiar(tester, true);
 
+    await tester.ensureVisible(find.byKey(const Key('abrir-ajustes-alertas')));
+    await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('abrir-ajustes-alertas')));
     await tester.pumpAndSettle();
 
@@ -561,6 +598,10 @@ void main() {
       );
       await cambiar(tester, true);
 
+      await tester.ensureVisible(
+        find.byKey(const Key('abrir-ajustes-alertas')),
+      );
+      await tester.pumpAndSettle();
       await tester.tap(find.byKey(const Key('abrir-ajustes-alertas')));
       await tester.pumpAndSettle();
 

@@ -9,10 +9,14 @@ import 'package:cercly/features/notificaciones/services/geofencing_experimental_
 import 'package:cercly/features/notificaciones/services/historial_notificaciones_promocion.dart';
 import 'package:cercly/features/notificaciones/services/notificacion_local_service.dart';
 import 'package:cercly/features/notificaciones/services/preferencias_alertas_proximidad.dart';
+import 'package:cercly/features/notificaciones/widgets/radar_cercly_panel.dart';
 import 'package:cercly/features/promociones/models/promocion_destacada_model.dart';
 import 'package:cercly/features/promociones/services/promocion_publica_service.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:shared_preferences_platform_interface/in_memory_shared_preferences_async.dart';
+import 'package:shared_preferences_platform_interface/shared_preferences_async_platform_interface.dart';
 
 final instanteBase = DateTime(2026, 9, 14, 12);
 
@@ -69,10 +73,11 @@ class _UbicacionFalsa implements UbicacionService {
 }
 
 class _PromocionesFalsas implements PromocionesCercanasRepository {
-  _PromocionesFalsas(this.promociones, {this.error});
+  _PromocionesFalsas(this.promociones, {this.error, this.antesDeResponder});
 
   final List<PromocionDestacadaModel> promociones;
   final Object? error;
+  final Future<void> Function()? antesDeResponder;
   int consultas = 0;
   double? ultimaLatitud;
   double? ultimaLongitud;
@@ -86,19 +91,24 @@ class _PromocionesFalsas implements PromocionesCercanasRepository {
     consultas++;
     ultimaLatitud = latitudUsuario;
     ultimaLongitud = longitudUsuario;
+    await antesDeResponder?.call();
     if (error case final error?) throw error;
     return promociones;
   }
 }
 
 class _NotificacionesFalsas
-    implements NotificacionPromocionGateway, NotificacionPromocionSimulable {
+    implements
+        NotificacionPromocionGateway,
+        NotificacionPromocionConSesionVigente,
+        NotificacionPromocionSimulable {
   _NotificacionesFalsas({this.permitir = true});
 
   final bool permitir;
   final mostradas = <PromocionDestacadaModel>[];
   final simuladas = <PromocionDestacadaModel>[];
   int inicializaciones = 0;
+  Future<void> Function()? antesDeMostrar;
 
   @override
   Future<void> inicializar() async => inicializaciones++;
@@ -117,6 +127,16 @@ class _NotificacionesFalsas
   }
 
   @override
+  Future<bool> mostrarPromocionSiSesionVigente(
+    PromocionDestacadaModel promocion, {
+    required bool Function() sesionVigente,
+  }) async {
+    await antesDeMostrar?.call();
+    if (!sesionVigente()) return false;
+    return mostrarPromocion(promocion);
+  }
+
+  @override
   Future<bool> mostrarPromocionSimulada(
     PromocionDestacadaModel promocion,
   ) async {
@@ -129,6 +149,7 @@ class _NotificacionesFalsas
 class _HistorialFalso
     implements
         HistorialNotificacionesPromocion,
+        HistorialNotificacionesPromocionPorUsuario,
         BorradoHistorialLocalNotificaciones {
   _HistorialFalso([Map<String, DateTime>? inicial])
     : _datos = HistorialNotificacionesPromocionDatos(
@@ -146,14 +167,42 @@ class _HistorialFalso
   Future<HistorialNotificacionesPromocionDatos> cargar() async => _datos;
 
   @override
+  Future<HistorialNotificacionesPromocionDatos> cargarDe(String? usuarioId) =>
+      cargar();
+
+  @override
   Future<void> guardar(HistorialNotificacionesPromocionDatos historial) async {
     guardados++;
     _datos = historial;
   }
 
   @override
+  Future<void> guardarDe(
+    HistorialNotificacionesPromocionDatos historial,
+    String? usuarioId,
+  ) => guardar(historial);
+
+  @override
   Future<void> borrarDatosLocales() async {
     _datos = const HistorialNotificacionesPromocionDatos();
+  }
+}
+
+class _HistorialPorCuentaPendiente extends _HistorialFalso {
+  _HistorialPorCuentaPendiente(this.datosPorUsuario);
+
+  final Map<String, HistorialNotificacionesPromocionDatos> datosPorUsuario;
+  final inicioCarga = Completer<String?>();
+  final liberarCarga = Completer<void>();
+
+  @override
+  Future<HistorialNotificacionesPromocionDatos> cargarDe(
+    String? usuarioId,
+  ) async {
+    if (!inicioCarga.isCompleted) inicioCarga.complete(usuarioId);
+    await liberarCarga.future;
+    return datosPorUsuario[usuarioId] ??
+        const HistorialNotificacionesPromocionDatos();
   }
 }
 
@@ -187,6 +236,162 @@ void main() {
       control = ControlNotificacionesPromocion(
         cooldown: const Duration(hours: 2),
       );
+    });
+
+    test('valores iniciales del radar son configurables', () {
+      final inicial = ControlNotificacionesPromocion();
+      expect(inicial.cooldown, const Duration(hours: 4));
+      expect(inicial.intervaloGlobal, const Duration(minutes: 15));
+      expect(inicial.maximoPorDia, 6);
+      expect(ConfiguracionAlertasProximidad.radioPredeterminadoMetros, 1500);
+      final monitor = MonitorProximidadController(
+        ubicacionService: _UbicacionFalsa(
+          const ResultadoUbicacion(estado: EstadoUbicacion.permisoDenegado),
+        ),
+        promocionesService: _PromocionesFalsas([]),
+        notificaciones: _NotificacionesFalsas(),
+        historial: _HistorialFalso(),
+        preferencias: _PreferenciasFalsas(),
+      );
+      expect(monitor.intervalo, const Duration(minutes: 3));
+      monitor.dispose();
+    });
+
+    test('límites exactos de Bajo, Normal y Alto en 24 horas móviles', () {
+      for (final nivel in FrecuenciaAlertasProximidad.values) {
+        final politica = ControlNotificacionesPromocion();
+        for (var i = 0; i < nivel.maximoPorDia; i++) {
+          politica.registrarNotificacion(
+            'promo-$i',
+            establecimientoId: 'negocio-$i',
+            ahora: instanteBase.add(Duration(minutes: i * 15)),
+          );
+        }
+        final candidata = promocion(
+          id: 'siguiente-${nivel.name}',
+          establecimientoId: 'negocio-nuevo',
+          fin: instanteBase.add(const Duration(days: 2)),
+        );
+        expect(
+          politica.evaluar(
+            [candidata],
+            ahora: instanteBase.add(const Duration(hours: 23)),
+            maximoPorDia: nivel.maximoPorDia,
+          ),
+          isEmpty,
+        );
+        expect(
+          politica.evaluar(
+            [candidata],
+            ahora: instanteBase.add(const Duration(hours: 24)),
+            maximoPorDia: nivel.maximoPorDia,
+          ),
+          hasLength(1),
+        );
+      }
+    });
+
+    test('cambiar nivel aplica el historial existente sin reiniciar', () {
+      final politica = ControlNotificacionesPromocion();
+      for (var i = 0; i < 6; i++) {
+        politica.registrarNotificacion(
+          'p$i',
+          establecimientoId: 'n$i',
+          ahora: instanteBase.add(Duration(minutes: i * 15)),
+        );
+      }
+      final candidata = promocion(
+        id: 'nueva',
+        establecimientoId: 'nueva',
+        fin: instanteBase.add(const Duration(hours: 6)),
+      );
+      final momento = instanteBase.add(const Duration(hours: 2));
+      expect(
+        politica.evaluar([candidata], ahora: momento, maximoPorDia: 3),
+        isEmpty,
+      );
+      expect(
+        politica.evaluar([candidata], ahora: momento, maximoPorDia: 6),
+        isEmpty,
+      );
+      expect(
+        politica.evaluar([candidata], ahora: momento, maximoPorDia: 10),
+        hasLength(1),
+      );
+    });
+
+    test('intervalo global libera exactamente a los quince minutos', () {
+      final politica = ControlNotificacionesPromocion();
+      politica.registrarNotificacion(
+        'primera',
+        establecimientoId: 'negocio-1',
+        ahora: instanteBase,
+      );
+      final siguiente = promocion(
+        id: 'segunda',
+        establecimientoId: 'negocio-2',
+      );
+      expect(
+        politica.evaluar([
+          siguiente,
+        ], ahora: instanteBase.add(const Duration(minutes: 14, seconds: 59))),
+        isEmpty,
+      );
+      expect(
+        politica.evaluar([
+          siguiente,
+        ], ahora: instanteBase.add(const Duration(minutes: 15))),
+        hasLength(1),
+      );
+    });
+
+    test(
+      'descanso local cruza medianoche con inicio inclusivo y fin exclusivo',
+      () {
+        final politica = ControlNotificacionesPromocion();
+        const descanso = HorarioDescanso(
+          inicioMinutos: 22 * 60,
+          finMinutos: 7 * 60,
+        );
+        final candidata = promocion(
+          inicio: DateTime(2026, 11, 11),
+          fin: DateTime(2026, 11, 13),
+        );
+        for (final instante in [
+          DateTime(2026, 11, 11, 22),
+          DateTime(2026, 11, 11, 23, 59),
+          DateTime(2026, 11, 12),
+          DateTime(2026, 11, 12, 6, 59),
+        ]) {
+          expect(
+            politica.evaluar(
+              [candidata],
+              ahora: instante,
+              horarioDescanso: descanso,
+            ),
+            isEmpty,
+          );
+        }
+        expect(
+          politica.evaluar(
+            [candidata],
+            ahora: DateTime(2026, 11, 12, 7),
+            horarioDescanso: descanso,
+          ),
+          hasLength(1),
+        );
+      },
+    );
+
+    test('descanso local dentro del mismo día respeta ambos límites', () {
+      const descanso = HorarioDescanso(
+        inicioMinutos: 12 * 60,
+        finMinutos: 13 * 60,
+      );
+      expect(descanso.contiene(DateTime(2026, 11, 11, 11, 59)), isFalse);
+      expect(descanso.contiene(DateTime(2026, 11, 11, 12)), isTrue);
+      expect(descanso.contiene(DateTime(2026, 11, 11, 12, 59)), isTrue);
+      expect(descanso.contiene(DateTime(2026, 11, 11, 13)), isFalse);
     });
 
     test('promoción dentro del radio puede notificarse', () {
@@ -224,7 +429,11 @@ void main() {
 
     test('permanecer dentro no repite durante el cooldown', () {
       expect(control.evaluar([promocion()], ahora: instanteBase), hasLength(1));
-      control.registrarNotificacion('promo-1', ahora: instanteBase);
+      control.registrarNotificacion(
+        'promo-1',
+        establecimientoId: 'establecimiento-1',
+        ahora: instanteBase,
+      );
 
       expect(
         control.evaluar([
@@ -236,7 +445,11 @@ void main() {
 
     test('salir y volver antes del cooldown todavía no repite', () {
       expect(control.evaluar([promocion()], ahora: instanteBase), hasLength(1));
-      control.registrarNotificacion('promo-1', ahora: instanteBase);
+      control.registrarNotificacion(
+        'promo-1',
+        establecimientoId: 'establecimiento-1',
+        ahora: instanteBase,
+      );
 
       control.evaluar([
         promocion(distancia: 500),
@@ -258,7 +471,11 @@ void main() {
         control.evaluar([promocionVigente], ahora: instanteBase),
         hasLength(1),
       );
-      control.registrarNotificacion('promo-1', ahora: instanteBase);
+      control.registrarNotificacion(
+        'promo-1',
+        establecimientoId: 'establecimiento-1',
+        ahora: instanteBase,
+      );
 
       control.evaluar([
         promocion(
@@ -310,28 +527,224 @@ void main() {
         limitado.evaluar([promocion()], ahora: instanteBase),
         hasLength(1),
       );
-      limitado.registrarNotificacion('promo-1', ahora: instanteBase);
+      limitado.registrarNotificacion(
+        'promo-1',
+        establecimientoId: 'establecimiento-1',
+        ahora: instanteBase,
+      );
       expect(
         limitado.evaluar([
-          promocion(id: 'promo-2'),
+          promocion(id: 'promo-2', establecimientoId: 'establecimiento-2'),
         ], ahora: instanteBase.add(const Duration(minutes: 5))),
         isEmpty,
       );
       expect(
         limitado.evaluar([
-          promocion(id: 'promo-2'),
+          promocion(id: 'promo-2', establecimientoId: 'establecimiento-2'),
         ], ahora: instanteBase.add(const Duration(minutes: 20))),
         hasLength(1),
       );
       limitado.registrarNotificacion(
         'promo-2',
+        establecimientoId: 'establecimiento-2',
         ahora: instanteBase.add(const Duration(minutes: 20)),
       );
       expect(
         limitado.evaluar([
-          promocion(id: 'promo-3'),
+          promocion(id: 'promo-3', establecimientoId: 'establecimiento-3'),
         ], ahora: instanteBase.add(const Duration(minutes: 40))),
         isEmpty,
+      );
+    });
+
+    test('elige el negocio más cercano y resuelve empates por ID', () {
+      final politica = ControlNotificacionesPromocion();
+      final candidatas = [
+        promocion(
+          id: 'lejana',
+          establecimientoId: 'z',
+          distancia: 300,
+          radio: 1500,
+        ),
+        promocion(
+          id: 'cercana-b',
+          establecimientoId: 'b',
+          distancia: 50,
+          radio: 1500,
+        ),
+        promocion(
+          id: 'cercana-a',
+          establecimientoId: 'a',
+          distancia: 50,
+          radio: 1500,
+        ),
+      ];
+      expect(
+        politica
+            .evaluar(candidatas, ahora: instanteBase, radioUsuarioMetros: 1500)
+            .single
+            .id,
+        'cercana-a',
+      );
+    });
+
+    test('el radio exige caber incluso con la incertidumbre GPS', () {
+      final politica = ControlNotificacionesPromocion();
+      for (final distancia in [1499.0, 1500.0, 1501.0]) {
+        final resultado = politica.evaluar(
+          [
+            promocion(
+              id: 'radio-$distancia',
+              distancia: distancia,
+              radio: 1500,
+            ),
+          ],
+          ahora: instanteBase,
+          radioUsuarioMetros: 1500,
+        );
+        expect(resultado.isNotEmpty, distancia <= 1500);
+      }
+      expect(
+        politica.evaluar(
+          [promocion(id: 'incierta', distancia: 1499, radio: 1500)],
+          ahora: instanteBase,
+          radioUsuarioMetros: 1500,
+          precisionUbicacionMetros: 2,
+        ),
+        isEmpty,
+      );
+    });
+
+    test('vigencia incluye exactamente inicio y fin', () {
+      final politica = ControlNotificacionesPromocion();
+      final exacta = promocion(
+        inicio: instanteBase,
+        fin: instanteBase.add(const Duration(hours: 1)),
+      );
+      expect(politica.evaluar([exacta], ahora: instanteBase), hasLength(1));
+      expect(
+        politica.evaluar([
+          exacta,
+        ], ahora: instanteBase.add(const Duration(hours: 1))),
+        hasLength(1),
+      );
+      expect(
+        politica.evaluar([
+          exacta,
+        ], ahora: instanteBase.add(const Duration(hours: 1, milliseconds: 1))),
+        isEmpty,
+      );
+    });
+
+    test(
+      'cuatro horas por negocio bloquean otra promoción y liberan al límite',
+      () {
+        final politica = ControlNotificacionesPromocion();
+        final primera = promocion(
+          id: 'p1',
+          establecimientoId: 'negocio',
+          fin: instanteBase.add(const Duration(hours: 6)),
+        );
+        final segunda = promocion(
+          id: 'p2',
+          establecimientoId: 'negocio',
+          fin: instanteBase.add(const Duration(hours: 6)),
+        );
+        politica.registrarNotificacion(
+          primera.id,
+          establecimientoId: 'negocio',
+          ahora: instanteBase,
+        );
+        expect(
+          politica.evaluar([
+            segunda,
+          ], ahora: instanteBase.add(const Duration(hours: 3, minutes: 59))),
+          isEmpty,
+        );
+        expect(
+          politica.evaluar([
+            segunda,
+          ], ahora: instanteBase.add(const Duration(hours: 4))),
+          hasLength(1),
+        );
+      },
+    );
+
+    test('historial del negocio sobrevive al reinicio del control', () {
+      final anterior = ControlNotificacionesPromocion();
+      anterior.registrarNotificacion(
+        'p1',
+        establecimientoId: 'negocio',
+        ahora: instanteBase,
+      );
+      final nuevo = ControlNotificacionesPromocion()
+        ..cargarHistorial(anterior.crearHistorial());
+      expect(
+        nuevo.evaluar([
+          promocion(
+            id: 'p2',
+            establecimientoId: 'negocio',
+            fin: instanteBase.add(const Duration(hours: 6)),
+          ),
+        ], ahora: instanteBase.add(const Duration(hours: 1))),
+        isEmpty,
+      );
+    });
+
+    test('máximo tres en 24 horas móviles y liberación exacta', () {
+      final politica = ControlNotificacionesPromocion(maximoPorDia: 3);
+      for (var i = 0; i < 3; i++) {
+        politica.registrarNotificacion(
+          'p$i',
+          establecimientoId: 'n$i',
+          ahora: instanteBase.add(Duration(hours: i)),
+        );
+      }
+      final cuarta = promocion(
+        id: 'p4',
+        establecimientoId: 'n4',
+        fin: instanteBase.add(const Duration(days: 2)),
+      );
+      expect(
+        politica.evaluar([
+          cuarta,
+        ], ahora: instanteBase.add(const Duration(hours: 23))),
+        isEmpty,
+      );
+      expect(
+        politica.evaluar([
+          cuarta,
+        ], ahora: instanteBase.add(const Duration(hours: 24))),
+        hasLength(1),
+      );
+    });
+
+    test('misma promoción no se repite durante la permanencia', () {
+      final politica = ControlNotificacionesPromocion();
+      final vigente = promocion(
+        fin: instanteBase.add(const Duration(hours: 6)),
+      );
+      expect(politica.evaluar([vigente], ahora: instanteBase), hasLength(1));
+      politica.registrarNotificacion(
+        vigente.id,
+        establecimientoId: vigente.establecimientoId,
+        ahora: instanteBase,
+      );
+      expect(
+        politica.evaluar([
+          vigente,
+        ], ahora: instanteBase.add(const Duration(hours: 5))),
+        isEmpty,
+      );
+      politica.evaluar(
+        const [],
+        ahora: instanteBase.add(const Duration(hours: 5)),
+      );
+      expect(
+        politica.evaluar([
+          vigente,
+        ], ahora: instanteBase.add(const Duration(hours: 5, minutes: 1))),
+        hasLength(1),
       );
     });
   });
@@ -825,5 +1238,554 @@ void main() {
         'historial_local_reiniciado',
       );
     });
+
+    test(
+      'GPS periódico solo arranca con radar activo y Mapa visible',
+      () async {
+        final ubicacion = _UbicacionFalsa(
+          ResultadoUbicacion(
+            estado: EstadoUbicacion.disponible,
+            ubicacion: UbicacionUsuario(
+              latitud: 0.8116,
+              longitud: -77.7172,
+              precisionMetros: 10,
+              capturadaEn: instanteBase,
+            ),
+          ),
+        );
+        final controller = MonitorProximidadController(
+          ubicacionService: ubicacion,
+          promocionesService: _PromocionesFalsas([]),
+          notificaciones: _NotificacionesFalsas(),
+          historial: _HistorialFalso(),
+          preferencias: _PreferenciasFalsas(),
+          usuarioId: () => 'usuario-1',
+          ahora: () => instanteBase,
+        );
+        await controller.iniciar();
+        expect(ubicacion.solicitudes, 0);
+        controller.setRadarVisible(true);
+        await controller.iniciar();
+        expect(ubicacion.solicitudes, 0);
+        controller.setRadarActivo(true);
+        await controller.iniciar();
+        expect(ubicacion.solicitudes, greaterThan(0));
+        controller.setRadarVisible(false);
+        final despuesDeSalir = ubicacion.solicitudes;
+        await controller.iniciar();
+        expect(ubicacion.solicitudes, despuesDeSalir);
+        controller.setRadarVisible(true);
+        await controller.iniciar();
+        controller.suspenderPorCicloDeVida();
+        final durantePausa = ubicacion.solicitudes;
+        await controller.iniciar();
+        expect(ubicacion.solicitudes, durantePausa);
+        await controller.reanudar();
+        expect(ubicacion.solicitudes, greaterThan(durantePausa));
+        controller.dispose();
+      },
+    );
+
+    test('radar muestra promociones sin permiso de notificación', () async {
+      final controller = MonitorProximidadController(
+        ubicacionService: _UbicacionFalsa(
+          ResultadoUbicacion(
+            estado: EstadoUbicacion.disponible,
+            ubicacion: UbicacionUsuario(
+              latitud: 0.8116,
+              longitud: -77.7172,
+              precisionMetros: 10,
+              capturadaEn: instanteBase,
+            ),
+          ),
+        ),
+        promocionesService: _PromocionesFalsas([
+          promocion(id: 'lejana', distancia: 120, radio: 1500),
+          promocion(id: 'cercana', distancia: 40, radio: 1500),
+          promocion(
+            id: 'vencida',
+            distancia: 10,
+            radio: 1500,
+            fin: instanteBase.subtract(const Duration(seconds: 1)),
+          ),
+        ]),
+        notificaciones: _NotificacionesFalsas(permitir: false),
+        historial: _HistorialFalso(),
+        preferencias: _PreferenciasFalsas(),
+        usuarioId: () => 'usuario-1',
+        ahora: () => instanteBase,
+      );
+      controller.setRadarVisible(true);
+      controller.setRadarActivo(true);
+      await controller.iniciar();
+      expect(controller.promocionesRadar.map((p) => p.id), [
+        'cercana',
+        'lejana',
+      ]);
+      controller.dispose();
+    });
+
+    test('revocar alertas durante la consulta impide la publicación', () async {
+      final preferencias = _PreferenciasFalsas();
+      final notificaciones = _NotificacionesFalsas();
+      final controller = MonitorProximidadController(
+        ubicacionService: _UbicacionFalsa(
+          ResultadoUbicacion(
+            estado: EstadoUbicacion.disponible,
+            ubicacion: UbicacionUsuario(
+              latitud: 0.8116,
+              longitud: -77.7172,
+              precisionMetros: 10,
+              capturadaEn: instanteBase,
+            ),
+          ),
+        ),
+        promocionesService: _PromocionesFalsas(
+          [promocion()],
+          antesDeResponder: () =>
+              preferencias.guardar(const ConfiguracionAlertasProximidad()),
+        ),
+        notificaciones: notificaciones,
+        historial: _HistorialFalso(),
+        preferencias: preferencias,
+        ahora: () => instanteBase,
+      );
+      await controller.verificarAhora();
+      expect(notificaciones.mostradas, isEmpty);
+      expect(
+        controller.ultimoResultadoDiagnostico,
+        'alertas_desactivadas_o_permiso_revocado',
+      );
+      controller.dispose();
+    });
+
+    test('cambiar de cuenta carga historial independiente', () async {
+      SharedPreferences.setMockInitialValues({});
+      SharedPreferencesAsyncPlatform.instance =
+          InMemorySharedPreferencesAsync.empty();
+      var cuenta = 'usuario-a';
+      var reloj = instanteBase;
+      final notificaciones = _NotificacionesFalsas();
+      final controller = MonitorProximidadController(
+        ubicacionService: _UbicacionFalsa(
+          ResultadoUbicacion(
+            estado: EstadoUbicacion.disponible,
+            ubicacion: UbicacionUsuario(
+              latitud: 0.8116,
+              longitud: -77.7172,
+              precisionMetros: 10,
+              capturadaEn: instanteBase,
+            ),
+          ),
+        ),
+        promocionesService: _PromocionesFalsas([promocion()]),
+        notificaciones: notificaciones,
+        preferencias: _PreferenciasFalsas(),
+        usuarioId: () => cuenta,
+        ahora: () => reloj,
+      );
+      await controller.verificarAhora();
+      expect(notificaciones.mostradas, hasLength(1));
+      cuenta = 'usuario-b';
+      reloj = reloj.add(const Duration(seconds: 30));
+      await controller.verificarAhora();
+      expect(notificaciones.mostradas, hasLength(2));
+      controller.dispose();
+    });
+
+    test('evaluación manual descarta respuesta si cambia la cuenta', () async {
+      SharedPreferences.setMockInitialValues({});
+      SharedPreferencesAsyncPlatform.instance =
+          InMemorySharedPreferencesAsync.empty();
+      final consultaIniciada = Completer<void>();
+      final terminarConsulta = Completer<void>();
+      var cuenta = 'usuario-a';
+      final notificaciones = _NotificacionesFalsas();
+      final historial = _HistorialFalso();
+      final controller = MonitorProximidadController(
+        ubicacionService: _UbicacionFalsa(
+          ResultadoUbicacion(
+            estado: EstadoUbicacion.disponible,
+            ubicacion: UbicacionUsuario(
+              latitud: 0.8116,
+              longitud: -77.7172,
+              precisionMetros: 10,
+              capturadaEn: instanteBase,
+            ),
+          ),
+        ),
+        promocionesService: _PromocionesFalsas(
+          [promocion()],
+          antesDeResponder: () async {
+            if (!consultaIniciada.isCompleted) consultaIniciada.complete();
+            await terminarConsulta.future;
+          },
+        ),
+        notificaciones: notificaciones,
+        historial: historial,
+        preferencias: _PreferenciasFalsas(),
+        usuarioId: () => cuenta,
+        ahora: () => instanteBase,
+      );
+
+      final evaluacion = controller.verificarAhora();
+      await consultaIniciada.future;
+      cuenta = 'usuario-b';
+      terminarConsulta.complete();
+      await evaluacion;
+
+      expect(notificaciones.mostradas, isEmpty);
+      expect(historial.guardados, 0);
+      expect(controller.ultimoResultadoDiagnostico, 'cambio_de_cuenta');
+      controller.dispose();
+    });
+
+    test(
+      'gateway vuelve a validar cuenta antes de publicar notificación',
+      () async {
+        SharedPreferences.setMockInitialValues({});
+        SharedPreferencesAsyncPlatform.instance =
+            InMemorySharedPreferencesAsync.empty();
+        var cuenta = 'usuario-a';
+        final notificaciones = _NotificacionesFalsas()
+          ..antesDeMostrar = () async {
+            cuenta = 'usuario-b';
+          };
+        final historial = _HistorialFalso();
+        final controller = MonitorProximidadController(
+          ubicacionService: _UbicacionFalsa(
+            ResultadoUbicacion(
+              estado: EstadoUbicacion.disponible,
+              ubicacion: UbicacionUsuario(
+                latitud: 0.8116,
+                longitud: -77.7172,
+                precisionMetros: 10,
+                capturadaEn: instanteBase,
+              ),
+            ),
+          ),
+          promocionesService: _PromocionesFalsas([promocion()]),
+          notificaciones: notificaciones,
+          historial: historial,
+          preferencias: _PreferenciasFalsas(),
+          usuarioId: () => cuenta,
+          ahora: () => instanteBase,
+        );
+
+        await controller.verificarAhora();
+
+        expect(notificaciones.mostradas, isEmpty);
+        expect(historial.guardados, 0);
+        expect(controller.ultimoResultadoDiagnostico, 'cambio_de_cuenta');
+        controller.dispose();
+      },
+    );
+
+    test('Radar automático descarta respuesta si cambia la cuenta', () async {
+      SharedPreferences.setMockInitialValues({});
+      SharedPreferencesAsyncPlatform.instance =
+          InMemorySharedPreferencesAsync.empty();
+      final consultaIniciada = Completer<void>();
+      final terminarConsulta = Completer<void>();
+      var cuenta = 'usuario-a';
+      final notificaciones = _NotificacionesFalsas();
+      final historial = _HistorialFalso();
+      final controller = MonitorProximidadController(
+        ubicacionService: _UbicacionFalsa(
+          ResultadoUbicacion(
+            estado: EstadoUbicacion.disponible,
+            ubicacion: UbicacionUsuario(
+              latitud: 0.8116,
+              longitud: -77.7172,
+              precisionMetros: 10,
+              capturadaEn: instanteBase,
+            ),
+          ),
+        ),
+        promocionesService: _PromocionesFalsas(
+          [promocion()],
+          antesDeResponder: () async {
+            if (!consultaIniciada.isCompleted) consultaIniciada.complete();
+            await terminarConsulta.future;
+          },
+        ),
+        notificaciones: notificaciones,
+        historial: historial,
+        preferencias: _PreferenciasFalsas(),
+        usuarioId: () => cuenta,
+        ahora: () => instanteBase,
+      );
+      controller.setRadarVisible(true);
+      controller.setRadarActivo(true);
+
+      final inicio = controller.iniciar();
+      await consultaIniciada.future;
+      cuenta = 'usuario-b';
+      terminarConsulta.complete();
+      await inicio;
+
+      expect(notificaciones.mostradas, isEmpty);
+      expect(historial.guardados, 0);
+      expect(controller.ultimoResultadoDiagnostico, 'cambio_de_cuenta');
+      controller.dispose();
+    });
+
+    test(
+      'cambio de cuenta durante carga no aplica historial anterior',
+      () async {
+        SharedPreferences.setMockInitialValues({});
+        SharedPreferencesAsyncPlatform.instance =
+            InMemorySharedPreferencesAsync.empty();
+        final instanteAnterior = instanteBase.subtract(
+          const Duration(hours: 1),
+        );
+        final historial = _HistorialPorCuentaPendiente({
+          'usuario-a': HistorialNotificacionesPromocionDatos(
+            ultimaPorPromocion: {'promo-1': instanteAnterior},
+            ultimaPorEstablecimiento: {'establecimiento-1': instanteAnterior},
+            recientes: [instanteAnterior],
+            promocionesDentro: {'promo-1'},
+          ),
+          'usuario-b': const HistorialNotificacionesPromocionDatos(),
+        });
+        var cuenta = 'usuario-a';
+        final notificaciones = _NotificacionesFalsas();
+        final controller = MonitorProximidadController(
+          ubicacionService: _UbicacionFalsa(
+            ResultadoUbicacion(
+              estado: EstadoUbicacion.disponible,
+              ubicacion: UbicacionUsuario(
+                latitud: 0.8116,
+                longitud: -77.7172,
+                precisionMetros: 10,
+                capturadaEn: instanteBase,
+              ),
+            ),
+          ),
+          promocionesService: _PromocionesFalsas([promocion()]),
+          notificaciones: notificaciones,
+          historial: historial,
+          preferencias: _PreferenciasFalsas(),
+          usuarioId: () => cuenta,
+          ahora: () => instanteBase,
+        );
+
+        final evaluacionAntigua = controller.verificarAhora();
+        expect(await historial.inicioCarga.future, 'usuario-a');
+        cuenta = 'usuario-b';
+        historial.liberarCarga.complete();
+        await evaluacionAntigua;
+
+        expect(notificaciones.mostradas, isEmpty);
+        await controller.verificarAhora();
+        expect(notificaciones.mostradas, hasLength(1));
+        controller.dispose();
+      },
+    );
+
+    test(
+      'motor aplica cambio de frecuencia con historial sin reiniciar',
+      () async {
+        final historial = _HistorialFalso();
+        historial._datos = HistorialNotificacionesPromocionDatos(
+          recientes: [
+            for (var i = 0; i < 6; i++)
+              instanteBase.subtract(Duration(minutes: 15 * (i + 1))),
+          ],
+        );
+        final preferencias = _PreferenciasFalsas();
+        final notificaciones = _NotificacionesFalsas();
+        final controller = MonitorProximidadController(
+          ubicacionService: _UbicacionFalsa(
+            ResultadoUbicacion(
+              estado: EstadoUbicacion.disponible,
+              ubicacion: UbicacionUsuario(
+                latitud: 0.8116,
+                longitud: -77.7172,
+                precisionMetros: 10,
+                capturadaEn: instanteBase,
+              ),
+            ),
+          ),
+          promocionesService: _PromocionesFalsas([promocion()]),
+          notificaciones: notificaciones,
+          historial: historial,
+          preferencias: preferencias,
+          ahora: () => instanteBase,
+        );
+        await controller.verificarAhora();
+        expect(notificaciones.mostradas, isEmpty);
+        await preferencias.guardar(
+          preferencias.configuracion.copiarCon(
+            frecuencia: FrecuenciaAlertasProximidad.alta,
+          ),
+        );
+        await controller.verificarAhora();
+        expect(notificaciones.mostradas, hasLength(1));
+        controller.dispose();
+      },
+    );
+
+    test('motor silencia descanso y permite aviso al quitarlo', () async {
+      final preferencias = _PreferenciasFalsas(
+        configuracion: const ConfiguracionAlertasProximidad(
+          activadas: true,
+          horarioDescanso: HorarioDescanso(
+            inicioMinutos: 11 * 60,
+            finMinutos: 13 * 60,
+          ),
+        ),
+      );
+      final notificaciones = _NotificacionesFalsas();
+      final controller = MonitorProximidadController(
+        ubicacionService: _UbicacionFalsa(
+          ResultadoUbicacion(
+            estado: EstadoUbicacion.disponible,
+            ubicacion: UbicacionUsuario(
+              latitud: 0.8116,
+              longitud: -77.7172,
+              precisionMetros: 10,
+              capturadaEn: instanteBase,
+            ),
+          ),
+        ),
+        promocionesService: _PromocionesFalsas([promocion()]),
+        notificaciones: notificaciones,
+        historial: _HistorialFalso(),
+        preferencias: preferencias,
+        ahora: () => instanteBase,
+      );
+      await controller.verificarAhora();
+      expect(controller.ultimoResultadoDiagnostico, 'horario_descanso');
+      expect(notificaciones.mostradas, isEmpty);
+      await preferencias.guardar(
+        preferencias.configuracion.copiarCon(quitarHorarioDescanso: true),
+      );
+      await controller.verificarAhora();
+      expect(notificaciones.mostradas, hasLength(1));
+      controller.dispose();
+    });
+
+    test(
+      'Radar visual funciona con alertas apagadas sin publicar avisos',
+      () async {
+        final preferencias = _PreferenciasFalsas(
+          configuracion: const ConfiguracionAlertasProximidad(),
+        );
+        final notificaciones = _NotificacionesFalsas();
+        final ubicacion = _UbicacionFalsa(
+          ResultadoUbicacion(
+            estado: EstadoUbicacion.disponible,
+            ubicacion: UbicacionUsuario(
+              latitud: 0.8116,
+              longitud: -77.7172,
+              precisionMetros: 10,
+              capturadaEn: instanteBase,
+            ),
+          ),
+        );
+        final controller = MonitorProximidadController(
+          ubicacionService: ubicacion,
+          promocionesService: _PromocionesFalsas([promocion()]),
+          notificaciones: notificaciones,
+          historial: _HistorialFalso(),
+          preferencias: preferencias,
+          usuarioId: () => 'cuenta-a',
+          ahora: () => instanteBase,
+        );
+        controller.setRadarVisible(true);
+        controller.setRadarActivo(true);
+        await controller.iniciar();
+        expect(controller.promocionesRadar, hasLength(1));
+        expect(notificaciones.mostradas, isEmpty);
+        expect(preferencias.configuracion.activadas, isFalse);
+        controller.setRadarActivo(false);
+        expect(controller.promocionesRadar, isEmpty);
+        expect(preferencias.configuracion.activadas, isFalse);
+        controller.dispose();
+      },
+    );
   });
+
+  testWidgets('temporizador se detiene al salir de Mapa y al bloquear', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+    await tester.pumpWidget(const MaterialApp(home: SizedBox()));
+    final ubicacion = _UbicacionFalsa(
+      ResultadoUbicacion(
+        estado: EstadoUbicacion.disponible,
+        ubicacion: UbicacionUsuario(
+          latitud: 0.8116,
+          longitud: -77.7172,
+          precisionMetros: 10,
+          capturadaEn: instanteBase,
+        ),
+      ),
+    );
+    final controller = MonitorProximidadController(
+      ubicacionService: ubicacion,
+      promocionesService: _PromocionesFalsas([]),
+      notificaciones: _NotificacionesFalsas(),
+      historial: _HistorialFalso(),
+      preferencias: _PreferenciasFalsas(
+        configuracion: const ConfiguracionAlertasProximidad(),
+      ),
+      usuarioId: () => 'cuenta-a',
+      ahora: () => instanteBase,
+    );
+    controller.setRadarVisible(true);
+    controller.setRadarActivo(true);
+    await controller.iniciar();
+    final inicial = ubicacion.solicitudes;
+    expect(inicial, greaterThan(0));
+    await tester.pump(const Duration(minutes: 3));
+    await tester.pump();
+    expect(ubicacion.solicitudes, greaterThan(inicial));
+    controller.setRadarVisible(false);
+    final fueraDelMapa = ubicacion.solicitudes;
+    await tester.pump(const Duration(minutes: 6));
+    await tester.pump();
+    expect(ubicacion.solicitudes, fueraDelMapa);
+    controller.setRadarVisible(true);
+    await controller.iniciar();
+    controller.suspenderPorCicloDeVida();
+    final bloqueado = ubicacion.solicitudes;
+    await tester.pump(const Duration(minutes: 6));
+    await tester.pump();
+    expect(ubicacion.solicitudes, bloqueado);
+    controller.dispose();
+  });
+
+  testWidgets(
+    'panel de Mapa permite activar y detener Radar sin GPS fuera de Mapa',
+    (tester) async {
+      final ubicacion = _UbicacionFalsa(
+        const ResultadoUbicacion(estado: EstadoUbicacion.permisoDenegado),
+      );
+      final controller = MonitorProximidadController(
+        ubicacionService: ubicacion,
+        promocionesService: _PromocionesFalsas([]),
+        notificaciones: _NotificacionesFalsas(),
+        historial: _HistorialFalso(),
+        preferencias: _PreferenciasFalsas(),
+        usuarioId: () => 'usuario-1',
+      );
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(body: RadarCerclyPanel(controller: controller)),
+        ),
+      );
+      expect(find.text('Radar Cercly Sky'), findsOneWidget);
+      expect(controller.radarActivo, isFalse);
+      await tester.tap(find.byKey(const Key('radar-cercly-toggle')));
+      await tester.pump();
+      expect(controller.radarActivo, isTrue);
+      expect(ubicacion.solicitudes, 0);
+      await tester.tap(find.byKey(const Key('radar-cercly-toggle')));
+      await tester.pump();
+      expect(controller.radarActivo, isFalse);
+      controller.dispose();
+    },
+  );
 }
