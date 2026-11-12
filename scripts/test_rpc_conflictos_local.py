@@ -101,7 +101,15 @@ def main():
         check(not any('40001' in x['body'] for x in after), 'no_business_40001_left_in_active_application_functions')
         stamp = datetime.now(timezone.utc).isoformat()
         identities = [Identity(str(uuid4()), stamp) for _ in range(3)]
-        f = Fixture(str(uuid4()), str(uuid4()), *identities, '[QA PRIVACIDAD] Conflictos RPC')
+        f = Fixture(str(uuid4()), str(uuid4()), *identities,
+                    '[QA PRIVACIDAD] Conflictos RPC', local_guard_nonce=str(uuid4()))
+        sql("create schema cercly_local_test_guard;"
+            "revoke all on schema cercly_local_test_guard from public;"
+            "create table cercly_local_test_guard.instance("
+            "nonce uuid primary key, system_identifier bigint not null);"
+            "insert into cercly_local_test_guard.instance "
+            "select " + literal(f.local_guard_nonce) + "::uuid, system_identifier "
+            "from pg_control_system();", 'install-isolated-instance-guard')
         values = ','.join(f"({literal(x.id)},'local-rpc-{i}@cercly.test','{{}}',{literal(stamp)},"
                           f"jsonb_build_object('cercly_qa_privacidad',jsonb_build_object('autorizada',true,'ensayo_id',{literal(f.run_id)})))"
                           for i, x in enumerate(identities))

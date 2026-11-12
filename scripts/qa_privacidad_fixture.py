@@ -38,12 +38,15 @@ class Fixture:
     simple_holder: Identity
     original_name: str
     context: str = LOCAL_CONTEXT
+    local_guard_nonce: str | None = None
 
     def __post_init__(self):
         object.__setattr__(self, 'run_id', str(UUID(self.run_id)))
         object.__setattr__(self, 'business_id', str(UUID(self.business_id)))
         if self.context != LOCAL_CONTEXT:
             raise ValueError('LOCAL_ONLY')
+        if self.local_guard_nonce is not None:
+            object.__setattr__(self, 'local_guard_nonce', str(UUID(self.local_guard_nonce)))
         identities = {x.id for x in self.identities}
         if len(identities) != 3 or self.business_id in identities:
             raise ValueError('THREE_DISTINCT_QA_IDENTITIES_REQUIRED')
@@ -96,6 +99,8 @@ def prepare_history_sql(fixture, *, temporary_publication_authorized=False):
     if temporary_publication_authorized is not True:
         raise PermissionError('QA_TEMPORARY_PUBLICATION_NOT_AUTHORIZED')
     f = fixture
+    if f.local_guard_nonce is None:
+        raise PermissionError('QA_DISPOSABLE_POSTGRES_GUARD_REQUIRED')
     run, business = literal(f.run_id), literal(f.business_id)
     reviewer, holder = literal(f.reviewer.id), literal(f.holder.id)
     ids = ','.join(literal(x.id) for x in f.identities)
@@ -107,6 +112,14 @@ SET LOCAL lock_timeout='5s'; SET LOCAL statement_timeout='45s';
 DO $guard$ BEGIN
  IF current_user<>'postgres' OR current_database()<>'postgres' THEN
   RAISE EXCEPTION USING ERRCODE='42501',MESSAGE='QA_FIXTURE_EXECUTOR_REJECTED';
+ END IF;
+ IF to_regclass('cercly_local_test_guard.instance') IS NULL THEN
+  RAISE EXCEPTION USING ERRCODE='42501',MESSAGE='QA_DISPOSABLE_POSTGRES_GUARD_REQUIRED';
+ END IF;
+ IF NOT EXISTS (SELECT 1 FROM cercly_local_test_guard.instance
+   WHERE nonce={literal(f.local_guard_nonce)}::uuid
+     AND system_identifier=(SELECT system_identifier FROM pg_control_system())) THEN
+  RAISE EXCEPTION USING ERRCODE='42501',MESSAGE='QA_DISPOSABLE_POSTGRES_GUARD_MISMATCH';
  END IF;
  PERFORM 1 FROM auth.users WHERE id IN ({ids}) ORDER BY id FOR KEY SHARE;
  PERFORM 1 FROM public.usuarios WHERE id IN ({ids}) ORDER BY id FOR SHARE;

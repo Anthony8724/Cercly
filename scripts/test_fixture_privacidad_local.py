@@ -109,6 +109,11 @@ def main():
               f.applied_request != f.pending_request, 'deterministic_distinct_request_ids')
         check(hashlib.sha256((ROOT / 'supabase/migrations' / MIGRATION).read_bytes()).hexdigest()
               == EXPECTED_SHA, 'server_sql_unchanged')
+        try:
+            prepare_history_sql(f, temporary_publication_authorized=True)
+            check(False, 'fixture_requires_disposable_instance_nonce')
+        except PermissionError:
+            check(True, 'fixture_requires_disposable_instance_nonce')
         result = pod(['run', '-d', '--rm', '--pull=never', '--network', 'none',
                       '--log-driver=none', '--name', name,
                       '-e', 'POSTGRES_PASSWORD=local-test-only', IMAGE])
@@ -132,6 +137,25 @@ def main():
         for path in sorted((ROOT / 'supabase/migrations').glob('*.sql')):
             if path.name <= MIGRATION:
                 sql(path.read_text(), path.stem)
+        f = replace(f, local_guard_nonce=str(uuid4()))
+        missing_guard = sql(prepare_history_sql(f, temporary_publication_authorized=True),
+                            'reject-without-local-instance-guard', allow_error=True)
+        check(missing_guard.returncode != 0 and b'42501' in missing_guard.stderr and
+              b'QA_DISPOSABLE_POSTGRES_GUARD_REQUIRED' in missing_guard.stderr,
+              'postgres_user_and_database_without_guard_rejected')
+        sql("create schema cercly_local_test_guard;"
+            "revoke all on schema cercly_local_test_guard from public;"
+            "create table cercly_local_test_guard.instance("
+            "nonce uuid primary key, system_identifier bigint not null);"
+            "insert into cercly_local_test_guard.instance "
+            "select " + literal(f.local_guard_nonce) + "::uuid, system_identifier "
+            "from pg_control_system();", 'install-isolated-instance-guard')
+        wrong_guard = sql(prepare_history_sql(
+            replace(f, local_guard_nonce=str(uuid4())), temporary_publication_authorized=True),
+            'reject-wrong-local-instance-guard', allow_error=True)
+        check(wrong_guard.returncode != 0 and b'42501' in wrong_guard.stderr and
+              b'QA_DISPOSABLE_POSTGRES_GUARD_MISMATCH' in wrong_guard.stderr,
+              'different_instance_nonce_rejected')
         users = ','.join(f"({literal(x.id)},'local-privacy-{i}@cercly.test','{{}}',"
                          f"{literal(stamp)},jsonb_build_object('cercly_qa_privacidad',"
                          f"jsonb_build_object('autorizada',true,'ensayo_id',{literal(f.run_id)})))"
