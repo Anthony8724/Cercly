@@ -5,7 +5,7 @@ import '../../../sky/sky_theme.dart';
 import '../../establecimientos/models/establecimiento_publico_model.dart';
 import '../../establecimientos/services/establecimiento_publico_service.dart';
 import '../../promociones/models/promocion_destacada_model.dart';
-import '../../promociones/services/promocion_publica_service.dart';
+import '../../promociones/services/promociones_destacadas_publicas_service.dart';
 
 typedef CargarPromocionesExplorar =
     Future<List<PromocionDestacadaModel>> Function();
@@ -108,18 +108,9 @@ class _PromocionesExplorarState extends State<PromocionesExplorar> {
     _promociones = const [];
     _error = false;
 
+    // Las campanas destacadas se consultan sin depender del GPS ni de
+    // los establecimientos cargados en la primera pagina de Explorar.
     final cargaInyectada = widget.cargarPromociones;
-    final tieneUbicacion =
-        widget.latitudUsuario != null && widget.longitudUsuario != null;
-
-    // En producción se permiten promociones cercanas aunque el negocio no haya
-    // entrado todavía en la primera página del listado de establecimientos.
-    if (cargaInyectada == null &&
-        !tieneUbicacion &&
-        !widget.establecimientos.any((e) => e.tienePromociones)) {
-      _cargando = false;
-      return;
-    }
 
     if (mounted) {
       setState(() => _cargando = true);
@@ -130,11 +121,7 @@ class _PromocionesExplorarState extends State<PromocionesExplorar> {
     try {
       final promociones = cargaInyectada != null
           ? await cargaInyectada()
-          : await PromocionPublicaService().listarVigentes(
-              latitudUsuario: widget.latitudUsuario,
-              longitudUsuario: widget.longitudUsuario,
-              radioMaximoMetros: widget.radioMaximoMetros,
-            );
+          : await PromocionesDestacadasPublicasService().listarVigentes();
 
       if (!mounted || version != _version) return;
       setState(() {
@@ -198,7 +185,7 @@ class _PromocionesExplorarState extends State<PromocionesExplorar> {
             const SizedBox(width: 5),
             Expanded(
               child: Text(
-                'Promociones cerca de ti',
+                'Promociones destacadas',
                 style: TextStyle(
                   color: sky.text,
                   fontSize: 18,
@@ -314,6 +301,31 @@ class _TarjetaPromocion extends StatelessWidget {
                           semanticsLabel: 'Abriendo establecimiento',
                         ),
                       ),
+                    Positioned(
+                      bottom: 7,
+                      left: 7,
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          color: const Color(0xE8192846),
+                          borderRadius: BorderRadius.circular(7),
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 7,
+                            vertical: 4,
+                          ),
+                          child: Text(
+                            'Patrocinado',
+                            key: Key('patrocinado-${promocion.id}'),
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
                     Positioned(
                       top: 7,
                       right: 7,

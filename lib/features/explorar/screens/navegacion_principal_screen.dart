@@ -88,6 +88,7 @@ class _NavegacionPrincipalScreenState extends State<NavegacionPrincipalScreen>
           ExplorarScreen(
             controller: _controller,
             onPerfil: () => _seleccionarPestana(3),
+            onVerPromociones: () => _seleccionarPestana(1),
             cargarPromociones: widget.cargarPromociones,
             crearDetalle: widget.crearDetalle,
           ),

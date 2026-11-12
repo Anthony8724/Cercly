@@ -23,6 +23,7 @@ class ExplorarScreen extends StatelessWidget {
   const ExplorarScreen({
     required this.controller,
     this.onPerfil,
+    this.onVerPromociones,
     this.cargarPromociones,
     this.crearDetalle,
     super.key,
@@ -30,6 +31,7 @@ class ExplorarScreen extends StatelessWidget {
 
   final ExplorarController controller;
   final VoidCallback? onPerfil;
+  final VoidCallback? onVerPromociones;
   final CargarPromocionesExplorar? cargarPromociones;
   final CrearDetalleEstablecimiento? crearDetalle;
 
@@ -119,10 +121,7 @@ class ExplorarScreen extends StatelessWidget {
                                 ),
                               ),
                           ],
-                          if (controller.estadoUbicacion ==
-                                  EstadoUbicacion.disponible &&
-                              !controller.cargandoResultados &&
-                              controller.errorResultados == null)
+                          if (!controller.cargandoResultados)
                             PromocionesExplorar(
                               establecimientos: controller.establecimientos,
                               cargarPromociones: cargarPromociones,
@@ -132,8 +131,9 @@ class ExplorarScreen extends StatelessWidget {
                                   .toDouble(),
                               onEstablecimiento: (establecimiento) =>
                                   _abrirDetalle(context, establecimiento),
-                              onVerTodas: () =>
-                                  controller.cambiarSoloPromociones(true),
+                              onVerTodas:
+                                  onVerPromociones ??
+                                  () => controller.cambiarSoloPromociones(true),
                             ),
                           const SizedBox(height: 14),
                           _EncabezadoResultados(controller: controller),
