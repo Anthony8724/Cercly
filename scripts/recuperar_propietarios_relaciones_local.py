@@ -50,7 +50,8 @@ def compare_relations(source, restored):
 
 
 def plan_relation_owner_recovery(source, restored, target_memberships,
-                                 operator, source_extensions, restored_extensions):
+                                 operator, source_extensions, restored_extensions,
+                                 *, pgstat_creation_evidence=None):
     """No suprime discrepancias: permite solo el defecto demostrado de siete objetos.
 
     Antes de ejecutar el plan deben consultarse nuevamente los catálogos del
@@ -75,7 +76,20 @@ def plan_relation_owner_recovery(source, restored, target_memberships,
         extname, kind = MANAGED_RELATIONS[key]
         if set(diff['attributes']) != {'owner'}:
             raise ValueError('NON_OWNER_ATTRIBUTE_DIFFERENCE')
-        if b['owner'] != operator or a['owner'] not in {'postgres', 'supabase_admin'}:
+        # Con /etc/postgresql y session_preload_libraries=supautils, la imagen
+        # crea estas dos vistas como supabase_admin incluso si el ejecutor es
+        # nuestro operador. Exigir reproducción independiente en una BD vacía;
+        # no aceptar supabase_admin como propietario alternativo general.
+        proof = pgstat_creation_evidence or {}
+        observed_pgstat_creator = (
+            key in {('extensions', 'pg_stat_statements'), ('extensions', 'pg_stat_statements_info')}
+            and a['owner'] == 'postgres' and b['owner'] == 'supabase_admin'
+            and proof.get('session_user') == operator and proof.get('current_user') == operator
+            and proof.get('extension') == {'extname': 'pg_stat_statements', 'extversion': '1.11',
+                                          'schema': 'extensions', 'owner': 'supabase_admin'}
+            and {'extname': 'pg_stat_statements', 'extversion': '1.11', 'schema': 'extensions'} in source_extensions
+            and relation_index(proof.get('relations', [])).get(key) == b)
+        if (b['owner'] != operator and not observed_pgstat_creator) or a['owner'] not in {'postgres', 'supabase_admin'}:
             raise ValueError('UNEXPECTED_RELATION_OWNER')
         if a['relkind'] != kind or memberships.get(key, {}).get('extname') != extname:
             raise ValueError('EXTENSION_MEMBERSHIP_OR_RELATION_KIND_MISMATCH')
