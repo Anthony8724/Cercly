@@ -199,9 +199,11 @@ class MonitorProximidadController extends ChangeNotifier {
     }
     _consultando = true;
     final generacion = _generacionRadar;
+    final usuarioAlInicio = _usuarioId();
 
     try {
       final configuracion = await _preferencias.cargar();
+      if (!_sesionSigueVigente(usuarioAlInicio)) return;
       if (!configuracion.activadas && !mostrarEnRadar) {
         _ultimoResultadoDiagnostico = 'alertas_desactivadas';
         return;
@@ -218,13 +220,13 @@ class MonitorProximidadController extends ChangeNotifier {
         _promocionesRadar = const [];
         _publicarEstado();
       }
-      final usuarioAlInicio = _usuarioId();
       final servicioNotificaciones = _notificaciones;
       if (!mostrarEnRadar &&
           servicioNotificaciones is DiagnosticoPermisoNotificaciones) {
         final estado =
             await (servicioNotificaciones as DiagnosticoPermisoNotificaciones)
                 .consultarEstadoDetallado();
+        if (!_sesionSigueVigente(usuarioAlInicio)) return;
         if (estado != EstadoPermisoNotificaciones.concedido) {
           _ultimoResultadoDiagnostico = switch (estado) {
             EstadoPermisoNotificaciones.denegado ||
@@ -238,24 +240,32 @@ class MonitorProximidadController extends ChangeNotifier {
           };
           return;
         }
-      } else if (!mostrarEnRadar &&
-          !await _notificaciones.tienePermisoParaNotificar()) {
-        _ultimoResultadoDiagnostico = 'permiso_notificaciones_pendiente';
-        return;
+      } else if (!mostrarEnRadar) {
+        final permiso = await _notificaciones.tienePermisoParaNotificar();
+        if (!_sesionSigueVigente(usuarioAlInicio)) return;
+        if (!permiso) {
+          _ultimoResultadoDiagnostico = 'permiso_notificaciones_pendiente';
+          return;
+        }
       }
       if (!mostrarEnRadar &&
           servicioNotificaciones is DiagnosticoCanalNotificaciones) {
         final disponible =
             await (servicioNotificaciones as DiagnosticoCanalNotificaciones)
                 .canalPromocionesDisponible();
+        if (!_sesionSigueVigente(usuarioAlInicio)) return;
         if (disponible == false) {
           _ultimoResultadoDiagnostico = 'canal_notificaciones_bloqueado';
           return;
         }
       }
-      if (configuracion.activadas) await _asegurarHistorialCargado();
+      if (configuracion.activadas &&
+          !await _asegurarHistorialCargado(usuarioAlInicio)) {
+        return;
+      }
 
       final resultado = await _ubicacionService.obtenerUbicacion();
+      if (!_sesionSigueVigente(usuarioAlInicio)) return;
       if (resultado.estado != EstadoUbicacion.disponible) {
         if (mostrarEnRadar) {
           _promocionesRadar = const [];
@@ -291,6 +301,7 @@ class MonitorProximidadController extends ChangeNotifier {
                   longitudUsuario: ubicacion.longitud,
                   radioUsuarioMetros: configuracion.radioMetros,
                 );
+        if (!_sesionSigueVigente(usuarioAlInicio)) return;
         promociones = diagnostico.promocionesEnRadio;
         if (diagnostico.promocionesVigentes == 0) {
           _ultimoResultadoDiagnostico = 'sin_promociones_vigentes';
@@ -303,6 +314,7 @@ class MonitorProximidadController extends ChangeNotifier {
           longitudUsuario: ubicacion.longitud,
           radioUsuarioMetros: configuracion.radioMetros,
         );
+        if (!_sesionSigueVigente(usuarioAlInicio)) return;
         if (promociones.isEmpty) {
           _ultimoResultadoDiagnostico = 'sin_promociones_elegibles';
         }
@@ -338,23 +350,26 @@ class MonitorProximidadController extends ChangeNotifier {
       }
       if (!configuracion.activadas) return;
       final politica = await _preferencias.cargar();
+      if (!_sesionSigueVigente(usuarioAlInicio)) return;
       if (!politica.activadas) {
         _ultimoResultadoDiagnostico = 'alertas_desactivadas_o_permiso_revocado';
         return;
       }
       if (mostrarEnRadar &&
           (usuarioAlInicio == null ||
-              usuarioAlInicio != _usuarioId() ||
               !_radarActivo ||
               !_radarVisible ||
               !_appEnPrimerPlano ||
               generacion != _generacionRadar)) {
         return;
       }
-      if (mostrarEnRadar &&
-          !await _notificaciones.tienePermisoParaNotificar()) {
-        _ultimoResultadoDiagnostico = 'permiso_notificaciones_pendiente';
-        return;
+      if (mostrarEnRadar) {
+        final permiso = await _notificaciones.tienePermisoParaNotificar();
+        if (!_sesionSigueVigente(usuarioAlInicio)) return;
+        if (!permiso) {
+          _ultimoResultadoDiagnostico = 'permiso_notificaciones_pendiente';
+          return;
+        }
       }
       final dentroAntes = _control.promocionesDentro;
       final notificables = _control.evaluar(
@@ -373,9 +388,9 @@ class MonitorProximidadController extends ChangeNotifier {
       );
 
       for (final promocion in notificables) {
+        if (!_sesionSigueVigente(usuarioAlInicio)) return;
         if (mostrarEnRadar &&
-            (usuarioAlInicio != _usuarioId() ||
-                !_radarActivo ||
+            (!_radarActivo ||
                 !_radarVisible ||
                 !_appEnPrimerPlano ||
                 generacion != _generacionRadar)) {
@@ -384,16 +399,32 @@ class MonitorProximidadController extends ChangeNotifier {
         // Una persona puede revocar consentimiento o permiso mientras se
         // consulta el backend. Verificar justo antes de publicar el aviso.
         final vigente = await _preferencias.cargar();
+        if (!_sesionSigueVigente(usuarioAlInicio)) return;
         if (!vigente.activadas ||
             vigente.horarioDescanso?.contiene(_ahora()) == true ||
             _control.notificacionesRecientes.length >=
-                vigente.frecuencia.maximoPorDia ||
-            !await _notificaciones.tienePermisoParaNotificar()) {
+                vigente.frecuencia.maximoPorDia) {
           _ultimoResultadoDiagnostico =
               'alertas_desactivadas_o_permiso_revocado';
           return;
         }
-        final mostrada = await _notificaciones.mostrarPromocion(promocion);
+        final permiso = await _notificaciones.tienePermisoParaNotificar();
+        if (!_sesionSigueVigente(usuarioAlInicio)) return;
+        if (!permiso) {
+          _ultimoResultadoDiagnostico =
+              'alertas_desactivadas_o_permiso_revocado';
+          return;
+        }
+        final servicio = _notificaciones;
+        final mostrada = servicio is NotificacionPromocionConSesionVigente
+            ? await (servicio as NotificacionPromocionConSesionVigente)
+                  .mostrarPromocionSiSesionVigente(
+                    promocion,
+                    sesionVigente: () =>
+                        !_disposed && _usuarioId() == usuarioAlInicio,
+                  )
+            : await servicio.mostrarPromocion(promocion);
+        if (!_sesionSigueVigente(usuarioAlInicio)) return;
         if (!mostrada) {
           _ultimoResultadoDiagnostico = 'notificacion_bloqueada';
           continue;
@@ -507,7 +538,9 @@ class MonitorProximidadController extends ChangeNotifier {
             'simulacion_canal_notificaciones_bloqueado';
       }
 
-      await _asegurarHistorialCargado();
+      if (!await _asegurarHistorialCargado(_usuarioId())) {
+        return _ultimoResultadoDiagnostico = 'cambio_de_cuenta';
+      }
       final candidatas = await _promocionesService.listarCercanas(
         latitudUsuario: 0.80525,
         longitudUsuario: -77.73434,
@@ -590,36 +623,66 @@ class MonitorProximidadController extends ChangeNotifier {
     return primero.containsAll(segundo);
   }
 
-  Future<void> _asegurarHistorialCargado() async {
-    final actual = _usuarioId();
+  Future<bool> _asegurarHistorialCargado(String? actual) async {
+    if (!_sesionSigueVigente(actual)) return false;
     if (_usuarioCargado != actual) {
       _control.cargarHistorial(const HistorialNotificacionesPromocionDatos());
       _historialCargado = false;
       _usuarioCargado = actual;
     }
-    if (_historialCargado) return;
+    if (_historialCargado) return true;
+    final historial = _historial;
+    if (actual != null &&
+        historial is! HistorialNotificacionesPromocionPorUsuario) {
+      // Un historial sin clave de propietario no se comparte entre cuentas.
+      _historialCargado = true;
+      return true;
+    }
     try {
-      final historial = _historial;
-      _control.cargarHistorial(
-        historial is HistorialNotificacionesPromocionLocal
-            ? await historial.cargarDe(actual)
-            : await historial.cargar(),
-      );
+      final datos = historial is HistorialNotificacionesPromocionPorUsuario
+          ? await (historial as HistorialNotificacionesPromocionPorUsuario)
+                .cargarDe(actual)
+          : await historial.cargar();
+      if (!_sesionSigueVigente(actual)) return false;
+      _control.cargarHistorial(datos);
+      _historialCargado = true;
+      return true;
     } catch (_) {
       // Si el almacenamiento local falla, el monitor continúa en memoria.
-    } finally {
+      if (!_sesionSigueVigente(actual)) return false;
       _historialCargado = true;
+      return true;
     }
   }
 
   Future<void> _guardarHistorial(String? usuario) async {
+    if (!_sesionSigueVigente(usuario)) return;
     final historial = _historial;
+    if (usuario != null &&
+        historial is! HistorialNotificacionesPromocionPorUsuario) {
+      return;
+    }
     final datos = _control.crearHistorial();
-    if (historial is HistorialNotificacionesPromocionLocal) {
-      await historial.guardarDe(datos, usuario);
+    if (historial is HistorialNotificacionesPromocionPorUsuario) {
+      await (historial as HistorialNotificacionesPromocionPorUsuario).guardarDe(
+        datos,
+        usuario,
+      );
     } else {
       await historial.guardar(datos);
     }
+  }
+
+  bool _sesionSigueSiendo(String? usuario) =>
+      !_disposed && _usuarioId() == usuario;
+
+  bool _sesionSigueVigente(String? usuario) {
+    if (_sesionSigueSiendo(usuario)) return true;
+    _control.cargarHistorial(const HistorialNotificacionesPromocionDatos());
+    _historialCargado = false;
+    _usuarioCargado = null;
+    _ultimoResultadoDiagnostico = 'cambio_de_cuenta';
+    return false;
   }
 
   void pausar() {

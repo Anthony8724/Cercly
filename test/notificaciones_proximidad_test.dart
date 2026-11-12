@@ -98,13 +98,17 @@ class _PromocionesFalsas implements PromocionesCercanasRepository {
 }
 
 class _NotificacionesFalsas
-    implements NotificacionPromocionGateway, NotificacionPromocionSimulable {
+    implements
+        NotificacionPromocionGateway,
+        NotificacionPromocionConSesionVigente,
+        NotificacionPromocionSimulable {
   _NotificacionesFalsas({this.permitir = true});
 
   final bool permitir;
   final mostradas = <PromocionDestacadaModel>[];
   final simuladas = <PromocionDestacadaModel>[];
   int inicializaciones = 0;
+  Future<void> Function()? antesDeMostrar;
 
   @override
   Future<void> inicializar() async => inicializaciones++;
@@ -123,6 +127,16 @@ class _NotificacionesFalsas
   }
 
   @override
+  Future<bool> mostrarPromocionSiSesionVigente(
+    PromocionDestacadaModel promocion, {
+    required bool Function() sesionVigente,
+  }) async {
+    await antesDeMostrar?.call();
+    if (!sesionVigente()) return false;
+    return mostrarPromocion(promocion);
+  }
+
+  @override
   Future<bool> mostrarPromocionSimulada(
     PromocionDestacadaModel promocion,
   ) async {
@@ -135,6 +149,7 @@ class _NotificacionesFalsas
 class _HistorialFalso
     implements
         HistorialNotificacionesPromocion,
+        HistorialNotificacionesPromocionPorUsuario,
         BorradoHistorialLocalNotificaciones {
   _HistorialFalso([Map<String, DateTime>? inicial])
     : _datos = HistorialNotificacionesPromocionDatos(
@@ -152,14 +167,42 @@ class _HistorialFalso
   Future<HistorialNotificacionesPromocionDatos> cargar() async => _datos;
 
   @override
+  Future<HistorialNotificacionesPromocionDatos> cargarDe(String? usuarioId) =>
+      cargar();
+
+  @override
   Future<void> guardar(HistorialNotificacionesPromocionDatos historial) async {
     guardados++;
     _datos = historial;
   }
 
   @override
+  Future<void> guardarDe(
+    HistorialNotificacionesPromocionDatos historial,
+    String? usuarioId,
+  ) => guardar(historial);
+
+  @override
   Future<void> borrarDatosLocales() async {
     _datos = const HistorialNotificacionesPromocionDatos();
+  }
+}
+
+class _HistorialPorCuentaPendiente extends _HistorialFalso {
+  _HistorialPorCuentaPendiente(this.datosPorUsuario);
+
+  final Map<String, HistorialNotificacionesPromocionDatos> datosPorUsuario;
+  final inicioCarga = Completer<String?>();
+  final liberarCarga = Completer<void>();
+
+  @override
+  Future<HistorialNotificacionesPromocionDatos> cargarDe(
+    String? usuarioId,
+  ) async {
+    if (!inicioCarga.isCompleted) inicioCarga.complete(usuarioId);
+    await liberarCarga.future;
+    return datosPorUsuario[usuarioId] ??
+        const HistorialNotificacionesPromocionDatos();
   }
 }
 
@@ -1349,6 +1392,196 @@ void main() {
       expect(notificaciones.mostradas, hasLength(2));
       controller.dispose();
     });
+
+    test('evaluación manual descarta respuesta si cambia la cuenta', () async {
+      SharedPreferences.setMockInitialValues({});
+      SharedPreferencesAsyncPlatform.instance =
+          InMemorySharedPreferencesAsync.empty();
+      final consultaIniciada = Completer<void>();
+      final terminarConsulta = Completer<void>();
+      var cuenta = 'usuario-a';
+      final notificaciones = _NotificacionesFalsas();
+      final historial = _HistorialFalso();
+      final controller = MonitorProximidadController(
+        ubicacionService: _UbicacionFalsa(
+          ResultadoUbicacion(
+            estado: EstadoUbicacion.disponible,
+            ubicacion: UbicacionUsuario(
+              latitud: 0.8116,
+              longitud: -77.7172,
+              precisionMetros: 10,
+              capturadaEn: instanteBase,
+            ),
+          ),
+        ),
+        promocionesService: _PromocionesFalsas(
+          [promocion()],
+          antesDeResponder: () async {
+            if (!consultaIniciada.isCompleted) consultaIniciada.complete();
+            await terminarConsulta.future;
+          },
+        ),
+        notificaciones: notificaciones,
+        historial: historial,
+        preferencias: _PreferenciasFalsas(),
+        usuarioId: () => cuenta,
+        ahora: () => instanteBase,
+      );
+
+      final evaluacion = controller.verificarAhora();
+      await consultaIniciada.future;
+      cuenta = 'usuario-b';
+      terminarConsulta.complete();
+      await evaluacion;
+
+      expect(notificaciones.mostradas, isEmpty);
+      expect(historial.guardados, 0);
+      expect(controller.ultimoResultadoDiagnostico, 'cambio_de_cuenta');
+      controller.dispose();
+    });
+
+    test(
+      'gateway vuelve a validar cuenta antes de publicar notificación',
+      () async {
+        SharedPreferences.setMockInitialValues({});
+        SharedPreferencesAsyncPlatform.instance =
+            InMemorySharedPreferencesAsync.empty();
+        var cuenta = 'usuario-a';
+        final notificaciones = _NotificacionesFalsas()
+          ..antesDeMostrar = () async {
+            cuenta = 'usuario-b';
+          };
+        final historial = _HistorialFalso();
+        final controller = MonitorProximidadController(
+          ubicacionService: _UbicacionFalsa(
+            ResultadoUbicacion(
+              estado: EstadoUbicacion.disponible,
+              ubicacion: UbicacionUsuario(
+                latitud: 0.8116,
+                longitud: -77.7172,
+                precisionMetros: 10,
+                capturadaEn: instanteBase,
+              ),
+            ),
+          ),
+          promocionesService: _PromocionesFalsas([promocion()]),
+          notificaciones: notificaciones,
+          historial: historial,
+          preferencias: _PreferenciasFalsas(),
+          usuarioId: () => cuenta,
+          ahora: () => instanteBase,
+        );
+
+        await controller.verificarAhora();
+
+        expect(notificaciones.mostradas, isEmpty);
+        expect(historial.guardados, 0);
+        expect(controller.ultimoResultadoDiagnostico, 'cambio_de_cuenta');
+        controller.dispose();
+      },
+    );
+
+    test('Radar automático descarta respuesta si cambia la cuenta', () async {
+      SharedPreferences.setMockInitialValues({});
+      SharedPreferencesAsyncPlatform.instance =
+          InMemorySharedPreferencesAsync.empty();
+      final consultaIniciada = Completer<void>();
+      final terminarConsulta = Completer<void>();
+      var cuenta = 'usuario-a';
+      final notificaciones = _NotificacionesFalsas();
+      final historial = _HistorialFalso();
+      final controller = MonitorProximidadController(
+        ubicacionService: _UbicacionFalsa(
+          ResultadoUbicacion(
+            estado: EstadoUbicacion.disponible,
+            ubicacion: UbicacionUsuario(
+              latitud: 0.8116,
+              longitud: -77.7172,
+              precisionMetros: 10,
+              capturadaEn: instanteBase,
+            ),
+          ),
+        ),
+        promocionesService: _PromocionesFalsas(
+          [promocion()],
+          antesDeResponder: () async {
+            if (!consultaIniciada.isCompleted) consultaIniciada.complete();
+            await terminarConsulta.future;
+          },
+        ),
+        notificaciones: notificaciones,
+        historial: historial,
+        preferencias: _PreferenciasFalsas(),
+        usuarioId: () => cuenta,
+        ahora: () => instanteBase,
+      );
+      controller.setRadarVisible(true);
+      controller.setRadarActivo(true);
+
+      final inicio = controller.iniciar();
+      await consultaIniciada.future;
+      cuenta = 'usuario-b';
+      terminarConsulta.complete();
+      await inicio;
+
+      expect(notificaciones.mostradas, isEmpty);
+      expect(historial.guardados, 0);
+      expect(controller.ultimoResultadoDiagnostico, 'cambio_de_cuenta');
+      controller.dispose();
+    });
+
+    test(
+      'cambio de cuenta durante carga no aplica historial anterior',
+      () async {
+        SharedPreferences.setMockInitialValues({});
+        SharedPreferencesAsyncPlatform.instance =
+            InMemorySharedPreferencesAsync.empty();
+        final instanteAnterior = instanteBase.subtract(
+          const Duration(hours: 1),
+        );
+        final historial = _HistorialPorCuentaPendiente({
+          'usuario-a': HistorialNotificacionesPromocionDatos(
+            ultimaPorPromocion: {'promo-1': instanteAnterior},
+            ultimaPorEstablecimiento: {'establecimiento-1': instanteAnterior},
+            recientes: [instanteAnterior],
+            promocionesDentro: {'promo-1'},
+          ),
+          'usuario-b': const HistorialNotificacionesPromocionDatos(),
+        });
+        var cuenta = 'usuario-a';
+        final notificaciones = _NotificacionesFalsas();
+        final controller = MonitorProximidadController(
+          ubicacionService: _UbicacionFalsa(
+            ResultadoUbicacion(
+              estado: EstadoUbicacion.disponible,
+              ubicacion: UbicacionUsuario(
+                latitud: 0.8116,
+                longitud: -77.7172,
+                precisionMetros: 10,
+                capturadaEn: instanteBase,
+              ),
+            ),
+          ),
+          promocionesService: _PromocionesFalsas([promocion()]),
+          notificaciones: notificaciones,
+          historial: historial,
+          preferencias: _PreferenciasFalsas(),
+          usuarioId: () => cuenta,
+          ahora: () => instanteBase,
+        );
+
+        final evaluacionAntigua = controller.verificarAhora();
+        expect(await historial.inicioCarga.future, 'usuario-a');
+        cuenta = 'usuario-b';
+        historial.liberarCarga.complete();
+        await evaluacionAntigua;
+
+        expect(notificaciones.mostradas, isEmpty);
+        await controller.verificarAhora();
+        expect(notificaciones.mostradas, hasLength(1));
+        controller.dispose();
+      },
+    );
 
     test(
       'motor aplica cambio de frecuencia con historial sin reiniciar',

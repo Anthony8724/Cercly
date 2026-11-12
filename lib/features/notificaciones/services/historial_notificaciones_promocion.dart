@@ -22,6 +22,15 @@ abstract interface class HistorialNotificacionesPromocion {
   Future<void> guardar(HistorialNotificacionesPromocionDatos historial);
 }
 
+abstract interface class HistorialNotificacionesPromocionPorUsuario {
+  Future<HistorialNotificacionesPromocionDatos> cargarDe(String? usuarioId);
+
+  Future<void> guardarDe(
+    HistorialNotificacionesPromocionDatos historial,
+    String? usuarioId,
+  );
+}
+
 abstract interface class BorradoHistorialLocalNotificaciones {
   Future<void> borrarDatosLocales();
 }
@@ -29,6 +38,7 @@ abstract interface class BorradoHistorialLocalNotificaciones {
 class HistorialNotificacionesPromocionLocal
     implements
         HistorialNotificacionesPromocion,
+        HistorialNotificacionesPromocionPorUsuario,
         BorradoHistorialLocalNotificaciones {
   HistorialNotificacionesPromocionLocal({
     SharedPreferencesAsync? preferences,
@@ -57,6 +67,7 @@ class HistorialNotificacionesPromocionLocal
   Future<HistorialNotificacionesPromocionDatos> cargar() =>
       cargarDe(usuarioId?.call());
 
+  @override
   Future<HistorialNotificacionesPromocionDatos> cargarDe(String? id) async {
     final contenido = await _preferences.getString(_clavePara(id));
     final dentro =
@@ -153,6 +164,7 @@ class HistorialNotificacionesPromocionLocal
   Future<void> guardar(HistorialNotificacionesPromocionDatos historial) =>
       guardarDe(historial, usuarioId?.call());
 
+  @override
   Future<void> guardarDe(
     HistorialNotificacionesPromocionDatos historial,
     String? id,
