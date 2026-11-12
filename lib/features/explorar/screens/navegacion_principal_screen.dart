@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../../../sky/sky_theme.dart';
-
+import '../../promociones/screens/promociones_screen.dart';
 import '../controllers/explorar_controller.dart';
 import '../widgets/promociones_explorar.dart';
 import 'explorar_screen.dart';
@@ -43,6 +43,7 @@ class _NavegacionPrincipalScreenState extends State<NavegacionPrincipalScreen>
   late final ExplorarController _controller;
   late final bool _esPropio;
   int _indice = 0;
+  bool _mostrarPromociones = false;
 
   @override
   void initState() {
@@ -62,6 +63,13 @@ class _NavegacionPrincipalScreenState extends State<NavegacionPrincipalScreen>
     }
   }
 
+  void _seleccionarPestana(int indice) {
+    setState(() {
+      _indice = indice;
+      if (indice == 1) _mostrarPromociones = true;
+    });
+  }
+
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
@@ -79,10 +87,17 @@ class _NavegacionPrincipalScreenState extends State<NavegacionPrincipalScreen>
         children: [
           ExplorarScreen(
             controller: _controller,
-            onPerfil: () => setState(() => _indice = 2),
+            onPerfil: () => _seleccionarPestana(3),
             cargarPromociones: widget.cargarPromociones,
             crearDetalle: widget.crearDetalle,
           ),
+          // Carga las promociones solo cuando se abre esta pestaña.
+          _mostrarPromociones
+              ? PromocionesScreen(
+                  cargarPromociones: widget.cargarPromociones,
+                  crearDetalle: widget.crearDetalle,
+                )
+              : const SizedBox.shrink(),
           MapaEstablecimientosScreen(
             controller: _controller,
             mostrarTiles: widget.mostrarTilesMapa,
@@ -94,7 +109,7 @@ class _NavegacionPrincipalScreenState extends State<NavegacionPrincipalScreen>
       bottomNavigationBar: DecoratedBox(
         decoration: BoxDecoration(
           color: sky.surface,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(22)),
           boxShadow: const [
             BoxShadow(
               color: Color(0x1A1F4E8C),
@@ -129,13 +144,18 @@ class _NavegacionPrincipalScreenState extends State<NavegacionPrincipalScreen>
             child: NavigationBar(
               selectedIndex: _indice,
               labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
-              onDestinationSelected: (indice) =>
-                  setState(() => _indice = indice),
+              onDestinationSelected: _seleccionarPestana,
               destinations: [
                 const NavigationDestination(
                   icon: Icon(Icons.explore_outlined),
                   selectedIcon: Icon(Icons.explore_rounded),
                   label: 'Explorar',
+                ),
+                const NavigationDestination(
+                  key: Key('tab-promociones'),
+                  icon: Icon(Icons.local_offer_outlined),
+                  selectedIcon: Icon(Icons.local_offer_rounded),
+                  label: 'Promociones',
                 ),
                 const NavigationDestination(
                   icon: Icon(Icons.map_outlined),
