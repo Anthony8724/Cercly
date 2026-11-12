@@ -15,9 +15,16 @@ import 'package:cercly/features/explorar/controllers/explorar_controller.dart';
 import 'package:cercly/features/explorar/models/ubicacion_usuario.dart';
 import 'package:cercly/features/explorar/screens/navegacion_principal_screen.dart';
 import 'package:cercly/features/explorar/services/ubicacion_service.dart';
+import 'package:cercly/features/notificaciones/controllers/monitor_proximidad_controller.dart';
+import 'package:cercly/features/notificaciones/services/notificacion_local_service.dart';
+import 'package:cercly/features/notificaciones/widgets/monitor_proximidad_app.dart';
+import 'package:cercly/features/promociones/models/promocion_destacada_model.dart';
+import 'package:cercly/features/promociones/services/promocion_publica_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:shared_preferences_platform_interface/in_memory_shared_preferences_async.dart';
+import 'package:shared_preferences_platform_interface/shared_preferences_async_platform_interface.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class _EstablecimientosVacios implements EstablecimientoCercanoRepository {
@@ -74,6 +81,46 @@ class _UbicacionDenegada implements UbicacionService {
     estado: EstadoUbicacion.permisoDenegado,
     mensaje: 'Permiso denegado',
   );
+}
+
+class _UbicacionFresca extends _UbicacionDenegada {
+  @override
+  Future<ResultadoUbicacion> obtenerUbicacion({
+    bool solicitarPermiso = false,
+  }) async => ResultadoUbicacion(
+    estado: EstadoUbicacion.disponible,
+    ubicacion: UbicacionUsuario(
+      latitud: 0.8116,
+      longitud: -77.7172,
+      precisionMetros: 10,
+      capturadaEn: DateTime.now(),
+    ),
+  );
+}
+
+class _PromocionesVacias implements PromocionesCercanasRepository {
+  _PromocionesVacias([this.promociones = const []]);
+
+  final List<PromocionDestacadaModel> promociones;
+
+  @override
+  Future<List<PromocionDestacadaModel>> listarCercanas({
+    required double latitudUsuario,
+    required double longitudUsuario,
+    int radioUsuarioMetros = 500,
+  }) async => promociones;
+}
+
+class _NotificacionesSilenciosas implements NotificacionPromocionGateway {
+  @override
+  Future<void> inicializar() async {}
+
+  @override
+  Future<bool> tienePermisoParaNotificar() async => false;
+
+  @override
+  Future<bool> mostrarPromocion(PromocionDestacadaModel promocion) async =>
+      false;
 }
 
 ExplorarController _controllerPrueba() => ExplorarController(
@@ -133,6 +180,79 @@ void main() {
     await tester.tap(find.text('Regístrate'));
     await tester.pump();
     expect(find.text('Únete a Cercly'), findsOneWidget);
+  });
+
+  testWidgets('panel Radar respeta atribución y controles del mapa', (
+    tester,
+  ) async {
+    SharedPreferencesAsyncPlatform.instance =
+        InMemorySharedPreferencesAsync.empty();
+    final explorar = _controllerPrueba()
+      ..ubicacion = const UbicacionUsuario(latitud: 0.8116, longitud: -77.7172);
+    final ahora = DateTime.now();
+    final monitor = MonitorProximidadController(
+      ubicacionService: _UbicacionFresca(),
+      promocionesService: _PromocionesVacias([
+        PromocionDestacadaModel(
+          id: 'promo-test',
+          establecimientoId: 'negocio-test',
+          establecimientoNombre: 'Negocio del Radar',
+          categoriaNombre: 'Comida',
+          titulo: 'Promoción vigente',
+          descripcion: 'Prueba',
+          fechaInicio: ahora.subtract(const Duration(hours: 1)),
+          fechaFin: ahora.add(const Duration(hours: 1)),
+          radioAlertaMetros: 1500,
+          latitud: 0.8116,
+          longitud: -77.7172,
+          distanciaMetros: 50,
+        ),
+      ]),
+      notificaciones: _NotificacionesSilenciosas(),
+      usuarioId: () => 'cuenta-a',
+    );
+    await tester.pumpWidget(
+      MaterialApp(
+        home: MonitorProximidadScope(
+          controller: monitor,
+          child: NavegacionPrincipalScreen(
+            terceraOpcionBuilder: (_) => const AccesoPublicoScreen(),
+            terceraOpcionLabel: 'Regístrate',
+            terceraOpcionIcon: Icons.person_add_outlined,
+            terceraOpcionSelectedIcon: Icons.person_add,
+            controller: explorar,
+            inicializarController: false,
+            mostrarTilesMapa: false,
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('Mapa'));
+    await tester.pumpAndSettle();
+    final radar = tester.getRect(find.byKey(const Key('radar-panel-position')));
+    final atribucion = tester.getRect(
+      find.byKey(const Key('atribucion-openstreetmap-explorar')),
+    );
+    final controles = tester.getRect(find.text('Mapa Cercly'));
+    expect(radar.bottom, lessThan(atribucion.top));
+    expect(radar.top, greaterThan(controles.bottom));
+    await tester.tap(find.byKey(const Key('radar-cercly-toggle')));
+    await monitor.iniciar();
+    await tester.pumpAndSettle();
+    final radarActivo = tester.getRect(
+      find.byKey(const Key('radar-panel-position')),
+    );
+    expect(radarActivo.bottom, lessThan(atribucion.top));
+    expect(radarActivo.top, greaterThan(controles.bottom));
+    await tester.tap(find.byKey(const Key('radar-list-toggle')));
+    await tester.pumpAndSettle();
+    final radarExpandido = tester.getRect(
+      find.byKey(const Key('radar-panel-position')),
+    );
+    expect(find.text('Negocio del Radar'), findsOneWidget);
+    expect(radarExpandido.bottom, lessThan(atribucion.top));
+    expect(radarExpandido.top, greaterThan(controles.bottom));
+    monitor.dispose();
   });
 
   test('resuelve navegación exclusivamente por rol autorizado', () {

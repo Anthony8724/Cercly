@@ -17,6 +17,13 @@ abstract interface class NotificacionPromocionGateway {
   Future<bool> mostrarPromocion(PromocionDestacadaModel promocion);
 }
 
+abstract interface class NotificacionPromocionConSesionVigente {
+  Future<bool> mostrarPromocionSiSesionVigente(
+    PromocionDestacadaModel promocion, {
+    required bool Function() sesionVigente,
+  });
+}
+
 abstract interface class NotificacionPromocionSimulable {
   Future<bool> mostrarPromocionSimulada(PromocionDestacadaModel promocion);
 }
@@ -54,6 +61,7 @@ class NotificacionLocalService
         PermisosNotificacionesProximidad,
         DiagnosticoPermisoNotificaciones,
         DiagnosticoCanalNotificaciones,
+        NotificacionPromocionConSesionVigente,
         NotificacionPromocionSimulable {
   NotificacionLocalService({
     FlutterLocalNotificationsPlugin? plugin,
@@ -277,15 +285,28 @@ class NotificacionLocalService
       _mostrarPromocion(promocion, simulada: false);
 
   @override
+  Future<bool> mostrarPromocionSiSesionVigente(
+    PromocionDestacadaModel promocion, {
+    required bool Function() sesionVigente,
+  }) => _mostrarPromocion(
+    promocion,
+    simulada: false,
+    sesionVigente: sesionVigente,
+  );
+
+  @override
   Future<bool> mostrarPromocionSimulada(PromocionDestacadaModel promocion) =>
       _mostrarPromocion(promocion, simulada: true);
 
   Future<bool> _mostrarPromocion(
     PromocionDestacadaModel promocion, {
     required bool simulada,
+    bool Function()? sesionVigente,
   }) async {
     await inicializar();
+    if (sesionVigente != null && !sesionVigente()) return false;
     if (!await tienePermisoParaNotificar()) return false;
+    if (sesionVigente != null && !sesionVigente()) return false;
 
     if (GeofencingExperimentalService.staging ||
         ProductionGeofencingService.enabledBuild) {
@@ -310,6 +331,7 @@ class NotificacionLocalService
         return false;
       }
     }
+    if (sesionVigente != null && !sesionVigente()) return false;
 
     final descripcion = promocion.descripcion.trim();
     final cuerpo = descripcion.isEmpty

@@ -3,6 +3,9 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../../../sky/sky_theme.dart';
+import '../../notificaciones/controllers/monitor_proximidad_controller.dart';
+import '../../notificaciones/widgets/monitor_proximidad_app.dart';
+import '../../notificaciones/widgets/radar_cercly_panel.dart';
 import '../../promociones/screens/promociones_screen.dart';
 import '../controllers/explorar_controller.dart';
 import '../widgets/promociones_explorar.dart';
@@ -44,6 +47,7 @@ class _NavegacionPrincipalScreenState extends State<NavegacionPrincipalScreen>
   late final bool _esPropio;
   int _indice = 0;
   bool _mostrarPromociones = false;
+  MonitorProximidadController? _monitor;
 
   @override
   void initState() {
@@ -73,6 +77,7 @@ class _NavegacionPrincipalScreenState extends State<NavegacionPrincipalScreen>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _monitor?.setRadarVisible(false);
     if (_esPropio) _controller.dispose();
     super.dispose();
   }
@@ -80,6 +85,13 @@ class _NavegacionPrincipalScreenState extends State<NavegacionPrincipalScreen>
   @override
   Widget build(BuildContext context) {
     final sky = SkyPalette.of(context);
+    _monitor = MonitorProximidadScope.maybeOf(context);
+    // Explorar=0, Promociones=1, Mapa/Radar=2, Cuenta=3.
+    final radarVisible =
+        _indice == 2 && (ModalRoute.of(context)?.isCurrent ?? true);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _monitor?.setRadarVisible(radarVisible);
+    });
     return Scaffold(
       backgroundColor: sky.background,
       body: IndexedStack(
@@ -99,10 +111,26 @@ class _NavegacionPrincipalScreenState extends State<NavegacionPrincipalScreen>
                   crearDetalle: widget.crearDetalle,
                 )
               : const SizedBox.shrink(),
-          MapaEstablecimientosScreen(
-            controller: _controller,
-            mostrarTiles: widget.mostrarTilesMapa,
-            crearDetalle: widget.crearDetalle,
+          Stack(
+            children: [
+              MapaEstablecimientosScreen(
+                controller: _controller,
+                mostrarTiles: widget.mostrarTilesMapa,
+                crearDetalle: widget.crearDetalle,
+              ),
+              if (_monitor != null)
+                Positioned(
+                  key: const Key('radar-panel-position'),
+                  left: 12,
+                  right: 12,
+                  // Respetar el espacio de atribucion de OpenStreetMap.
+                  bottom: 42,
+                  child: SafeArea(
+                    top: false,
+                    child: RadarCerclyPanel(controller: _monitor!),
+                  ),
+                ),
+            ],
           ),
           widget.terceraOpcionBuilder(context),
         ],
