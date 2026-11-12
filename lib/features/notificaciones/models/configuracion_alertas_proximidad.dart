@@ -4,8 +4,14 @@ class ConfiguracionAlertasProximidad {
     this.radioMetros = radioPredeterminadoMetros,
   });
 
-  static const int radioPredeterminadoMetros = 5000;
-  static const List<int> radiosDisponiblesMetros = [1000, 3000, 5000, 10000];
+  static const int radioPredeterminadoMetros = 1500;
+  static const List<int> radiosDisponiblesMetros = [
+    1000,
+    1500,
+    3000,
+    5000,
+    10000,
+  ];
 
   final bool activadas;
   final int radioMetros;

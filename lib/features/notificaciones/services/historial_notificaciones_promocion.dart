@@ -5,11 +5,13 @@ import 'package:shared_preferences/shared_preferences.dart';
 class HistorialNotificacionesPromocionDatos {
   const HistorialNotificacionesPromocionDatos({
     this.ultimaPorPromocion = const {},
+    this.ultimaPorEstablecimiento = const {},
     this.recientes = const [],
     this.promocionesDentro = const {},
   });
 
   final Map<String, DateTime> ultimaPorPromocion;
+  final Map<String, DateTime> ultimaPorEstablecimiento;
   final List<DateTime> recientes;
   final Set<String> promocionesDentro;
 }
@@ -28,8 +30,10 @@ class HistorialNotificacionesPromocionLocal
     implements
         HistorialNotificacionesPromocion,
         BorradoHistorialLocalNotificaciones {
-  HistorialNotificacionesPromocionLocal({SharedPreferencesAsync? preferences})
-    : _preferences = preferences ?? SharedPreferencesAsync();
+  HistorialNotificacionesPromocionLocal({
+    SharedPreferencesAsync? preferences,
+    this.usuarioId,
+  }) : _preferences = preferences ?? SharedPreferencesAsync();
 
   static const String _clave =
       'cercly.notificaciones.promociones.ultima_notificacion.v1';
@@ -37,11 +41,26 @@ class HistorialNotificacionesPromocionLocal
       'cercly.notificaciones.promociones.dentro.v1';
 
   final SharedPreferencesAsync _preferences;
+  final String? Function()? usuarioId;
+
+  String _clavePara(String? id) {
+    return id == null || id.isEmpty ? _clave : '$_clave.usuario.$id';
+  }
+
+  String _claveDentroPara(String? id) {
+    return id == null || id.isEmpty
+        ? _claveDentro
+        : '$_claveDentro.usuario.$id';
+  }
 
   @override
-  Future<HistorialNotificacionesPromocionDatos> cargar() async {
-    final contenido = await _preferences.getString(_clave);
-    final dentro = await _preferences.getStringList(_claveDentro) ?? const [];
+  Future<HistorialNotificacionesPromocionDatos> cargar() =>
+      cargarDe(usuarioId?.call());
+
+  Future<HistorialNotificacionesPromocionDatos> cargarDe(String? id) async {
+    final contenido = await _preferences.getString(_clavePara(id));
+    final dentro =
+        await _preferences.getStringList(_claveDentroPara(id)) ?? const [];
     if (contenido == null || contenido.trim().isEmpty) {
       return HistorialNotificacionesPromocionDatos(
         promocionesDentro: dentro.toSet(),
@@ -57,7 +76,7 @@ class HistorialNotificacionesPromocionLocal
       }
 
       // Formato anterior: { promocionId: epochMilliseconds }.
-      if (datos['version'] != 2) {
+      if (datos['version'] != 2 && datos['version'] != 3) {
         final anteriores = <String, DateTime>{};
         for (final entrada in datos.entries) {
           final valor = entrada.value;
@@ -88,6 +107,19 @@ class HistorialNotificacionesPromocionLocal
         }
       }
 
+      final porEstablecimiento = <String, DateTime>{};
+      final negocios = datos['ultima_por_establecimiento'];
+      if (negocios is Map) {
+        for (final entrada in negocios.entries) {
+          if (entrada.key is! String || entrada.value is! num) continue;
+          porEstablecimiento[entrada.key
+              as String] = DateTime.fromMillisecondsSinceEpoch(
+            (entrada.value as num).toInt(),
+            isUtc: true,
+          );
+        }
+      }
+
       final recientes = <DateTime>[];
       final envios = datos['recientes'];
       if (envios is List) {
@@ -106,6 +138,7 @@ class HistorialNotificacionesPromocionLocal
           : dentro.toSet();
       return HistorialNotificacionesPromocionDatos(
         ultimaPorPromocion: porPromocion,
+        ultimaPorEstablecimiento: porEstablecimiento,
         recientes: recientes,
         promocionesDentro: idsDentro,
       );
@@ -117,10 +150,19 @@ class HistorialNotificacionesPromocionLocal
   }
 
   @override
-  Future<void> guardar(HistorialNotificacionesPromocionDatos historial) async {
+  Future<void> guardar(HistorialNotificacionesPromocionDatos historial) =>
+      guardarDe(historial, usuarioId?.call());
+
+  Future<void> guardarDe(
+    HistorialNotificacionesPromocionDatos historial,
+    String? id,
+  ) async {
     final datos = <String, Object>{
-      'version': 2,
+      'version': 3,
       'ultima_por_promocion': historial.ultimaPorPromocion.map(
+        (id, fecha) => MapEntry(id, fecha.toUtc().millisecondsSinceEpoch),
+      ),
+      'ultima_por_establecimiento': historial.ultimaPorEstablecimiento.map(
         (id, fecha) => MapEntry(id, fecha.toUtc().millisecondsSinceEpoch),
       ),
       'recientes': historial.recientes
@@ -129,16 +171,18 @@ class HistorialNotificacionesPromocionLocal
       'promociones_dentro': historial.promocionesDentro.toList(growable: false),
     };
 
-    await _preferences.setString(_clave, jsonEncode(datos));
+    await _preferences.setString(_clavePara(id), jsonEncode(datos));
     await _preferences.setStringList(
-      _claveDentro,
+      _claveDentroPara(id),
       historial.promocionesDentro.toList(growable: false),
     );
   }
 
   @override
-  Future<void> borrarDatosLocales() async {
-    await _preferences.remove(_clave);
-    await _preferences.remove(_claveDentro);
+  Future<void> borrarDatosLocales() => borrarDe(usuarioId?.call());
+
+  Future<void> borrarDe(String? id) async {
+    await _preferences.remove(_clavePara(id));
+    await _preferences.remove(_claveDentroPara(id));
   }
 }

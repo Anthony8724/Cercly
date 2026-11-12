@@ -1,7 +1,9 @@
 import 'dart:async';
 import 'dart:developer' as developer;
 
+import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../explorar/models/ubicacion_usuario.dart';
 import '../../explorar/services/ubicacion_service.dart';
@@ -14,7 +16,7 @@ import '../services/historial_notificaciones_promocion.dart';
 import '../services/notificacion_local_service.dart';
 import '../services/preferencias_alertas_proximidad.dart';
 
-class MonitorProximidadController {
+class MonitorProximidadController extends ChangeNotifier {
   MonitorProximidadController({
     UbicacionService? ubicacionService,
     PromocionesCercanasRepository? promocionesService,
@@ -23,10 +25,11 @@ class MonitorProximidadController {
     HistorialNotificacionesPromocion? historial,
     PreferenciasAlertasProximidadRepository? preferencias,
     Future<void> Function(String establecimientoId)? alAbrirEstablecimiento,
-    this.intervalo = const Duration(minutes: 5),
+    this.intervalo = const Duration(minutes: 3),
     this.precisionMaximaMetros = 100,
     this.edadMaximaUbicacion = const Duration(minutes: 2),
     DateTime Function()? ahora,
+    String? Function()? usuarioId,
     this.stagingQaEnabled = GeofencingExperimentalService.staging,
   }) : _ubicacionService = ubicacionService ?? GeolocatorUbicacionService(),
        _promocionesService = promocionesService ?? PromocionPublicaService(),
@@ -36,9 +39,22 @@ class MonitorProximidadController {
              alAbrirEstablecimiento: alAbrirEstablecimiento,
            ),
        _control = control ?? ControlNotificacionesPromocion(),
-       _historial = historial ?? HistorialNotificacionesPromocionLocal(),
+       _historial =
+           historial ??
+           HistorialNotificacionesPromocionLocal(
+             usuarioId: usuarioId ?? _usuarioActual,
+           ),
        _preferencias = preferencias ?? PreferenciasAlertasProximidadLocal(),
-       _ahora = ahora ?? DateTime.now;
+       _ahora = ahora ?? DateTime.now,
+       _usuarioId = usuarioId ?? _usuarioActual;
+
+  static String? _usuarioActual() {
+    try {
+      return Supabase.instance.client.auth.currentUser?.id;
+    } catch (_) {
+      return null;
+    }
+  }
 
   final UbicacionService _ubicacionService;
   final PromocionesCercanasRepository _promocionesService;
@@ -47,21 +63,61 @@ class MonitorProximidadController {
   final HistorialNotificacionesPromocion _historial;
   final PreferenciasAlertasProximidadRepository _preferencias;
   final DateTime Function() _ahora;
+  final String? Function() _usuarioId;
   final bool stagingQaEnabled;
   final Duration intervalo;
   final Duration edadMaximaUbicacion;
   final double precisionMaximaMetros;
 
   Timer? _temporizador;
+  Future<void>? _inicioPendiente;
   StreamSubscription<ConfiguracionAlertasProximidad>? _preferenciasSuscripcion;
   bool _consultando = false;
   bool _historialCargado = false;
   bool _disposed = false;
+  bool _radarActivo = false;
+  bool _radarVisible = false;
+  bool _appEnPrimerPlano = true;
+  int _generacionRadar = 0;
+  String? _usuarioCargado;
+  List<PromocionDestacadaModel> _promocionesRadar = const [];
+  bool _cargandoRadar = false;
   String _ultimoResultadoDiagnostico = 'sin_evaluacion';
   static const _ultimaComprobacionKey =
       'cercly.alertas_proximidad.ultima_comprobacion_ms.v1';
 
   String get ultimoResultadoDiagnostico => _ultimoResultadoDiagnostico;
+  bool get radarActivo => _radarActivo;
+  bool get cargandoRadar => _cargandoRadar;
+  List<PromocionDestacadaModel> get promocionesRadar => _promocionesRadar;
+
+  void _publicarEstado() {
+    if (!_disposed) notifyListeners();
+  }
+
+  void setRadarVisible(bool visible) {
+    if (_disposed || _radarVisible == visible) return;
+    _radarVisible = visible;
+    _generacionRadar++;
+    if (visible && _radarActivo && _appEnPrimerPlano) {
+      unawaited(iniciar());
+    } else if (!visible) {
+      pausar();
+    }
+  }
+
+  void setRadarActivo(bool activo) {
+    if (_disposed || _radarActivo == activo) return;
+    _radarActivo = activo;
+    _generacionRadar++;
+    if (activo && _radarVisible && _appEnPrimerPlano) {
+      unawaited(iniciar());
+    } else if (!activo) {
+      pausar();
+      _promocionesRadar = const [];
+    }
+    _publicarEstado();
+  }
 
   Future<DateTime?> cargarUltimaComprobacion() async {
     try {
@@ -91,56 +147,81 @@ class MonitorProximidadController {
     }
   }
 
-  Future<void> iniciar() async {
+  Future<void> iniciar() {
+    if (_disposed) return Future.value();
+    return _inicioPendiente ??= _iniciarInterno().whenComplete(() {
+      _inicioPendiente = null;
+    });
+  }
+
+  Future<void> _iniciarInterno() async {
     if (_disposed) return;
     _preferenciasSuscripcion ??= _preferencias.cambios.listen((configuracion) {
-      if (configuracion.activadas) {
+      if (_radarActivo && _radarVisible && _appEnPrimerPlano) {
         unawaited(iniciar());
-      } else {
-        pausar();
       }
     });
 
     if (_temporizador != null) return;
 
+    // Inicializar callbacks incluso con alertas apagadas permite abrir una
+    // notificación ya publicada; un fallo no bloquea el listado del Radar.
     try {
-      // Inicializar callbacks incluso con alertas apagadas permite abrir una
-      // notificación ya publicada; no solicita permisos ni lee ubicación.
       await _notificaciones.inicializar();
-      final configuracion = await _preferencias.cargar();
-      if (!configuracion.activadas) return;
-      await _asegurarHistorialCargado();
-      await verificarAhora();
-      if (_requierePermisosAntesDeProgramar(_ultimoResultadoDiagnostico)) {
-        return;
-      }
+    } catch (_) {
+      // La vista del Radar sigue disponible sin el canal de notificaciones.
+    }
+    try {
+      if (!_radarActivo || !_radarVisible || !_appEnPrimerPlano) return;
+      await verificarAhora(mostrarEnRadar: true);
     } catch (_) {
       return;
     }
 
-    if (_disposed || _temporizador != null) return;
+    if (_disposed ||
+        _temporizador != null ||
+        !_radarActivo ||
+        !_radarVisible ||
+        !_appEnPrimerPlano) {
+      return;
+    }
     _temporizador = Timer.periodic(
       intervalo,
-      (_) => unawaited(verificarAhora()),
+      (_) => unawaited(verificarAhora(mostrarEnRadar: true)),
     );
   }
 
-  Future<void> verificarAhora() async {
+  Future<void> verificarAhora({bool mostrarEnRadar = false}) async {
     if (_disposed) return;
     if (_consultando) {
       _ultimoResultadoDiagnostico = 'evaluacion_en_curso';
       return;
     }
     _consultando = true;
+    final generacion = _generacionRadar;
 
     try {
       final configuracion = await _preferencias.cargar();
-      if (!configuracion.activadas) {
+      if (!configuracion.activadas && !mostrarEnRadar) {
         _ultimoResultadoDiagnostico = 'alertas_desactivadas';
         return;
       }
+      if (mostrarEnRadar &&
+          (!_radarActivo ||
+              !_radarVisible ||
+              !_appEnPrimerPlano ||
+              generacion != _generacionRadar)) {
+        return;
+      }
+      if (mostrarEnRadar) {
+        _cargandoRadar = true;
+        _promocionesRadar = const [];
+        _publicarEstado();
+      }
+      final usuarioAlInicio = _usuarioId();
       final servicioNotificaciones = _notificaciones;
-      if (servicioNotificaciones is DiagnosticoPermisoNotificaciones) {
+      if (!mostrarEnRadar &&
+          servicioNotificaciones is DiagnosticoPermisoNotificaciones) {
         final estado =
             await (servicioNotificaciones as DiagnosticoPermisoNotificaciones)
                 .consultarEstadoDetallado();
@@ -157,11 +238,13 @@ class MonitorProximidadController {
           };
           return;
         }
-      } else if (!await _notificaciones.tienePermisoParaNotificar()) {
+      } else if (!mostrarEnRadar &&
+          !await _notificaciones.tienePermisoParaNotificar()) {
         _ultimoResultadoDiagnostico = 'permiso_notificaciones_pendiente';
         return;
       }
-      if (servicioNotificaciones is DiagnosticoCanalNotificaciones) {
+      if (!mostrarEnRadar &&
+          servicioNotificaciones is DiagnosticoCanalNotificaciones) {
         final disponible =
             await (servicioNotificaciones as DiagnosticoCanalNotificaciones)
                 .canalPromocionesDisponible();
@@ -170,10 +253,14 @@ class MonitorProximidadController {
           return;
         }
       }
-      await _asegurarHistorialCargado();
+      if (configuracion.activadas) await _asegurarHistorialCargado();
 
       final resultado = await _ubicacionService.obtenerUbicacion();
       if (resultado.estado != EstadoUbicacion.disponible) {
+        if (mostrarEnRadar) {
+          _promocionesRadar = const [];
+          _publicarEstado();
+        }
         _ultimoResultadoDiagnostico = switch (resultado.estado) {
           EstadoUbicacion.servicioDesactivado =>
             'ubicacion_servicio_desactivado',
@@ -187,6 +274,8 @@ class MonitorProximidadController {
       if (resultado.ubicacion == null ||
           !_ubicacionEsSuficientementePrecisa(resultado.ubicacion!)) {
         _ultimoResultadoDiagnostico = 'ubicacion_imprecisa_o_desactualizada';
+        _promocionesRadar = const [];
+        _publicarEstado();
         return;
       }
 
@@ -218,11 +307,56 @@ class MonitorProximidadController {
           _ultimoResultadoDiagnostico = 'sin_promociones_elegibles';
         }
       }
+      if (mostrarEnRadar &&
+          (_disposed ||
+              !_radarActivo ||
+              !_radarVisible ||
+              !_appEnPrimerPlano ||
+              generacion != _generacionRadar ||
+              usuarioAlInicio != _usuarioId())) {
+        return;
+      }
+      if (mostrarEnRadar) {
+        final ahora = _ahora();
+        _promocionesRadar =
+            promociones.where((item) {
+              final distancia = item.distanciaMetros;
+              return item.activa &&
+                  item.estaVigenteEn(ahora) &&
+                  distancia != null &&
+                  distancia.isFinite &&
+                  distancia >= 0 &&
+                  distancia + ubicacion.precisionMetros! <=
+                      configuracion.radioMetros &&
+                  distancia + ubicacion.precisionMetros! <=
+                      item.radioAlertaMetros;
+            }).toList()..sort((a, b) {
+              final orden = a.distanciaMetros!.compareTo(b.distanciaMetros!);
+              return orden != 0 ? orden : a.id.compareTo(b.id);
+            });
+        _publicarEstado();
+      }
+      if (!configuracion.activadas) return;
+      if (mostrarEnRadar &&
+          (usuarioAlInicio == null ||
+              usuarioAlInicio != _usuarioId() ||
+              !_radarActivo ||
+              !_radarVisible ||
+              !_appEnPrimerPlano ||
+              generacion != _generacionRadar)) {
+        return;
+      }
+      if (mostrarEnRadar &&
+          !await _notificaciones.tienePermisoParaNotificar()) {
+        _ultimoResultadoDiagnostico = 'permiso_notificaciones_pendiente';
+        return;
+      }
       final dentroAntes = _control.promocionesDentro;
       final notificables = _control.evaluar(
         promociones,
         ahora: _ahora(),
         radioUsuarioMetros: configuracion.radioMetros,
+        precisionUbicacionMetros: ubicacion.precisionMetros!,
       );
       var huboCambios = !_mismosElementos(
         dentroAntes,
@@ -230,12 +364,32 @@ class MonitorProximidadController {
       );
 
       for (final promocion in notificables) {
+        if (mostrarEnRadar &&
+            (usuarioAlInicio != _usuarioId() ||
+                !_radarActivo ||
+                !_radarVisible ||
+                !_appEnPrimerPlano ||
+                generacion != _generacionRadar)) {
+          return;
+        }
+        // Una persona puede revocar consentimiento o permiso mientras se
+        // consulta el backend. Verificar justo antes de publicar el aviso.
+        if (!(await _preferencias.cargar()).activadas ||
+            !await _notificaciones.tienePermisoParaNotificar()) {
+          _ultimoResultadoDiagnostico =
+              'alertas_desactivadas_o_permiso_revocado';
+          return;
+        }
         final mostrada = await _notificaciones.mostrarPromocion(promocion);
         if (!mostrada) {
           _ultimoResultadoDiagnostico = 'notificacion_bloqueada';
           continue;
         }
-        _control.registrarNotificacion(promocion.id, ahora: _ahora());
+        _control.registrarNotificacion(
+          promocion.id,
+          establecimientoId: promocion.establecimientoId,
+          ahora: _ahora(),
+        );
         _ultimoResultadoDiagnostico = 'notificacion_enviada';
         huboCambios = true;
       }
@@ -245,7 +399,7 @@ class MonitorProximidadController {
       }
 
       if (huboCambios) {
-        await _historial.guardar(_control.crearHistorial());
+        await _guardarHistorial(usuarioAlInicio);
       }
     } catch (error, stackTrace) {
       // Una falla de red, ubicación o sistema de notificaciones no bloquea la app.
@@ -265,6 +419,18 @@ class MonitorProximidadController {
         // Es un dato informativo; su fallo no afecta el envío ni el estado.
       }
       _consultando = false;
+      if (_cargandoRadar) {
+        _cargandoRadar = false;
+        _publicarEstado();
+      }
+      if (mostrarEnRadar &&
+          generacion != _generacionRadar &&
+          !_disposed &&
+          _radarActivo &&
+          _radarVisible &&
+          _appEnPrimerPlano) {
+        unawaited(verificarAhora(mostrarEnRadar: true));
+      }
     }
   }
 
@@ -367,8 +533,12 @@ class MonitorProximidadController {
         return _ultimoResultadoDiagnostico =
             'simulacion_notificacion_bloqueada';
       }
-      _control.registrarNotificacion(promocion.id, ahora: _ahora());
-      await _historial.guardar(_control.crearHistorial());
+      _control.registrarNotificacion(
+        promocion.id,
+        establecimientoId: promocion.establecimientoId,
+        ahora: _ahora(),
+      );
+      await _guardarHistorial(_usuarioId());
       return _ultimoResultadoDiagnostico = 'simulacion_notificacion_enviada';
     } catch (_) {
       return _ultimoResultadoDiagnostico = 'simulacion_error_evaluacion';
@@ -402,27 +572,35 @@ class MonitorProximidadController {
     return primero.containsAll(segundo);
   }
 
-  bool _requierePermisosAntesDeProgramar(String resultado) => const {
-    'alertas_desactivadas',
-    'permiso_ubicacion_pendiente',
-    'permiso_ubicacion_revocado',
-    'ubicacion_servicio_desactivado',
-    'error_ubicacion',
-    'permiso_notificaciones_pendiente',
-    'permiso_notificaciones_indeterminado',
-    'error_permiso_notificaciones',
-    'canal_notificaciones_bloqueado',
-    'ubicacion_imprecisa_o_desactualizada',
-  }.contains(resultado);
-
   Future<void> _asegurarHistorialCargado() async {
+    final actual = _usuarioId();
+    if (_usuarioCargado != actual) {
+      _control.cargarHistorial(const HistorialNotificacionesPromocionDatos());
+      _historialCargado = false;
+      _usuarioCargado = actual;
+    }
     if (_historialCargado) return;
     try {
-      _control.cargarHistorial(await _historial.cargar());
+      final historial = _historial;
+      _control.cargarHistorial(
+        historial is HistorialNotificacionesPromocionLocal
+            ? await historial.cargarDe(actual)
+            : await historial.cargar(),
+      );
     } catch (_) {
       // Si el almacenamiento local falla, el monitor continúa en memoria.
     } finally {
       _historialCargado = true;
+    }
+  }
+
+  Future<void> _guardarHistorial(String? usuario) async {
+    final historial = _historial;
+    final datos = _control.crearHistorial();
+    if (historial is HistorialNotificacionesPromocionLocal) {
+      await historial.guardarDe(datos, usuario);
+    } else {
+      await historial.guardar(datos);
     }
   }
 
@@ -433,13 +611,23 @@ class MonitorProximidadController {
 
   Future<void> reanudar() async {
     if (_disposed) return;
+    _appEnPrimerPlano = true;
+    _generacionRadar++;
     pausar();
     await iniciar();
   }
 
+  void suspenderPorCicloDeVida() {
+    _appEnPrimerPlano = false;
+    _generacionRadar++;
+    pausar();
+  }
+
+  @override
   void dispose() {
     _disposed = true;
     pausar();
     unawaited(_preferenciasSuscripcion?.cancel());
+    super.dispose();
   }
 }

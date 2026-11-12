@@ -111,7 +111,7 @@ void main() {
       channel: channel,
       enabled: true,
     );
-    final expiry = DateTime.utc(2026, 11, 12);
+    final expiry = DateTime.now().toUtc().add(const Duration(days: 1));
     final result = await service.register(
       latitude: 0.80525,
       longitude: -77.73434,

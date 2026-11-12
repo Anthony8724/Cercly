@@ -440,7 +440,7 @@ class _AlertasProximidadSectionState extends State<AlertasProximidadSection>
               ),
               const SizedBox(height: 10),
               Text(
-                'Si las activas, Cercly usa tu ubicación precisa solo mientras la app está abierta. Las coordenadas se comparan en el dispositivo y no guardamos un historial de tus recorridos.',
+                'Si las activas, Cercly consulta promociones cercanas cuando inicias el Radar en Mapa. La consulta usa tu ubicación actual; no guardamos un historial de tus recorridos en este dispositivo.',
                 style: TextStyle(color: sky.muted, height: 1.4, fontSize: 12),
               ),
               const SizedBox(height: 10),
@@ -477,7 +477,7 @@ class _AlertasProximidadSectionState extends State<AlertasProximidadSection>
                 title: const Text('Activar alertas'),
                 subtitle: Text(
                   _configuracion.activadas
-                      ? 'Revisión cada cinco minutos mientras Cercly está en primer plano.'
+                      ? 'Revisión cada tres minutos solo con Radar activo y Mapa visible.'
                       : 'Desactivadas hasta que tú las actives.',
                 ),
                 secondary: Icon(

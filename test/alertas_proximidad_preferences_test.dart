@@ -72,6 +72,36 @@ void main() {
     },
   );
 
+  test('historial y cooldown quedan separados entre cuentas', () async {
+    var cuenta = 'usuario-a';
+    final historial = HistorialNotificacionesPromocionLocal(
+      usuarioId: () => cuenta,
+    );
+    final momento = DateTime.utc(2026, 11, 11, 12);
+    await historial.guardar(
+      HistorialNotificacionesPromocionDatos(
+        ultimaPorPromocion: {'p1': momento},
+        ultimaPorEstablecimiento: {'negocio-1': momento},
+        recientes: [momento],
+      ),
+    );
+    cuenta = 'usuario-b';
+    expect((await historial.cargar()).ultimaPorPromocion, isEmpty);
+    await historial.guardar(
+      HistorialNotificacionesPromocionDatos(
+        ultimaPorPromocion: {'p2': momento},
+      ),
+    );
+    cuenta = 'usuario-a';
+    final recuperado = await historial.cargar();
+    expect(recuperado.ultimaPorPromocion.keys, ['p1']);
+    expect(recuperado.ultimaPorEstablecimiento['negocio-1'], momento);
+    await historial.borrarDatosLocales();
+    expect((await historial.cargar()).ultimaPorPromocion, isEmpty);
+    cuenta = 'usuario-b';
+    expect((await historial.cargar()).ultimaPorPromocion.keys, ['p2']);
+  });
+
   test('el payload de navegación solo acepta identificadores simples', () {
     expect(
       NotificacionLocalService.establecimientoIdDesdePayload('negocio-123'),

@@ -135,7 +135,7 @@ class _MonitorProximidadAppState extends State<MonitorProximidadApp>
     } else if (state == AppLifecycleState.paused ||
         state == AppLifecycleState.inactive ||
         state == AppLifecycleState.detached) {
-      _controller.pausar();
+      _controller.suspenderPorCicloDeVida();
     }
   }
 

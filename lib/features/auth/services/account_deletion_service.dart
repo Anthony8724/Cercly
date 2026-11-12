@@ -52,6 +52,9 @@ class AccountDeletionService {
         // La identidad ya fue eliminada en Auth. Limpiar el JWT local aunque la
         // llamada de logout remoto no pueda completarse.
         try {
+          await HistorialNotificacionesPromocionLocal(
+            usuarioId: () => session.user.id,
+          ).borrarDatosLocales();
           await HistorialNotificacionesPromocionLocal().borrarDatosLocales();
           await PreferenciasAlertasProximidadLocal().borrarDatosLocales();
         } catch (_) {
