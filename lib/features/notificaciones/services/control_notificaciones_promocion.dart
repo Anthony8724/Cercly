@@ -1,13 +1,14 @@
 import 'dart:math' as math;
 
 import '../../promociones/models/promocion_destacada_model.dart';
+import '../models/configuracion_alertas_proximidad.dart';
 import 'historial_notificaciones_promocion.dart';
 
 class ControlNotificacionesPromocion {
   ControlNotificacionesPromocion({
     this.cooldown = const Duration(hours: 4),
     this.intervaloGlobal = const Duration(minutes: 15),
-    this.maximoPorDia = 3,
+    this.maximoPorDia = 6,
   }) : assert(maximoPorDia > 0);
 
   final Duration cooldown;
@@ -67,6 +68,8 @@ class ControlNotificacionesPromocion {
     int radioUsuarioMetros = 500,
     double precisionUbicacionMetros = 0,
     bool conservarPromocionesDentro = false,
+    int? maximoPorDia,
+    HorarioDescanso? horarioDescanso,
   }) {
     _recortarHistorial(ahora);
     final dentroAhora = <String>{};
@@ -121,7 +124,9 @@ class ControlNotificacionesPromocion {
         ..addAll(dentroAhora);
     }
 
-    if (notificables.isEmpty || _limiteGlobalActivo(ahora)) {
+    if (notificables.isEmpty ||
+        horarioDescanso?.contiene(ahora) == true ||
+        _limiteGlobalActivo(ahora, maximoPorDia ?? this.maximoPorDia)) {
       return const [];
     }
 
@@ -145,8 +150,10 @@ class ControlNotificacionesPromocion {
     );
   }
 
-  bool _limiteGlobalActivo(DateTime ahora) {
-    if (_notificacionesRecientes.length >= maximoPorDia) return true;
+  bool _limiteGlobalActivo(DateTime ahora, int limiteDiario) {
+    if (limiteDiario <= 0 || _notificacionesRecientes.length >= limiteDiario) {
+      return true;
+    }
     if (_notificacionesRecientes.isEmpty) return false;
     final ultima = _notificacionesRecientes.reduce(
       (primera, segunda) => primera.isAfter(segunda) ? primera : segunda,

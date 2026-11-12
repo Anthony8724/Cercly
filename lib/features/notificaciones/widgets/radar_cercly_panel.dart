@@ -20,6 +20,7 @@ class RadarCerclyPanel extends StatefulWidget {
 
 class _RadarCerclyPanelState extends State<RadarCerclyPanel> {
   String? _abriendo;
+  bool _expandido = false;
 
   Future<void> _abrir(PromocionDestacadaModel promocion) async {
     if (_abriendo != null) return;
@@ -96,16 +97,19 @@ class _RadarCerclyPanelState extends State<RadarCerclyPanel> {
                     Switch(
                       key: const Key('radar-cercly-toggle'),
                       value: activo,
-                      onChanged: widget.controller.setRadarActivo,
+                      onChanged: (valor) {
+                        widget.controller.setRadarActivo(valor);
+                        if (!valor) setState(() => _expandido = false);
+                      },
                     ),
                   ],
                 ),
-                Text(
-                  'Ubicación solo mientras Mapa está visible. '
-                  'Las alertas dependen de tus preferencias.',
-                  style: TextStyle(color: sky.muted, fontSize: 11),
-                ),
                 if (activo) ...[
+                  Text(
+                    'Radar: promociones dentro de tu radio. Los marcadores del '
+                    'mapa muestran lugares generales.',
+                    style: TextStyle(color: sky.muted, fontSize: 11),
+                  ),
                   if (widget.controller.cargandoRadar)
                     const LinearProgressIndicator(key: Key('radar-cargando')),
                   if (promociones.isEmpty && !widget.controller.cargandoRadar)
@@ -122,6 +126,26 @@ class _RadarCerclyPanelState extends State<RadarCerclyPanel> {
                       _ => 'Sin promociones cercanas vigentes.',
                     }, style: TextStyle(color: sky.muted)),
                   if (promociones.isNotEmpty)
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            '${promociones.length} promociones '
+                            'cercanas',
+                            style: TextStyle(color: sky.muted),
+                          ),
+                        ),
+                        TextButton(
+                          key: const Key('radar-list-toggle'),
+                          onPressed: () =>
+                              setState(() => _expandido = !_expandido),
+                          child: Text(
+                            _expandido ? 'Ocultar' : 'Ver promociones',
+                          ),
+                        ),
+                      ],
+                    ),
+                  if (promociones.isNotEmpty && _expandido)
                     SizedBox(
                       height: 90,
                       child: ListView.separated(

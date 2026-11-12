@@ -199,7 +199,7 @@ void main() {
       final inicial = ControlNotificacionesPromocion();
       expect(inicial.cooldown, const Duration(hours: 4));
       expect(inicial.intervaloGlobal, const Duration(minutes: 15));
-      expect(inicial.maximoPorDia, 3);
+      expect(inicial.maximoPorDia, 6);
       expect(ConfiguracionAlertasProximidad.radioPredeterminadoMetros, 1500);
       final monitor = MonitorProximidadController(
         ubicacionService: _UbicacionFalsa(
@@ -212,6 +212,143 @@ void main() {
       );
       expect(monitor.intervalo, const Duration(minutes: 3));
       monitor.dispose();
+    });
+
+    test('límites exactos de Bajo, Normal y Alto en 24 horas móviles', () {
+      for (final nivel in FrecuenciaAlertasProximidad.values) {
+        final politica = ControlNotificacionesPromocion();
+        for (var i = 0; i < nivel.maximoPorDia; i++) {
+          politica.registrarNotificacion(
+            'promo-$i',
+            establecimientoId: 'negocio-$i',
+            ahora: instanteBase.add(Duration(minutes: i * 15)),
+          );
+        }
+        final candidata = promocion(
+          id: 'siguiente-${nivel.name}',
+          establecimientoId: 'negocio-nuevo',
+          fin: instanteBase.add(const Duration(days: 2)),
+        );
+        expect(
+          politica.evaluar(
+            [candidata],
+            ahora: instanteBase.add(const Duration(hours: 23)),
+            maximoPorDia: nivel.maximoPorDia,
+          ),
+          isEmpty,
+        );
+        expect(
+          politica.evaluar(
+            [candidata],
+            ahora: instanteBase.add(const Duration(hours: 24)),
+            maximoPorDia: nivel.maximoPorDia,
+          ),
+          hasLength(1),
+        );
+      }
+    });
+
+    test('cambiar nivel aplica el historial existente sin reiniciar', () {
+      final politica = ControlNotificacionesPromocion();
+      for (var i = 0; i < 6; i++) {
+        politica.registrarNotificacion(
+          'p$i',
+          establecimientoId: 'n$i',
+          ahora: instanteBase.add(Duration(minutes: i * 15)),
+        );
+      }
+      final candidata = promocion(
+        id: 'nueva',
+        establecimientoId: 'nueva',
+        fin: instanteBase.add(const Duration(hours: 6)),
+      );
+      final momento = instanteBase.add(const Duration(hours: 2));
+      expect(
+        politica.evaluar([candidata], ahora: momento, maximoPorDia: 3),
+        isEmpty,
+      );
+      expect(
+        politica.evaluar([candidata], ahora: momento, maximoPorDia: 6),
+        isEmpty,
+      );
+      expect(
+        politica.evaluar([candidata], ahora: momento, maximoPorDia: 10),
+        hasLength(1),
+      );
+    });
+
+    test('intervalo global libera exactamente a los quince minutos', () {
+      final politica = ControlNotificacionesPromocion();
+      politica.registrarNotificacion(
+        'primera',
+        establecimientoId: 'negocio-1',
+        ahora: instanteBase,
+      );
+      final siguiente = promocion(
+        id: 'segunda',
+        establecimientoId: 'negocio-2',
+      );
+      expect(
+        politica.evaluar([
+          siguiente,
+        ], ahora: instanteBase.add(const Duration(minutes: 14, seconds: 59))),
+        isEmpty,
+      );
+      expect(
+        politica.evaluar([
+          siguiente,
+        ], ahora: instanteBase.add(const Duration(minutes: 15))),
+        hasLength(1),
+      );
+    });
+
+    test(
+      'descanso local cruza medianoche con inicio inclusivo y fin exclusivo',
+      () {
+        final politica = ControlNotificacionesPromocion();
+        const descanso = HorarioDescanso(
+          inicioMinutos: 22 * 60,
+          finMinutos: 7 * 60,
+        );
+        final candidata = promocion(
+          inicio: DateTime(2026, 11, 11),
+          fin: DateTime(2026, 11, 13),
+        );
+        for (final instante in [
+          DateTime(2026, 11, 11, 22),
+          DateTime(2026, 11, 11, 23, 59),
+          DateTime(2026, 11, 12),
+          DateTime(2026, 11, 12, 6, 59),
+        ]) {
+          expect(
+            politica.evaluar(
+              [candidata],
+              ahora: instante,
+              horarioDescanso: descanso,
+            ),
+            isEmpty,
+          );
+        }
+        expect(
+          politica.evaluar(
+            [candidata],
+            ahora: DateTime(2026, 11, 12, 7),
+            horarioDescanso: descanso,
+          ),
+          hasLength(1),
+        );
+      },
+    );
+
+    test('descanso local dentro del mismo día respeta ambos límites', () {
+      const descanso = HorarioDescanso(
+        inicioMinutos: 12 * 60,
+        finMinutos: 13 * 60,
+      );
+      expect(descanso.contiene(DateTime(2026, 11, 11, 11, 59)), isFalse);
+      expect(descanso.contiene(DateTime(2026, 11, 11, 12)), isTrue);
+      expect(descanso.contiene(DateTime(2026, 11, 11, 12, 59)), isTrue);
+      expect(descanso.contiene(DateTime(2026, 11, 11, 13)), isFalse);
     });
 
     test('promoción dentro del radio puede notificarse', () {
@@ -512,7 +649,7 @@ void main() {
     });
 
     test('máximo tres en 24 horas móviles y liberación exacta', () {
-      final politica = ControlNotificacionesPromocion();
+      final politica = ControlNotificacionesPromocion(maximoPorDia: 3);
       for (var i = 0; i < 3; i++) {
         politica.registrarNotificacion(
           'p$i',
@@ -1212,6 +1349,179 @@ void main() {
       expect(notificaciones.mostradas, hasLength(2));
       controller.dispose();
     });
+
+    test(
+      'motor aplica cambio de frecuencia con historial sin reiniciar',
+      () async {
+        final historial = _HistorialFalso();
+        historial._datos = HistorialNotificacionesPromocionDatos(
+          recientes: [
+            for (var i = 0; i < 6; i++)
+              instanteBase.subtract(Duration(minutes: 15 * (i + 1))),
+          ],
+        );
+        final preferencias = _PreferenciasFalsas();
+        final notificaciones = _NotificacionesFalsas();
+        final controller = MonitorProximidadController(
+          ubicacionService: _UbicacionFalsa(
+            ResultadoUbicacion(
+              estado: EstadoUbicacion.disponible,
+              ubicacion: UbicacionUsuario(
+                latitud: 0.8116,
+                longitud: -77.7172,
+                precisionMetros: 10,
+                capturadaEn: instanteBase,
+              ),
+            ),
+          ),
+          promocionesService: _PromocionesFalsas([promocion()]),
+          notificaciones: notificaciones,
+          historial: historial,
+          preferencias: preferencias,
+          ahora: () => instanteBase,
+        );
+        await controller.verificarAhora();
+        expect(notificaciones.mostradas, isEmpty);
+        await preferencias.guardar(
+          preferencias.configuracion.copiarCon(
+            frecuencia: FrecuenciaAlertasProximidad.alta,
+          ),
+        );
+        await controller.verificarAhora();
+        expect(notificaciones.mostradas, hasLength(1));
+        controller.dispose();
+      },
+    );
+
+    test('motor silencia descanso y permite aviso al quitarlo', () async {
+      final preferencias = _PreferenciasFalsas(
+        configuracion: const ConfiguracionAlertasProximidad(
+          activadas: true,
+          horarioDescanso: HorarioDescanso(
+            inicioMinutos: 11 * 60,
+            finMinutos: 13 * 60,
+          ),
+        ),
+      );
+      final notificaciones = _NotificacionesFalsas();
+      final controller = MonitorProximidadController(
+        ubicacionService: _UbicacionFalsa(
+          ResultadoUbicacion(
+            estado: EstadoUbicacion.disponible,
+            ubicacion: UbicacionUsuario(
+              latitud: 0.8116,
+              longitud: -77.7172,
+              precisionMetros: 10,
+              capturadaEn: instanteBase,
+            ),
+          ),
+        ),
+        promocionesService: _PromocionesFalsas([promocion()]),
+        notificaciones: notificaciones,
+        historial: _HistorialFalso(),
+        preferencias: preferencias,
+        ahora: () => instanteBase,
+      );
+      await controller.verificarAhora();
+      expect(controller.ultimoResultadoDiagnostico, 'horario_descanso');
+      expect(notificaciones.mostradas, isEmpty);
+      await preferencias.guardar(
+        preferencias.configuracion.copiarCon(quitarHorarioDescanso: true),
+      );
+      await controller.verificarAhora();
+      expect(notificaciones.mostradas, hasLength(1));
+      controller.dispose();
+    });
+
+    test(
+      'Radar visual funciona con alertas apagadas sin publicar avisos',
+      () async {
+        final preferencias = _PreferenciasFalsas(
+          configuracion: const ConfiguracionAlertasProximidad(),
+        );
+        final notificaciones = _NotificacionesFalsas();
+        final ubicacion = _UbicacionFalsa(
+          ResultadoUbicacion(
+            estado: EstadoUbicacion.disponible,
+            ubicacion: UbicacionUsuario(
+              latitud: 0.8116,
+              longitud: -77.7172,
+              precisionMetros: 10,
+              capturadaEn: instanteBase,
+            ),
+          ),
+        );
+        final controller = MonitorProximidadController(
+          ubicacionService: ubicacion,
+          promocionesService: _PromocionesFalsas([promocion()]),
+          notificaciones: notificaciones,
+          historial: _HistorialFalso(),
+          preferencias: preferencias,
+          usuarioId: () => 'cuenta-a',
+          ahora: () => instanteBase,
+        );
+        controller.setRadarVisible(true);
+        controller.setRadarActivo(true);
+        await controller.iniciar();
+        expect(controller.promocionesRadar, hasLength(1));
+        expect(notificaciones.mostradas, isEmpty);
+        expect(preferencias.configuracion.activadas, isFalse);
+        controller.setRadarActivo(false);
+        expect(controller.promocionesRadar, isEmpty);
+        expect(preferencias.configuracion.activadas, isFalse);
+        controller.dispose();
+      },
+    );
+  });
+
+  testWidgets('temporizador se detiene al salir de Mapa y al bloquear', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+    await tester.pumpWidget(const MaterialApp(home: SizedBox()));
+    final ubicacion = _UbicacionFalsa(
+      ResultadoUbicacion(
+        estado: EstadoUbicacion.disponible,
+        ubicacion: UbicacionUsuario(
+          latitud: 0.8116,
+          longitud: -77.7172,
+          precisionMetros: 10,
+          capturadaEn: instanteBase,
+        ),
+      ),
+    );
+    final controller = MonitorProximidadController(
+      ubicacionService: ubicacion,
+      promocionesService: _PromocionesFalsas([]),
+      notificaciones: _NotificacionesFalsas(),
+      historial: _HistorialFalso(),
+      preferencias: _PreferenciasFalsas(
+        configuracion: const ConfiguracionAlertasProximidad(),
+      ),
+      usuarioId: () => 'cuenta-a',
+      ahora: () => instanteBase,
+    );
+    controller.setRadarVisible(true);
+    controller.setRadarActivo(true);
+    await controller.iniciar();
+    final inicial = ubicacion.solicitudes;
+    expect(inicial, greaterThan(0));
+    await tester.pump(const Duration(minutes: 3));
+    await tester.pump();
+    expect(ubicacion.solicitudes, greaterThan(inicial));
+    controller.setRadarVisible(false);
+    final fueraDelMapa = ubicacion.solicitudes;
+    await tester.pump(const Duration(minutes: 6));
+    await tester.pump();
+    expect(ubicacion.solicitudes, fueraDelMapa);
+    controller.setRadarVisible(true);
+    await controller.iniciar();
+    controller.suspenderPorCicloDeVida();
+    final bloqueado = ubicacion.solicitudes;
+    await tester.pump(const Duration(minutes: 6));
+    await tester.pump();
+    expect(ubicacion.solicitudes, bloqueado);
+    controller.dispose();
   });
 
   testWidgets(

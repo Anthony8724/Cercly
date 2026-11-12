@@ -103,9 +103,11 @@ class _NavegacionPrincipalScreenState extends State<NavegacionPrincipalScreen>
               ),
               if (_monitor != null)
                 Positioned(
+                  key: const Key('radar-panel-position'),
                   left: 12,
                   right: 12,
-                  bottom: 12,
+                  // La atribución de OpenStreetMap ocupa la franja inferior.
+                  bottom: 42,
                   child: SafeArea(
                     top: false,
                     child: RadarCerclyPanel(controller: _monitor!),

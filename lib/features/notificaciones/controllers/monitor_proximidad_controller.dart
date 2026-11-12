@@ -337,6 +337,11 @@ class MonitorProximidadController extends ChangeNotifier {
         _publicarEstado();
       }
       if (!configuracion.activadas) return;
+      final politica = await _preferencias.cargar();
+      if (!politica.activadas) {
+        _ultimoResultadoDiagnostico = 'alertas_desactivadas_o_permiso_revocado';
+        return;
+      }
       if (mostrarEnRadar &&
           (usuarioAlInicio == null ||
               usuarioAlInicio != _usuarioId() ||
@@ -355,8 +360,12 @@ class MonitorProximidadController extends ChangeNotifier {
       final notificables = _control.evaluar(
         promociones,
         ahora: _ahora(),
-        radioUsuarioMetros: configuracion.radioMetros,
+        radioUsuarioMetros: politica.radioMetros < configuracion.radioMetros
+            ? politica.radioMetros
+            : configuracion.radioMetros,
         precisionUbicacionMetros: ubicacion.precisionMetros!,
+        maximoPorDia: politica.frecuencia.maximoPorDia,
+        horarioDescanso: politica.horarioDescanso,
       );
       var huboCambios = !_mismosElementos(
         dentroAntes,
@@ -374,7 +383,11 @@ class MonitorProximidadController extends ChangeNotifier {
         }
         // Una persona puede revocar consentimiento o permiso mientras se
         // consulta el backend. Verificar justo antes de publicar el aviso.
-        if (!(await _preferencias.cargar()).activadas ||
+        final vigente = await _preferencias.cargar();
+        if (!vigente.activadas ||
+            vigente.horarioDescanso?.contiene(_ahora()) == true ||
+            _control.notificacionesRecientes.length >=
+                vigente.frecuencia.maximoPorDia ||
             !await _notificaciones.tienePermisoParaNotificar()) {
           _ultimoResultadoDiagnostico =
               'alertas_desactivadas_o_permiso_revocado';
@@ -395,7 +408,10 @@ class MonitorProximidadController extends ChangeNotifier {
       }
 
       if (promociones.isNotEmpty && notificables.isEmpty) {
-        _ultimoResultadoDiagnostico = 'cooldown_limite_o_misma_zona';
+        _ultimoResultadoDiagnostico =
+            politica.horarioDescanso?.contiene(_ahora()) == true
+            ? 'horario_descanso'
+            : 'cooldown_limite_o_misma_zona';
       }
 
       if (huboCambios) {
@@ -518,6 +534,8 @@ class MonitorProximidadController extends ChangeNotifier {
         ahora: ahora,
         radioUsuarioMetros: configuracion.radioMetros,
         conservarPromocionesDentro: true,
+        maximoPorDia: configuracion.frecuencia.maximoPorDia,
+        horarioDescanso: configuracion.horarioDescanso,
       );
       if (notificables.isEmpty) {
         return _ultimoResultadoDiagnostico =

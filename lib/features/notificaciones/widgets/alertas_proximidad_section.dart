@@ -138,7 +138,8 @@ class _AlertasProximidadSectionState extends State<AlertasProximidadSection>
         if (!mounted) return;
         setState(() {
           _configuracion = nueva;
-          _mensaje = 'Alertas desactivadas. No consultaremos tu ubicación.';
+          _mensaje =
+              'Alertas desactivadas. Puedes usar el Radar visual por separado.';
         });
         return;
       }
@@ -221,7 +222,7 @@ class _AlertasProximidadSectionState extends State<AlertasProximidadSection>
         _configuracion = nueva;
         _permisoNotificaciones = true;
         _estadoUbicacion = EstadoUbicacion.disponible;
-        _mensaje = 'Alertas activadas. Cercly comprobará promociones solo mientras la app esté abierta.';
+        _mensaje = 'Alertas activadas. Se evaluarán solo con Radar activo y Mapa visible.';
       });
     } finally {
       if (mounted) setState(() => _guardando = false);
@@ -249,22 +250,88 @@ class _AlertasProximidadSectionState extends State<AlertasProximidadSection>
   }
 
   Future<void> _cambiarRadio(int radio) async {
+    await _guardarAjuste(
+      _configuracion.copiarCon(radioMetros: radio),
+      'Radio de proximidad actualizado.',
+    );
+  }
+
+  Future<void> _cambiarFrecuencia(
+    FrecuenciaAlertasProximidad frecuencia,
+  ) async {
+    await _guardarAjuste(
+      _configuracion.copiarCon(frecuencia: frecuencia),
+      'Frecuencia de alertas actualizada.',
+    );
+  }
+
+  Future<void> _cambiarDescanso(bool activar) async {
+    await _guardarAjuste(
+      activar
+          ? _configuracion.copiarCon(
+              horarioDescanso: const HorarioDescanso(
+                inicioMinutos: 22 * 60,
+                finMinutos: 7 * 60,
+              ),
+            )
+          : _configuracion.copiarCon(quitarHorarioDescanso: true),
+      activar
+          ? 'Horario de descanso activado.'
+          : 'Horario de descanso desactivado.',
+    );
+  }
+
+  Future<void> _cambiarHoraDescanso({required bool inicio}) async {
+    final horario = _configuracion.horarioDescanso;
+    if (horario == null || _guardando || _cargando) return;
+    final minutos = inicio ? horario.inicioMinutos : horario.finMinutos;
+    final elegida = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay(hour: minutos ~/ 60, minute: minutos % 60),
+    );
+    if (!mounted || elegida == null) return;
+    final nuevosMinutos = elegida.hour * 60 + elegida.minute;
+    final nuevoInicio = inicio ? nuevosMinutos : horario.inicioMinutos;
+    final nuevoFin = inicio ? horario.finMinutos : nuevosMinutos;
+    if (nuevoInicio == nuevoFin) {
+      setState(() {
+        _mensaje = 'El inicio y el fin del descanso deben ser distintos.';
+        _mensajeError = true;
+      });
+      return;
+    }
+    await _guardarAjuste(
+      _configuracion.copiarCon(
+        horarioDescanso: HorarioDescanso(
+          inicioMinutos: nuevoInicio,
+          finMinutos: nuevoFin,
+        ),
+      ),
+      'Horario de descanso actualizado.',
+    );
+  }
+
+  String _formatoHora(int minutos) =>
+      TimeOfDay(hour: minutos ~/ 60, minute: minutos % 60).format(context);
+
+  Future<void> _guardarAjuste(
+    ConfiguracionAlertasProximidad nueva,
+    String mensaje,
+  ) async {
     if (_guardando || _cargando) return;
-    final nueva = _configuracion.copiarCon(radioMetros: radio);
     setState(() => _guardando = true);
     try {
       await _preferencias.guardar(nueva);
       if (!mounted) return;
       setState(() {
         _configuracion = nueva;
-        _mensaje = 'Radio de proximidad actualizado.';
+        _mensaje = mensaje;
         _mensajeError = false;
       });
     } catch (_) {
       if (mounted) {
         setState(() {
-          _mensaje =
-              'No se pudo guardar el radio de proximidad en el dispositivo.';
+          _mensaje = 'No se pudo guardar la preferencia en el dispositivo.';
           _mensajeError = true;
         });
       }
@@ -314,6 +381,10 @@ class _AlertasProximidadSectionState extends State<AlertasProximidadSection>
     'sin_promociones_elegibles' =>
       'No se encontraron promociones elegibles en el radio.',
     'cooldown_limite_o_misma_zona' => 'No se envió: cooldown, límite global o sigues dentro de una zona ya notificada.',
+    'horario_descanso' =>
+      'No se envió: estás dentro del horario de descanso configurado.',
+    'alertas_desactivadas_o_permiso_revocado' =>
+      'Las alertas o el permiso se desactivaron antes del aviso.',
     'alertas_desactivadas' =>
       'Activa voluntariamente las alertas antes de comprobarlas.',
     'evaluacion_en_curso' => 'Ya hay una comprobación en curso.',
@@ -491,6 +562,68 @@ class _AlertasProximidadSectionState extends State<AlertasProximidadSection>
                 const SizedBox(height: 4),
                 const LinearProgressIndicator(),
               ],
+              const SizedBox(height: 12),
+              Text(
+                'Frecuencia de alertas',
+                style: TextStyle(color: sky.text, fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  for (final frecuencia in FrecuenciaAlertasProximidad.values)
+                    ChoiceChip(
+                      key: Key('frecuencia-${frecuencia.name}'),
+                      label: Text(
+                        '${frecuencia.etiqueta} · '
+                        '${frecuencia.maximoPorDia} al día',
+                      ),
+                      selected: _configuracion.frecuencia == frecuencia,
+                      onSelected: _guardando || _cargando
+                          ? null
+                          : (seleccionado) {
+                              if (seleccionado) _cambiarFrecuencia(frecuencia);
+                            },
+                    ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              SwitchListTile.adaptive(
+                key: const Key('horario-descanso-switch'),
+                contentPadding: EdgeInsets.zero,
+                value: _configuracion.horarioDescanso != null,
+                onChanged: _guardando || _cargando ? null : _cambiarDescanso,
+                title: const Text('Horario de descanso'),
+                subtitle: const Text(
+                  'Sin avisos promocionales en las horas elegidas, '
+                  'según la hora local del teléfono.',
+                ),
+                secondary: Icon(Icons.bedtime_outlined, color: sky.interactive),
+              ),
+              if (_configuracion.horarioDescanso case final horario?)
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    OutlinedButton(
+                      key: const Key('descanso-inicio'),
+                      onPressed: _guardando
+                          ? null
+                          : () => _cambiarHoraDescanso(inicio: true),
+                      child: Text(
+                        'Desde ${_formatoHora(horario.inicioMinutos)}',
+                      ),
+                    ),
+                    OutlinedButton(
+                      key: const Key('descanso-fin'),
+                      onPressed: _guardando
+                          ? null
+                          : () => _cambiarHoraDescanso(inicio: false),
+                      child: Text('Hasta ${_formatoHora(horario.finMinutos)}'),
+                    ),
+                  ],
+                ),
               if (_configuracion.activadas) ...[
                 Align(
                   alignment: Alignment.centerLeft,
@@ -531,7 +664,9 @@ class _AlertasProximidadSectionState extends State<AlertasProximidadSection>
                             .radiosDisponiblesMetros)
                       ChoiceChip(
                         key: Key('radio-alerta-$radio'),
-                        label: Text('${radio ~/ 1000} km'),
+                        label: Text(
+                          radio == 1500 ? '1,5 km' : '${radio ~/ 1000} km',
+                        ),
                         selected: _configuracion.radioMetros == radio,
                         onSelected: _guardando
                             ? null
