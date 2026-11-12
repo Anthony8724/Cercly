@@ -66,6 +66,8 @@ class PromocionPublicaService
 
   Future<List<PromocionDestacadaModel>> listarVigentes({
     String? categoriaId,
+    String? ciudad,
+    String? provincia,
     double? latitudUsuario,
     double? longitudUsuario,
     double? radioMaximoMetros,
@@ -92,6 +94,19 @@ class PromocionPublicaService
 
     if (categoria != null && categoria.isNotEmpty) {
       consulta = consulta.eq('establecimientos.categoria_id', categoria);
+    }
+
+    final ciudadFiltrada = ciudad?.trim();
+    if (ciudadFiltrada != null && ciudadFiltrada.isNotEmpty) {
+      consulta = consulta.ilike('establecimientos.ciudad', ciudadFiltrada);
+    }
+
+    final provinciaFiltrada = provincia?.trim();
+    if (provinciaFiltrada != null && provinciaFiltrada.isNotEmpty) {
+      consulta = consulta.ilike(
+        'establecimientos.provincia',
+        provinciaFiltrada,
+      );
     }
 
     final respuesta = await consulta.order('fecha_fin');

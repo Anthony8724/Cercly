@@ -13,12 +13,16 @@ import '../services/promocion_publica_service.dart';
 class PromocionesScreen extends StatefulWidget {
   const PromocionesScreen({
     this.cargarPromociones,
+    this.ciudad = 'Tulcán',
+    this.provincia = 'Carchi',
     this.resolverEstablecimiento,
     this.crearDetalle,
     super.key,
   });
 
   final Future<List<PromocionDestacadaModel>> Function()? cargarPromociones;
+  final String ciudad;
+  final String provincia;
   final Future<EstablecimientoPublicoModel?> Function(String id)?
   resolverEstablecimiento;
   final Widget Function(
@@ -44,6 +48,16 @@ class _PromocionesScreenState extends State<PromocionesScreen> {
     _cargar();
   }
 
+  @override
+  void didUpdateWidget(covariant PromocionesScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.ciudad != widget.ciudad ||
+        oldWidget.provincia != widget.provincia ||
+        oldWidget.cargarPromociones != widget.cargarPromociones) {
+      _cargar();
+    }
+  }
+
   Future<void> _cargar() async {
     if (mounted) {
       setState(() {
@@ -54,7 +68,10 @@ class _PromocionesScreenState extends State<PromocionesScreen> {
     try {
       final promociones =
           await (widget.cargarPromociones?.call() ??
-              PromocionPublicaService().listarVigentes());
+              PromocionPublicaService().listarVigentes(
+                ciudad: widget.ciudad,
+                provincia: widget.provincia,
+              ));
       if (!mounted) return;
       setState(() {
         _promociones = promociones;
@@ -127,9 +144,10 @@ class _PromocionesScreenState extends State<PromocionesScreen> {
     return SkySurface(
       child: Column(
         children: [
-          const CerclyPageHeader(
+          CerclyPageHeader(
             title: 'Promociones',
-            subtitle: 'Descubre las ofertas de nuestros comercios',
+            subtitle:
+                'Ofertas vigentes en ${widget.ciudad}, ${widget.provincia}',
             icon: Icons.local_offer_rounded,
           ),
           Expanded(
@@ -139,6 +157,24 @@ class _PromocionesScreenState extends State<PromocionesScreen> {
                 physics: const AlwaysScrollableScrollPhysics(),
                 padding: const EdgeInsets.fromLTRB(16, 18, 16, 28),
                 children: [
+                  Row(
+                    children: [
+                      Icon(Icons.location_city_rounded, color: sky.interactive),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Mostrando promociones de ${widget.ciudad}, ${widget.provincia}',
+                          key: const Key('ciudad-promociones'),
+                          style: TextStyle(
+                            color: sky.text,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
                   TextField(
                     key: const Key('buscar-promociones'),
                     onChanged: (valor) => setState(() => _busqueda = valor),
