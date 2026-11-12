@@ -40,7 +40,10 @@ class _AdministracionDestacadasScreenState
   }
 
   Future<void> _recargar() async {
-    setState(() => _datos = _consultar());
+    final nuevaConsulta = _consultar();
+    setState(() {
+      _datos = nuevaConsulta;
+    });
     try {
       await _datos;
     } catch (_) {
