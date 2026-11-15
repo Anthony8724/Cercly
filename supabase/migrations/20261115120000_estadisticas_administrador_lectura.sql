@@ -6,11 +6,16 @@
 -- boton en la app no es suficiente.
 --
 -- Definiciones usadas (deben aprobarse con el equipo):
---   * Propietario: usuario que figura como propietario_id de algun
---     establecimiento o es miembro activo de uno (miembros_establecimiento).
---     Se evalua con el estado ACTUAL, no el que tenia al registrarse.
---     POR VERIFICAR: si los establecimientos importados de OSM usan un
---     propietario_id comodin, el total de propietarios saldria inflado.
+--   * Tipo de usuario: columna public.usuarios.rol (enum rol_usuario con los
+--     valores usuario, propietario y administrador). Se usa el rol ACTUAL.
+--     Propietario = rol 'propietario'; usuario normal = rol 'usuario';
+--     administrador = rol 'administrador' (mismo criterio que
+--     public.es_administrador()). Los administradores se cuentan aparte y no
+--     entran en la serie de nuevos registros.
+--   * propietarios_con_establecimiento: usuarios que figuran como
+--     propietario_id de algun establecimiento o son miembros activos de uno.
+--     Se entrega aparte porque puede diferir del rol. POR VERIFICAR: un
+--     propietario_id comodin en establecimientos importados de OSM sumaria 1.
 --   * Usuario activo: inicio de sesion (auth.users.last_sign_in_at) en los
 --     ultimos N dias (30 por defecto). Es una medida aproximada: solo refleja
 --     inicios de sesion, no uso real de la app.
@@ -43,7 +48,7 @@ begin
     raise exception 'p_dias_activos fuera de rango (1-365)' using errcode = '22023';
   end if;
 
-  with propietarios as (
+  with propietarios_con_establecimiento as (
     select e.propietario_id as usuario_id
     from public.establecimientos e
     where e.propietario_id is not null
@@ -51,17 +56,22 @@ begin
     select m.usuario_id
     from public.miembros_establecimiento m
     where m.activo
-  ),
-  usuarios_base as (
-    select u.id, (p.usuario_id is not null) as es_propietario
-    from public.usuarios u
-    left join propietarios p on p.usuario_id = u.id
   )
   select jsonb_build_object(
     'generado_en', now(),
-    'usuarios_total', (select count(*) from usuarios_base),
-    'propietarios_total', (select count(*) from usuarios_base where es_propietario),
-    'usuarios_normales_total', (select count(*) from usuarios_base where not es_propietario),
+    'usuarios_total', (select count(*) from public.usuarios),
+    'propietarios_total', (
+      select count(*) from public.usuarios u where u.rol = 'propietario'
+    ),
+    'administradores_total', (
+      select count(*) from public.usuarios u where u.rol = 'administrador'
+    ),
+    'usuarios_normales_total', (
+      select count(*) from public.usuarios u where u.rol = 'usuario'
+    ),
+    'propietarios_con_establecimiento', (
+      select count(*) from propietarios_con_establecimiento
+    ),
     'dias_usuario_activo', p_dias_activos,
     'usuarios_activos', (
       select count(*)
@@ -102,7 +112,8 @@ end;
 $function$;
 
 -- ---------------------------------------------------------------------------
--- 2. Nuevos registros por dia, semana o mes, separados por tipo de usuario
+-- 2. Nuevos registros por dia, semana o mes, separados por rol
+--    (tipo_usuario devuelve 'usuario' o 'propietario'; sin administradores)
 -- ---------------------------------------------------------------------------
 create or replace function public.admin_estadisticas_registros(
   p_desde date,
@@ -140,22 +151,13 @@ begin
   end if;
 
   return query
-  with propietarios as (
-    select e.propietario_id as usuario_id
-    from public.establecimientos e
-    where e.propietario_id is not null
-    union
-    select m.usuario_id
-    from public.miembros_establecimiento m
-    where m.activo
-  )
   select
     date_trunc(v_unidad, u.creado_en at time zone v_zona)::date,
-    case when p.usuario_id is not null then 'propietario' else 'usuario' end,
+    u.rol::text,
     count(*)::bigint
   from public.usuarios u
-  left join propietarios p on p.usuario_id = u.id
   where (u.creado_en at time zone v_zona)::date between p_desde and p_hasta
+    and u.rol <> 'administrador'
   group by 1, 2
   order by 1, 2;
 end;
@@ -178,6 +180,6 @@ grant execute on function public.admin_estadisticas_registros(date, date, text)
 comment on function public.admin_estadisticas_resumen(integer) is
   'KPI agregados para el panel de administracion. Solo administradores.';
 comment on function public.admin_estadisticas_registros(date, date, text) is
-  'Nuevos registros por periodo y tipo de usuario. Solo administradores.';
+  'Nuevos registros por periodo y rol. Solo administradores.';
 
 commit;
