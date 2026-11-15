@@ -15,6 +15,8 @@ import '../services/geofencing_experimental_service.dart';
 import '../services/historial_notificaciones_promocion.dart';
 import '../services/notificacion_local_service.dart';
 import '../services/preferencias_alertas_proximidad.dart';
+import '../push/fcm_push_service.dart';
+import '../push/push_promotions_repository.dart';
 
 class MonitorProximidadController extends ChangeNotifier {
   MonitorProximidadController({
@@ -24,6 +26,7 @@ class MonitorProximidadController extends ChangeNotifier {
     ControlNotificacionesPromocion? control,
     HistorialNotificacionesPromocion? historial,
     PreferenciasAlertasProximidadRepository? preferencias,
+    FreshLocationPushEvaluator? pushEvaluator,
     Future<void> Function(String establecimientoId)? alAbrirEstablecimiento,
     this.intervalo = const Duration(minutes: 3),
     this.precisionMaximaMetros = 100,
@@ -45,6 +48,7 @@ class MonitorProximidadController extends ChangeNotifier {
              usuarioId: usuarioId ?? _usuarioActual,
            ),
        _preferencias = preferencias ?? PreferenciasAlertasProximidadLocal(),
+       _pushEvaluator = pushEvaluator ?? FcmPushService.shared,
        _ahora = ahora ?? DateTime.now,
        _usuarioId = usuarioId ?? _usuarioActual;
 
@@ -62,6 +66,7 @@ class MonitorProximidadController extends ChangeNotifier {
   final ControlNotificacionesPromocion _control;
   final HistorialNotificacionesPromocion _historial;
   final PreferenciasAlertasProximidadRepository _preferencias;
+  final FreshLocationPushEvaluator _pushEvaluator;
   final DateTime Function() _ahora;
   final String? Function() _usuarioId;
   final bool stagingQaEnabled;
@@ -204,8 +209,14 @@ class MonitorProximidadController extends ChangeNotifier {
     try {
       final configuracion = await _preferencias.cargar();
       if (!_sesionSigueVigente(usuarioAlInicio)) return;
-      if (!configuracion.activadas && !mostrarEnRadar) {
+      if (!configuracion.activadas &&
+          !configuracion.pushPromocionesActivadas &&
+          !mostrarEnRadar) {
         _ultimoResultadoDiagnostico = 'alertas_desactivadas';
+        return;
+      }
+      if (configuracion.pushPromocionesActivadas && !mostrarEnRadar) {
+        _ultimoResultadoDiagnostico = 'push_requiere_radar_visible';
         return;
       }
       if (mostrarEnRadar &&
@@ -348,13 +359,33 @@ class MonitorProximidadController extends ChangeNotifier {
             });
         _publicarEstado();
       }
-      if (!configuracion.activadas) return;
       final politica = await _preferencias.cargar();
       if (!_sesionSigueVigente(usuarioAlInicio)) return;
-      if (!politica.activadas) {
+      if (!politica.activadas && !politica.pushPromocionesActivadas) {
         _ultimoResultadoDiagnostico = 'alertas_desactivadas_o_permiso_revocado';
         return;
       }
+      if (politica.pushPromocionesActivadas) {
+        if (!mostrarEnRadar ||
+            usuarioAlInicio == null ||
+            !_radarActivo ||
+            !_radarVisible ||
+            !_appEnPrimerPlano) {
+          return;
+        }
+        final capturadaEn = ubicacion.capturadaEn;
+        if (capturadaEn == null) return;
+        await _pushEvaluator.evaluateFreshLocation(
+          latitude: ubicacion.latitud,
+          longitude: ubicacion.longitud,
+          accuracyMeters: ubicacion.precisionMetros!,
+          observedAt: capturadaEn,
+        );
+        if (!_sesionSigueVigente(usuarioAlInicio)) return;
+        _ultimoResultadoDiagnostico = 'evaluacion_push_solicitada';
+        return;
+      }
+      if (!politica.activadas) return;
       if (mostrarEnRadar &&
           (usuarioAlInicio == null ||
               !_radarActivo ||

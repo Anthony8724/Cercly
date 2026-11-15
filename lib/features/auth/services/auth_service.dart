@@ -8,6 +8,7 @@ import 'package:flutter/foundation.dart';
 
 import 'auth_options.dart';
 import 'profile_service.dart';
+import '../../notificaciones/push/fcm_push_service.dart';
 
 typedef OAuthLauncher = Future<bool> Function(
   OAuthProvider provider, {
@@ -21,11 +22,13 @@ class AuthService {
     SupabaseClient? supabase,
     this.options = const AuthOptions(),
     this.oauthLauncher,
+    this.retirePromotionalPush,
   }) : _client = supabase;
 
   final SupabaseClient? _client;
   final AuthOptions options;
   final OAuthLauncher? oauthLauncher;
+  final Future<void> Function()? retirePromotionalPush;
   SupabaseClient get _supabase => _client ?? Supabase.instance.client;
 
   Stream<AuthState> get events => _supabase.auth.onAuthStateChange;
@@ -183,8 +186,13 @@ class AuthService {
     return 'Ocurrió un error inesperado. Vuelve a intentarlo.';
   }
 
-  Future<void> signOut() {
-    return _supabase.auth.signOut().timeout(const Duration(seconds: 15));
+  Future<void> signOut() async {
+    if (retirePromotionalPush case final revoke?) {
+      await revoke();
+    } else if (_client == null) {
+      await FcmPushService.shared.retireBeforeSignOut();
+    }
+    await _supabase.auth.signOut().timeout(const Duration(seconds: 15));
   }
 
   /// Reintento explícito: una nueva suscripción sola repetiría el último error

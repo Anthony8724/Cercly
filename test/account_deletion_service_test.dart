@@ -52,8 +52,15 @@ void main() {
       );
     });
     addTearDown(client.dispose);
-    final service = AccountDeletionService(supabase: client);
+    var pushRetired = false;
+    final service = AccountDeletionService(
+      supabase: client,
+      retirePromotionalPush: () async {
+        pushRetired = true;
+      },
+    );
     expect(await service.requestDeletion(), AccountDeletionOutcome.deleted);
+    expect(pushRetired, isTrue);
     expect(client.auth.currentSession, isNull);
     expect(requests.first.url.path, '/functions/v1/eliminar-cuenta');
     expect(requests.first.headers['Authorization'], 'Bearer synthetic-jwt');

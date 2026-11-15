@@ -84,6 +84,7 @@ class PreferenciasAlertasProximidadLocal
         }
         return ConfiguracionAlertasProximidad(
           activadas: datos['activadas'] == true,
+          pushPromocionesActivadas: datos['push_promociones_activadas'] == true,
           radioMetros: radio,
           frecuencia: frecuencia,
           horarioDescanso: horario,
@@ -140,6 +141,7 @@ class PreferenciasAlertasProximidadLocal
     final datos = <String, Object?>{
       'version': 2,
       'activadas': configuracion.activadas,
+      'push_promociones_activadas': configuracion.pushPromocionesActivadas,
       'radio_metros': configuracion.radioMetros,
       'frecuencia': configuracion.frecuencia.name,
       'descanso': configuracion.horarioDescanso == null

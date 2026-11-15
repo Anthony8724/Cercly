@@ -4,6 +4,7 @@ import 'package:cercly/features/explorar/models/ubicacion_usuario.dart';
 import 'package:cercly/features/explorar/services/ubicacion_service.dart';
 import 'package:cercly/features/notificaciones/controllers/monitor_proximidad_controller.dart';
 import 'package:cercly/features/notificaciones/models/configuracion_alertas_proximidad.dart';
+import 'package:cercly/features/notificaciones/push/push_promotions_repository.dart';
 import 'package:cercly/features/notificaciones/services/control_notificaciones_promocion.dart';
 import 'package:cercly/features/notificaciones/services/geofencing_experimental_service.dart';
 import 'package:cercly/features/notificaciones/services/historial_notificaciones_promocion.dart';
@@ -225,6 +226,26 @@ class _PreferenciasFalsas implements PreferenciasAlertasProximidadRepository {
   Future<void> guardar(ConfiguracionAlertasProximidad nueva) async {
     configuracion = nueva;
     _cambios.add(nueva);
+  }
+}
+
+class _PushEvaluatorFalso implements FreshLocationPushEvaluator {
+  final locations =
+      <({double lat, double lon, double accuracy, DateTime at})>[];
+
+  @override
+  Future<void> evaluateFreshLocation({
+    required double latitude,
+    required double longitude,
+    required double accuracyMeters,
+    required DateTime observedAt,
+  }) async {
+    locations.add((
+      lat: latitude,
+      lon: longitude,
+      accuracy: accuracyMeters,
+      at: observedAt,
+    ));
   }
 }
 
@@ -1282,6 +1303,61 @@ void main() {
         expect(ubicacion.solicitudes, durantePausa);
         await controller.reanudar();
         expect(ubicacion.solicitudes, greaterThan(durantePausa));
+        controller.dispose();
+      },
+    );
+
+    test(
+      'push evalúa solo con Radar visible y omite alerta local del ciclo',
+      () async {
+        final push = _PushEvaluatorFalso();
+        final local = _NotificacionesFalsas();
+        final location = UbicacionUsuario(
+          latitud: 0.8116,
+          longitud: -77.7172,
+          precisionMetros: 35,
+          capturadaEn: instanteBase,
+        );
+        final preferences = _PreferenciasFalsas(
+          configuracion: const ConfiguracionAlertasProximidad(
+            activadas: true,
+            pushPromocionesActivadas: true,
+          ),
+        );
+        final ubicacionService = _UbicacionFalsa(
+          ResultadoUbicacion(
+            estado: EstadoUbicacion.disponible,
+            ubicacion: location,
+          ),
+        );
+        final controller = MonitorProximidadController(
+          ubicacionService: ubicacionService,
+          promocionesService: _PromocionesFalsas([promocion()]),
+          notificaciones: local,
+          historial: _HistorialFalso(),
+          preferencias: preferences,
+          pushEvaluator: push,
+          usuarioId: () => 'usuario-1',
+          ahora: () => instanteBase,
+        );
+        controller.setRadarVisible(true);
+        controller.setRadarActivo(true);
+        await controller.iniciar();
+
+        expect(push.locations, hasLength(1));
+        expect(push.locations.single.accuracy, 35);
+        expect(local.mostradas, isEmpty);
+        controller.setRadarVisible(false);
+        final evaluationsWhenHidden = push.locations.length;
+        await controller.iniciar();
+        expect(push.locations.length, evaluationsWhenHidden);
+        final locationRequestsWhenHidden = ubicacionService.solicitudes;
+        await controller.verificarAhora();
+        expect(
+          ubicacionService.solicitudes,
+          locationRequestsWhenHidden,
+          reason: 'una verificación manual sin Radar no debe consultar GPS',
+        );
         controller.dispose();
       },
     );

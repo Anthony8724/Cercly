@@ -6,6 +6,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../notificaciones/services/historial_notificaciones_promocion.dart';
 import '../../notificaciones/services/notificacion_local_service.dart';
 import '../../notificaciones/services/preferencias_alertas_proximidad.dart';
+import '../../notificaciones/push/fcm_push_service.dart';
 import '../../preferencias/services/preferencias_usuario_service.dart';
 
 enum AccountDeletionOutcome { deleted, review }
@@ -18,9 +19,10 @@ class AccountDeletionException implements Exception {
 }
 
 class AccountDeletionService {
-  AccountDeletionService({this.supabase});
+  AccountDeletionService({this.supabase, this.retirePromotionalPush});
 
   final SupabaseClient? supabase;
+  final Future<void> Function()? retirePromotionalPush;
   SupabaseClient get _client => supabase ?? Supabase.instance.client;
 
   bool get hasSession => _client.auth.currentSession != null;
@@ -41,6 +43,16 @@ class AccountDeletionService {
       final data = response.data;
       final status = data is Map ? data['estado'] : null;
       if (status == 'eliminada') {
+        try {
+          if (retirePromotionalPush case final retire?) {
+            await retire();
+          } else {
+            await FcmPushService(client: _client).retireAfterAccountDeletion();
+          }
+        } catch (_) {
+          // The Auth cascade has removed server associations; local FCM
+          // cleanup must not undo a confirmed account deletion.
+        }
         // Esta preferencia identifica el modo de cuenta asociado al usuario.
         try {
           final preferences = await SharedPreferences.getInstance();

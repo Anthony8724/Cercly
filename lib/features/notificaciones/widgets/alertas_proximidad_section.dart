@@ -8,6 +8,7 @@ import '../models/configuracion_alertas_proximidad.dart';
 import 'monitor_proximidad_app.dart';
 import '../services/notificacion_local_service.dart';
 import '../services/preferencias_alertas_proximidad.dart';
+import 'push_promotions_section.dart';
 
 class AlertasProximidadSection extends StatefulWidget {
   const AlertasProximidadSection({
@@ -557,6 +558,10 @@ class _AlertasProximidadSectionState extends State<AlertasProximidadSection>
                       : Icons.notifications_off_outlined,
                   color: sky.interactive,
                 ),
+              ),
+              PushPromotionsSection(
+                preferences: _preferencias,
+                initialEnabled: _configuracion.pushPromocionesActivadas,
               ),
               if (_cargando || _guardando) ...[
                 const SizedBox(height: 4),
