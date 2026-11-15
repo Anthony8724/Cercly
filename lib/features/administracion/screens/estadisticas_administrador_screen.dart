@@ -62,7 +62,7 @@ class _EstadisticasAdministradorScreenState
 
   @override
   Widget build(BuildContext context) {
-    final palette = Theme.of(context).extension<SkyPalette>()!;
+    final palette = SkyPalette.of(context);
 
     return Scaffold(
       backgroundColor: palette.background,
