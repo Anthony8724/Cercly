@@ -121,14 +121,9 @@ class PreferenciasAlertasProximidadLocal
     final preferencias = await SharedPreferences.getInstance();
     final usuario = _usuarioId();
     if (!configuracion.activadas) {
-      if (const bool.fromEnvironment('CERCLY_STAGING') ||
-          ProductionGeofencingService.enabledBuild) {
+      if (ProductionGeofencingService.enabledBuild) {
         try {
-          const canal = MethodChannel(
-            ProductionGeofencingService.enabledBuild
-                ? ProductionGeofencingService.channelName
-                : 'cercly/geofence_experiment',
-          );
+          const canal = MethodChannel(ProductionGeofencingService.channelName);
           await canal.invokeMethod<void>('setConsent', {'enabled': false});
           await canal.invokeMethod<void>('remove');
         } on MissingPluginException {

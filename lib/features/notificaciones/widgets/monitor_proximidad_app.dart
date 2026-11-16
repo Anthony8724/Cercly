@@ -9,7 +9,6 @@ import '../../establecimientos/services/establecimiento_publico_service.dart';
 import '../../explorar/screens/detalle_establecimiento_screen.dart';
 import '../../promociones/services/promocion_publica_service.dart';
 import '../controllers/monitor_proximidad_controller.dart';
-import '../services/geofencing_experimental_service.dart';
 import '../services/production_geofencing_service.dart';
 import '../push/fcm_promotion_message.dart';
 import '../push/fcm_push_service.dart';
@@ -40,9 +39,7 @@ class _MonitorProximidadAppState extends State<MonitorProximidadApp>
       widget.pushService ?? FcmPushService.shared;
   StreamSubscription<AuthState>? _authSubscription;
   static const _geofenceChannel = MethodChannel(
-    ProductionGeofencingService.enabledBuild
-        ? ProductionGeofencingService.channelName
-        : 'cercly/geofence_experiment',
+    ProductionGeofencingService.channelName,
   );
 
   @override
@@ -71,8 +68,7 @@ class _MonitorProximidadAppState extends State<MonitorProximidadApp>
       // client and the user explicitly enables promotional push.
     }
     unawaited(_start());
-    if (GeofencingExperimentalService.staging ||
-        ProductionGeofencingService.enabledBuild) {
+    if (ProductionGeofencingService.enabledBuild) {
       _geofenceChannel.setMethodCallHandler(_onNativeMethod);
       WidgetsBinding.instance.addPostFrameCallback((_) {
         unawaited(_consumeNativeNotification());
