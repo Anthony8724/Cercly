@@ -42,10 +42,10 @@ select throws_ok('select public.solicitar_eliminacion_cuenta()', '28000',
  'Sesión inválida','sin sesión: rechazo');
 select set_config('request.jwt.claim.sub','b7000000-0000-0000-0000-000000000001',true);
 select set_config('request.jwt.claims','{"session_id":"b7000000-0000-0000-0000-000000000001"}',true);
-select is(public.solicitar_eliminacion_cuenta(),'pendiente',
- 'usuario sin relaciones solicita borrado');
-select is(public.solicitar_eliminacion_cuenta(),'pendiente',
- 'solicitud duplicada es idempotente');
+select is(public.solicitar_eliminacion_cuenta(),'revision',
+ 'relaciones FCM nuevas quedan en revisión conservadora');
+select is(public.solicitar_eliminacion_cuenta(),'revision',
+ 'reintento conserva la revisión conservadora');
 select set_config('request.jwt.claims','{"session_id":"b7000000-0000-0000-0000-000000000002"}',true);
 select throws_ok('select public.solicitar_eliminacion_cuenta()', '42501',
  'Autenticación reciente requerida','sesión de otra identidad no verifica al titular');
@@ -92,21 +92,21 @@ select is((select count(*)::integer from auth.users
 select ok(exists(select 1 from public.establecimientos
  where propietario_id='b7000000-0000-0000-0000-000000000002'),
  'conserva el negocio compartido');
--- El borrado Auth real lo realiza la Edge Function; aquí se valida únicamente
--- la cascada de PostgreSQL con identidad sintética.
-delete from auth.users where id='b7000000-0000-0000-0000-000000000001';
-select is((select count(*)::integer from public.usuarios
- where id='b7000000-0000-0000-0000-000000000001'),0,
- 'borrar Auth elimina el perfil');
-select is((select count(*)::integer from public.miembros_establecimiento
- where usuario_id='b7000000-0000-0000-0000-000000000001'),0,
- 'borrar Auth elimina la membresía sin borrar el negocio');
+-- La migración FCM añadió nuevas FK a auth.users. Hasta que el flujo de
+-- supresión clasifique esas relaciones, se conserva el cierre fail-closed.
+select throws_ok(
+ $$delete from auth.users where id='b7000000-0000-0000-0000-000000000001'$$,
+ '42501','Supresion requiere caso autorizado sin dependencias',
+ 'las nuevas relaciones FCM impiden el borrado directo');
+select ok((select count(*)=1 from auth.users where id='b7000000-0000-0000-0000-000000000001')
+ and (select count(*)=1 from public.usuarios where id='b7000000-0000-0000-0000-000000000001')
+ and (select count(*)=1 from public.miembros_establecimiento where usuario_id='b7000000-0000-0000-0000-000000000001'),
+ 'la identidad y relaciones permanecen tras el rechazo');
 select is((select count(*)::integer from public.establecimientos
  where id='b7100000-0000-0000-0000-000000000001'),1,
  'negocio compartido permanece');
-select public.finalizar_eliminacion_cuenta('b7000000-0000-0000-0000-000000000001');
 select is((select count(*)::integer from cercly_account_private.solicitudes_eliminacion
- where usuario_id='b7000000-0000-0000-0000-000000000001'),0,
- 'finalización retira el identificador de la cola');
+ where usuario_id='b7000000-0000-0000-0000-000000000001' and estado='revision'),1,
+ 'el caso permanece en revisión para tratamiento autorizado');
 select * from finish();
 rollback;

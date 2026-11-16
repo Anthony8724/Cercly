@@ -52,7 +52,9 @@ def main():
         for path in [ROOT / 'supabase/tests/correcciones_aplicadas_test.sql',
                      ROOT / 'supabase/tests/correcciones_casos_adicionales_test.sql',
                      ROOT / 'supabase/tests/registro_nuevo_establecimiento_test.sql',
-                     ROOT / 'supabase/tests/reclamar_establecimiento_osm_test.sql']:
+                     ROOT / 'supabase/tests/reclamar_establecimiento_osm_test.sql',
+                     ROOT / 'supabase/tests/fcm_promotions_rules_test.sql',
+                     ROOT / 'supabase/tests/fcm_promotions_security_test.sql']:
             output = sql(path)
             plans = re.findall(r'^1\.\.(\d+)$', output, re.M)
             passed = re.findall(r'^ok \d+', output, re.M)
