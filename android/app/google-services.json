@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "568186710167",
+    "project_id": "cercly-sky",
+    "storage_bucket": "cercly-sky.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:568186710167:android:ea116e52c5bec5d13121d2",
+        "android_client_info": {
+          "package_name": "com.cercly.cercly"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCVFtOVLmmwBxvbpJPKZWXlyP2NidPtEVI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:568186710167:android:352919cc20088e0b3121d2",
+        "android_client_info": {
+          "package_name": "com.cercly.cercly.staging"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCVFtOVLmmwBxvbpJPKZWXlyP2NidPtEVI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

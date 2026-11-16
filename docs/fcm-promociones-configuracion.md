@@ -1,50 +1,54 @@
-# Configuración pendiente de FCM para promociones
+# Configuración Android de FCM para promociones
 
-Este cambio añade el cliente y el flujo de servidor, pero no contiene una
-configuración Firebase de Cercly. La activación del usuario permanece
-deshabilitada hasta completar estos pasos en los proyectos correctos.
+El proyecto `cercly-sky` ya tiene registradas las apps Android de Producción y
+Staging. La configuración cliente se encuentra en
+`android/app/google-services.json`; el plugin Google Services selecciona dentro
+del archivo el cliente que coincide con el `applicationId` efectivo de cada
+compilación.
 
-## Firebase Console
+El JSON descargado se inspeccionó antes de copiarlo: contiene las apps
+`com.cercly.cercly` y `com.cercly.cercly.staging`, y no contiene claves privadas
+ni campos de cuenta de servicio. Firebase documenta este archivo como
+configuración cliente con identificadores no secretos. No incluye credenciales
+de envío.
 
-1. Crear o seleccionar el proyecto Firebase oficial de Cercly y habilitar
-   Firebase Cloud Messaging. No usar Firebase Authentication, Firestore ni
-   Analytics.
-2. Registrar una aplicación Android por cada `applicationId` que se vaya a
-   probar o distribuir. Los identificadores salen de
-   `android/app/build.gradle.kts`:
-   - Producción: `com.cercly.cercly`.
-   - Staging: `com.cercly.cercly.staging`.
-   - Evaluación: `com.cercly.cercly.evaluation`.
-   - Demo: `com.cercly.cercly.demo`.
-   La build privada `productionCandidate` reutiliza el identificador de
-   producción `com.cercly.cercly`; no requiere otra app Firebase.
-3. Para cada app Android, descargar su `google-services.json` desde Firebase
-   Console. Los cuatro identificadores son aplicaciones Android distintas,
-   aunque se alojen en un mismo proyecto Firebase. No poner un archivo de una
-   variante en otra.
-4. Ejecutar FlutterFire CLI autenticado con la cuenta propietaria del proyecto
-   y configurar Android para obtener las opciones públicas de cliente. La CLI
-   genera `firebase_options.dart`; Firebase Console entrega el
-   `google-services.json`. No son archivos intercambiables.
-5. El repositorio aún no tiene selección de Firebase por variante, las opciones
-   generadas ni el plugin de Google Services en Gradle. Por eso esta rama no
-   puede inicializar una app Firebase real todavía. Después de registrar las
-   apps, hay que preparar un cambio de configuración que seleccione el
-   `FirebaseOptions`/archivo Android correcto según cada build y use las
-   opciones en `Firebase.initializeApp`. No copiar un JSON de producción a
-   Staging/Evaluación ni construir hasta validar esa correspondencia.
-6. Confirmar que Firebase Cloud Messaging esté habilitado para el proyecto.
-   Crear una identidad de servidor con el permiso mínimo necesario para enviar
-   mensajes FCM HTTP v1.
-7. Guardar el JSON privado de la cuenta de servicio como secreto de Supabase
-   `FCM_SERVICE_ACCOUNT_JSON` en el entorno de pruebas elegido. No incluirlo en
-   `.env`, archivos Flutter, `dart-define`, Gradle, logs o commits. La función
-   usa además los secretos de plataforma de Supabase y requiere autenticación
-   JWT de usuario.
+## Variantes Android
 
-No registrar todavía credenciales ni desplegar la función desde este PR. Los
-identificadores Firebase y archivos generados se añaden solo después de que el
-propietario configure y confirme el proyecto correcto.
+- Producción y `productionCandidate` usan `com.cercly.cercly`.
+- Staging aplica el sufijo `.staging` y usa `com.cercly.cercly.staging`.
+- Evaluación y Demo no están registradas en Firebase. Gradle deja el plugin
+  Google Services desactivado para esos builds, por lo que siguen sin depender
+de configuración Firebase.
+- El archivo contiene ambos clientes registrados. El plugin selecciona el
+  bloque por el `applicationId`; así Staging no recibe el App ID de Producción.
+
+Se usa configuración Android nativa por variante. No se generó un
+`firebase_options.dart` único porque fijaría un solo App ID Android, mientras
+que los builds actuales comparten el mismo módulo y cambian el `applicationId`
+mediante `dart-define`. El `Firebase.initializeApp()` existente usa los recursos
+Android generados por Google Services para el paquete de cada build. La
+inicialización FlutterFire sigue siendo la capa de SDK; la selección del App ID
+la resuelve Gradle con el JSON.
+
+El JSON cliente es parte de la configuración Android del proyecto. Antes de
+publicar, confirmar que las restricciones de API key en Google Cloud sean
+compatibles con FCM y con ambos paquetes. No subir JSON de cuenta de servicio,
+claves privadas ni secretos de Supabase.
+
+## Firebase Console y servidor
+
+1. El proyecto configurado es `cercly-sky`; FCM debe estar habilitado. No se
+   utilizan Firebase Authentication, Firestore ni Analytics.
+2. Las apps de Producción (`com.cercly.cercly`) y Staging
+   (`com.cercly.cercly.staging`) están registradas. Evaluación y Demo quedan
+   fuera de Firebase hasta que se decida registrarlas.
+3. Para envío HTTP v1, crear una identidad de servidor con permisos mínimos y
+   guardar su JSON únicamente como secreto `FCM_SERVICE_ACCOUNT_JSON` en un
+   entorno Supabase no productivo. No guardarlo en `.env` del repositorio,
+   Flutter, `dart-define`, Gradle, logs ni commits.
+4. La migración y Edge Function de este PR aún no se despliegan. La prueba de
+   envío real requiere desplegarlas en staging y configurar allí el secreto;
+   no se debe usar Supabase Producción para esta validación.
 
 ## Política implementada
 
