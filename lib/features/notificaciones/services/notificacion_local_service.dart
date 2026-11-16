@@ -4,6 +4,7 @@ import 'dart:developer' as developer;
 import 'package:flutter/services.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../promociones/models/promocion_destacada_model.dart';
 import 'geofencing_experimental_service.dart';
@@ -318,6 +319,8 @@ class NotificacionLocalService
                   : 'cercly/geofence_experiment',
             ).invokeMethod<String>('reserveForegroundSlot', {
               'promotionId': promocion.id,
+              'businessId': promocion.establecimientoId,
+              'userId': Supabase.instance.client.auth.currentUser?.id ?? '',
             });
         if (ProductionGeofencingService.enabledBuild && reserva != 'reserved') {
           return false;

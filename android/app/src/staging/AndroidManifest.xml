@@ -37,10 +37,8 @@
             </intent-filter>
         </activity>
         <meta-data android:name="flutterEmbedding" android:value="2" />
-        <receiver android:name=".proximity.GeofenceBroadcastReceiver" android:enabled="true" android:exported="false" />
-        <receiver android:name=".proximity.GeofenceQaReceiver" android:enabled="true" android:exported="false" />
-        <receiver android:name=".proximity.ScreenLockQaReceiver" android:enabled="true" android:exported="false" />
-        <receiver android:name=".proximity.GeofenceBootReceiver" android:enabled="true" android:exported="false">
+        <receiver android:name=".proximity.StagingPromotionalGeofenceReceiver" android:enabled="true" android:exported="false" />
+        <receiver android:name=".proximity.StagingPromotionalGeofenceRestoreReceiver" android:enabled="true" android:exported="false">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
                 <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />

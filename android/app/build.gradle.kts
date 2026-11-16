@@ -94,6 +94,9 @@ android {
         sourceSets.getByName("main").manifest.srcFile("src/productionCandidate/AndroidManifest.xml")
         sourceSets.getByName("test").kotlin.srcDir("src/productionCandidateTest/kotlin")
     }
+    if (isCerclyStaging) {
+        sourceSets.getByName("test").kotlin.srcDir("src/stagingTest/kotlin")
+    }
     sourceSets.getByName("main").kotlin.setSrcDirs(listOf(
         if (isCerclyStaging) "src/staging/kotlin"
         else if (isPrivateProximity) "src/productionCandidate/kotlin"

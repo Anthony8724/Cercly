@@ -11,7 +11,6 @@ import '../../../sky/sky_controller.dart';
 import '../../../shared/ui/cercly_ui.dart';
 import '../../notificaciones/widgets/alertas_proximidad_section.dart';
 import '../../notificaciones/widgets/production_proximity_section.dart';
-import '../../notificaciones/widgets/staging_proximity_diagnostics.dart';
 import '../../notificaciones/services/geofencing_experimental_service.dart';
 import '../../notificaciones/services/notificacion_local_service.dart';
 import '../../notificaciones/services/preferencias_alertas_proximidad.dart';
@@ -244,14 +243,9 @@ class ConfiguracionCuentaScreen extends StatelessWidget {
               const SizedBox(height: 12),
               const AlertasProximidadSection(),
               const SizedBox(height: 12),
-              if (const bool.fromEnvironment('CERCLY_PRIVATE_PROXIMITY'))
+              if (const bool.fromEnvironment('CERCLY_PRIVATE_PROXIMITY') ||
+                  const bool.fromEnvironment('CERCLY_STAGING'))
                 const ProductionProximitySection(),
-              if (const bool.fromEnvironment('CERCLY_STAGING'))
-                const AlertasSegundoPlanoSection(),
-              if (const bool.fromEnvironment('CERCLY_STAGING')) ...[
-                const SizedBox(height: 12),
-                const StagingProximityDiagnostics(),
-              ],
             ],
           ),
         ),

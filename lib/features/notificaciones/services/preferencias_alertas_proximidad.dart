@@ -161,6 +161,11 @@ class PreferenciasAlertasProximidadLocal
       await preferencias.setBool(_claveActivas, configuracion.activadas);
     }
     _cambios.add(configuracion);
+    if (ProductionGeofencingService.stagingBuild && usuario != null) {
+      // Push the latest frequency and quiet-hours preferences to Android's
+      // durable geofence ledger immediately; no app restart is required.
+      await ProductionGeofencingService().prepareHistory();
+    }
   }
 
   Future<void> borrarDatosLocales() async {
