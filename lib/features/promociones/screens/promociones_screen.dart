@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../../../shared/ui/cercly_ui.dart';
@@ -48,6 +50,7 @@ class _PromocionesScreenState extends State<PromocionesScreen> {
   String _busqueda = '';
   String? _abriendoEstablecimiento;
   int _versionCarga = 0;
+  Timer? _recargaUbicacion;
 
   bool get _tieneUbicacion =>
       widget.latitudUsuario != null && widget.longitudUsuario != null;
@@ -61,17 +64,38 @@ class _PromocionesScreenState extends State<PromocionesScreen> {
   @override
   void didUpdateWidget(covariant PromocionesScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.ciudad != widget.ciudad ||
+    // Los cambios explicitos de radio/filtros se aplican inmediatamente.
+    final cambioInmediato =
+        oldWidget.ciudad != widget.ciudad ||
         oldWidget.provincia != widget.provincia ||
-        oldWidget.latitudUsuario != widget.latitudUsuario ||
-        oldWidget.longitudUsuario != widget.longitudUsuario ||
         oldWidget.radioMaximoMetros != widget.radioMaximoMetros ||
-        oldWidget.cargarPromociones != widget.cargarPromociones) {
+        oldWidget.cargarPromociones != widget.cargarPromociones;
+    final cambioGps =
+        oldWidget.latitudUsuario != widget.latitudUsuario ||
+        oldWidget.longitudUsuario != widget.longitudUsuario;
+
+    if (cambioInmediato) {
+      _recargaUbicacion?.cancel();
+      ++_versionCarga; // Invalida respuestas de la configuracion anterior.
       _cargar();
+    } else if (cambioGps) {
+      _recargaUbicacion?.cancel();
+      ++_versionCarga; // No mostrar resultados de una posicion anterior.
+      _cargando = true;
+      _error = false;
+      _recargaUbicacion = Timer(const Duration(milliseconds: 350), _cargar);
     }
   }
 
+  @override
+  void dispose() {
+    _recargaUbicacion?.cancel();
+    ++_versionCarga;
+    super.dispose();
+  }
+
   Future<void> _cargar() async {
+    _recargaUbicacion?.cancel();
     final version = ++_versionCarga;
     if (mounted) {
       setState(() {

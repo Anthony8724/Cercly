@@ -122,8 +122,26 @@ class PromocionPublicaService
         })
         .toList(growable: false);
 
+    // Descartar filas fuera del radio antes de pedir URLs firmadas a Storage.
+    // Se mantiene el filtro preciso, por lo que no cambia el resultado publico.
+    final filasEnRadio = radioMaximoMetros == null
+        ? filas
+        : filas
+              .where((fila) {
+                final negocio =
+                    fila['establecimientos'] as Map<String, dynamic>;
+                final distancia = calcularDistanciaMetros(
+                  latitudOrigen: latitudUsuario!,
+                  longitudOrigen: longitudUsuario!,
+                  latitudDestino: (negocio['latitud'] as num).toDouble(),
+                  longitudDestino: (negocio['longitud'] as num).toDouble(),
+                );
+                return distancia <= radioMaximoMetros;
+              })
+              .toList(growable: false);
+
     final promociones = await Future.wait(
-      filas.map(
+      filasEnRadio.map(
         (fila) => _convertirPromocion(
           fila,
           latitudUsuario: latitudUsuario,
@@ -133,15 +151,7 @@ class PromocionPublicaService
       ),
     );
 
-    final resultado = promociones.where((promocion) {
-      if (radioMaximoMetros == null) {
-        return true;
-      }
-
-      final distancia = promocion.distanciaMetros;
-
-      return distancia != null && distancia <= radioMaximoMetros;
-    }).toList();
+    final resultado = promociones;
 
     if (latitudUsuario != null && longitudUsuario != null) {
       resultado.sort((primera, segunda) {
