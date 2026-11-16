@@ -150,6 +150,7 @@ def main():
             '20261115120000_estadisticas_administrador_lectura.sql',
             '20261115235248_patrocinios_confirmacion_pago_manual.sql',
             '20261116020650_auditoria_pagos_destacadas.sql',
+            '20261116061117_fcm_account_deletion_dependencies.sql',
         )
         forward = [ROOT / 'supabase/migrations' / n for n in forward_names]
         if any(not p.is_file() for p in pending + forward):

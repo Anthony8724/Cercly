@@ -1,6 +1,6 @@
 -- Identidades sintéticas; la transacción revierte todos los fixtures.
 begin;
-select plan(23);
+select plan(24);
 
 insert into auth.users(id,email,raw_user_meta_data,last_sign_in_at) values
  ('b7000000-0000-0000-0000-000000000001','delete-basic@cercly.test','{}',now()),
@@ -42,10 +42,10 @@ select throws_ok('select public.solicitar_eliminacion_cuenta()', '28000',
  'Sesión inválida','sin sesión: rechazo');
 select set_config('request.jwt.claim.sub','b7000000-0000-0000-0000-000000000001',true);
 select set_config('request.jwt.claims','{"session_id":"b7000000-0000-0000-0000-000000000001"}',true);
-select is(public.solicitar_eliminacion_cuenta(),'revision',
- 'relaciones FCM nuevas quedan en revisión conservadora');
-select is(public.solicitar_eliminacion_cuenta(),'revision',
- 'reintento conserva la revisión conservadora');
+select is(public.solicitar_eliminacion_cuenta(),'pendiente',
+ 'relaciones FCM exactas son datos privados eliminables por cascada');
+select is(public.solicitar_eliminacion_cuenta(),'pendiente',
+ 'reintento conserva la solicitud pendiente');
 select set_config('request.jwt.claims','{"session_id":"b7000000-0000-0000-0000-000000000002"}',true);
 select throws_ok('select public.solicitar_eliminacion_cuenta()', '42501',
  'Autenticación reciente requerida','sesión de otra identidad no verifica al titular');
@@ -92,21 +92,19 @@ select is((select count(*)::integer from auth.users
 select ok(exists(select 1 from public.establecimientos
  where propietario_id='b7000000-0000-0000-0000-000000000002'),
  'conserva el negocio compartido');
--- La migración FCM añadió nuevas FK a auth.users. Hasta que el flujo de
--- supresión clasifique esas relaciones, se conserva el cierre fail-closed.
-select throws_ok(
- $$delete from auth.users where id='b7000000-0000-0000-0000-000000000001'$$,
- '42501','Supresion requiere caso autorizado sin dependencias',
- 'las nuevas relaciones FCM impiden el borrado directo');
-select ok((select count(*)=1 from auth.users where id='b7000000-0000-0000-0000-000000000001')
- and (select count(*)=1 from public.usuarios where id='b7000000-0000-0000-0000-000000000001')
- and (select count(*)=1 from public.miembros_establecimiento where usuario_id='b7000000-0000-0000-0000-000000000001'),
- 'la identidad y relaciones permanecen tras el rechazo');
+select lives_ok($$delete from auth.users where id='b7000000-0000-0000-0000-000000000001'$$,
+ 'cuenta sin dependencias protegidas se elimina');
+select lives_ok($$select public.finalizar_eliminacion_cuenta('b7000000-0000-0000-0000-000000000001')$$,
+ 'caso se cierra después de eliminar Auth');
+select ok(not exists(select 1 from auth.users where id='b7000000-0000-0000-0000-000000000001')
+ and not exists(select 1 from public.usuarios where id='b7000000-0000-0000-0000-000000000001')
+ and not exists(select 1 from public.miembros_establecimiento where usuario_id='b7000000-0000-0000-0000-000000000001'),
+ 'identidad y relaciones de usuario eliminadas sin afectar otra cuenta');
 select is((select count(*)::integer from public.establecimientos
  where id='b7100000-0000-0000-0000-000000000001'),1,
  'negocio compartido permanece');
 select is((select count(*)::integer from cercly_account_private.solicitudes_eliminacion
- where usuario_id='b7000000-0000-0000-0000-000000000001' and estado='revision'),1,
- 'el caso permanece en revisión para tratamiento autorizado');
+ where usuario_id='b7000000-0000-0000-0000-000000000001'),0,
+ 'no quedan identificadores privados de la cuenta eliminada');
 select * from finish();
 rollback;
