@@ -1,5 +1,6 @@
 package com.cercly.cercly.proximity
 
+import java.time.OffsetDateTime
 import kotlin.math.*
 
 /** Pure policy: no device location or credentials persisted here. */
@@ -18,6 +19,7 @@ object StagingProximityPolicy {
     }
     fun positionValid(lat: Double, lon: Double) = lat.isFinite() && lon.isFinite() &&
         lat in -90.0..90.0 && lon in -180.0..180.0
+    fun serverTimestampMillis(value: String): Long = OffsetDateTime.parse(value).toInstant().toEpochMilli()
     fun inRange(distance: Double, accuracy: Double, age: Long, radius: Double) =
         distance.isFinite() && accuracy.isFinite() && accuracy in 0.0..minOf(100.0, radius / 2) &&
             age in 0L..MAX_CURRENT_SAMPLE_AGE_MS && distance + accuracy <= radius

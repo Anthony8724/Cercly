@@ -4,6 +4,13 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class StagingProximityPolicyTest {
+    @Test fun serverTimestampAcceptsSupabaseOffsetAndFractionalSeconds() {
+        assertEquals(
+            StagingProximityPolicy.serverTimestampMillis("2026-11-16T03:34:12.338625Z"),
+            StagingProximityPolicy.serverTimestampMillis("2026-11-16T03:34:12.338625+00:00"),
+        )
+    }
+
     @Test fun validPromotionRequiresActiveApprovedPublishedAndCurrentWindow() {
         val now = 1_000_000L
         assertTrue(StagingProximityPolicy.eligible(true, true, true, now, now + 1, now))

@@ -39,6 +39,9 @@ object StagingPromotionalGeofencing {
     private const val CHANNEL = "promociones_cercanas"
     private const val PREFS = "cercly_staging_promotion_geofencing_v1"
     private val executor = Executors.newSingleThreadExecutor()
+    private class StagingHttpFailure(val statusCode: Int) : Exception()
+    private class StagingResponseDeadline : Exception()
+    private class StagingResponseTooLarge : Exception()
     // Serializes registration/removal callbacks, including consent revocation while GMS is busy.
     private var registrationBusy = false
     private var generation = 0L
@@ -271,7 +274,17 @@ object StagingPromotionalGeofencing {
                     if (outcome == "native_notification_posted") break
                 }
                 result(c, outcome)
-            } catch (_: Exception) { result(c, "query_or_delivery_error") }
+            } catch (error: Exception) {
+                val reason = when (error) {
+                    is StagingHttpFailure -> "staging_http_${error.statusCode}"
+                    is java.net.SocketTimeoutException -> "staging_socket_timeout"
+                    is StagingResponseDeadline -> "staging_response_deadline"
+                    is StagingResponseTooLarge -> "staging_response_too_large"
+                    is java.io.IOException -> "staging_io_${error.javaClass.simpleName}"
+                    else -> "staging_error_${error.javaClass.simpleName}"
+                }
+                result(c, reason)
+            }
             finally { processing.set(false); finish() }
         }
     }
@@ -298,17 +311,20 @@ object StagingPromotionalGeofencing {
             connection.requestMethod = "GET"; connection.connectTimeout = 2000; connection.readTimeout = 2500
             connection.instanceFollowRedirects = false
             connection.setRequestProperty("apikey", BuildConfig.STAGING_SUPABASE_PUBLISHABLE_KEY)
-            require(connection.responseCode == 200)
+            val responseCode = connection.responseCode
+            if (responseCode != 200) throw StagingHttpFailure(responseCode)
             val body = connection.inputStream.use { input ->
                 val output = java.io.ByteArrayOutputStream()
                 val buffer = ByteArray(4096)
                 val deadline = SystemClock.elapsedRealtime() + 3000
                 while (true) {
-                    require(SystemClock.elapsedRealtime() < deadline)
+                    if (SystemClock.elapsedRealtime() >= deadline) {
+                        throw StagingResponseDeadline()
+                    }
                     val read = input.read(buffer)
                     if (read < 0) break
                     output.write(buffer, 0, read)
-                    require(output.size() <= 131072)
+                    if (output.size() > 131072) throw StagingResponseTooLarge()
                 }
                 output.toByteArray()
             }
@@ -327,8 +343,8 @@ object StagingPromotionalGeofencing {
         val time = now(); val business = row.getJSONObject("establecimientos")
         if (z.getLong("expires") <= time || !StagingProximityPolicy.eligible(row.getBoolean("activa"),
                 business.getString("estado") == "aprobado", business.getBoolean("publicable"),
-                Instant.parse(row.getString("fecha_inicio")).toEpochMilli(),
-                Instant.parse(row.getString("fecha_fin")).toEpochMilli(), time)) return "promotion_not_eligible"
+                StagingProximityPolicy.serverTimestampMillis(row.getString("fecha_inicio")),
+                StagingProximityPolicy.serverTimestampMillis(row.getString("fecha_fin")), time)) return "promotion_not_eligible"
         if (business.getString("id") != z.getString("business") ||
             business.getDouble("latitud") != z.getDouble("lat") || business.getDouble("longitud") != z.getDouble("lon")) return "zone_changed"
         val userRadius = foreground(c).getLong("flutter.cercly.alertas_proximidad.radio_metros.v1", 5000L).toDouble()
