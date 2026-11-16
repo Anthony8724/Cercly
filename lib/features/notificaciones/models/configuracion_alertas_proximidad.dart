@@ -31,6 +31,7 @@ class HorarioDescanso {
 class ConfiguracionAlertasProximidad {
   const ConfiguracionAlertasProximidad({
     this.activadas = false,
+    this.pushPromocionesActivadas = false,
     this.radioMetros = radioPredeterminadoMetros,
     this.frecuencia = FrecuenciaAlertasProximidad.normal,
     this.horarioDescanso,
@@ -46,12 +47,14 @@ class ConfiguracionAlertasProximidad {
   ];
 
   final bool activadas;
+  final bool pushPromocionesActivadas;
   final int radioMetros;
   final FrecuenciaAlertasProximidad frecuencia;
   final HorarioDescanso? horarioDescanso;
 
   ConfiguracionAlertasProximidad copiarCon({
     bool? activadas,
+    bool? pushPromocionesActivadas,
     int? radioMetros,
     FrecuenciaAlertasProximidad? frecuencia,
     HorarioDescanso? horarioDescanso,
@@ -59,6 +62,8 @@ class ConfiguracionAlertasProximidad {
   }) {
     return ConfiguracionAlertasProximidad(
       activadas: activadas ?? this.activadas,
+      pushPromocionesActivadas:
+          pushPromocionesActivadas ?? this.pushPromocionesActivadas,
       radioMetros: radioMetros ?? this.radioMetros,
       frecuencia: frecuencia ?? this.frecuencia,
       horarioDescanso: quitarHorarioDescanso

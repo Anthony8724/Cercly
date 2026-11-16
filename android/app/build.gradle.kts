@@ -4,6 +4,22 @@ import java.util.Properties
 plugins {
     id("com.android.application")
     id("dev.flutter.flutter-gradle-plugin")
+    id("com.google.gms.google-services") version "4.6.0" apply false
+}
+
+val firebaseBuildDefines = (project.findProperty("dart-defines") as? String)
+    .orEmpty()
+    .split(",")
+    .mapNotNull { encoded ->
+        runCatching { String(Base64.getDecoder().decode(encoded)) }.getOrNull()
+    }
+val firebaseUiEvaluation = "CERCLY_UI_EVALUATION=true" in firebaseBuildDefines
+val firebaseDemoRelease = "CERCLY_DEMO_RELEASE=true" in firebaseBuildDefines
+
+// Firebase is configured only for registered Production/Staging application IDs.
+// UI Evaluation and Demo deliberately remain Firebase-free.
+if (!firebaseUiEvaluation && !firebaseDemoRelease) {
+    apply(plugin = "com.google.gms.google-services")
 }
 
 android {
