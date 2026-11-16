@@ -100,7 +100,7 @@ class AdministracionDestacadasService {
     }
   }
 
-  /// Ofertas de Tulcán disponibles públicamente, sin aplicar radio GPS.
+  /// Ofertas públicas elegibles, sin restricción fija de ciudad.
   Future<List<PromocionElegibleAdmin>> listarElegibles() async {
     await _exigirAdministrador();
     final ahora = DateTime.now().toUtc().toIso8601String();
@@ -117,8 +117,6 @@ class AdministracionDestacadasService {
         .gte('fecha_fin', ahora)
         .eq('establecimientos.estado', 'aprobado')
         .eq('establecimientos.publicable', true)
-        .ilike('establecimientos.ciudad', 'Tulcán')
-        .ilike('establecimientos.provincia', 'Carchi')
         .order('fecha_fin', ascending: true)
         .limit(100);
     return filas
@@ -244,8 +242,6 @@ class AdministracionDestacadasService {
           .gte('fecha_fin', campana.fechaFin.toUtc().toIso8601String())
           .eq('establecimientos.estado', 'aprobado')
           .eq('establecimientos.publicable', true)
-          .ilike('establecimientos.ciudad', 'Tulcán')
-          .ilike('establecimientos.provincia', 'Carchi')
           .maybeSingle();
       if (candidata == null) {
         throw StateError('La promoción ya no es válida para destacarse.');

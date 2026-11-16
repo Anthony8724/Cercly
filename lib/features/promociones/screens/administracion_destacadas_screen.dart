@@ -353,7 +353,7 @@ class _AdministracionDestacadasScreenState
                   ),
                   const SizedBox(height: 18),
                   Text(
-                    'Promociones disponibles en Tulcán',
+                    'Promociones públicas disponibles',
                     style: TextStyle(
                       fontSize: 17,
                       fontWeight: FontWeight.w800,
@@ -362,9 +362,7 @@ class _AdministracionDestacadasScreenState
                   ),
                   const SizedBox(height: 8),
                   if (datos.candidatas.isEmpty)
-                    const Text(
-                      'No hay promociones vigentes y públicas en Tulcán.',
-                    ),
+                    const Text('No hay promociones vigentes y públicas.'),
                   for (final promocion in datos.candidatas)
                     _tarjetaPromocion(promocion),
                   const SizedBox(height: 20),

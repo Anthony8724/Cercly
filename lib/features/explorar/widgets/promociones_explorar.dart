@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../../../sky/sky_theme.dart';
@@ -16,6 +18,7 @@ class PromocionesExplorar extends StatefulWidget {
     required this.onEstablecimiento,
     required this.onVerTodas,
     this.cargarPromociones,
+    this.revisionRecarga = 0,
     this.resolverEstablecimiento,
     this.latitudUsuario,
     this.longitudUsuario,
@@ -27,6 +30,9 @@ class PromocionesExplorar extends StatefulWidget {
   final ValueChanged<EstablecimientoPublicoModel> onEstablecimiento;
   final VoidCallback onVerTodas;
   final CargarPromocionesExplorar? cargarPromociones;
+
+  /// Cambia exclusivamente cuando se solicita una recarga explicita.
+  final int revisionRecarga;
   final Future<EstablecimientoPublicoModel?> Function(String id)?
   resolverEstablecimiento;
   final double? latitudUsuario;
@@ -42,6 +48,7 @@ class _PromocionesExplorarState extends State<PromocionesExplorar> {
   bool _cargando = false;
   bool _error = false;
   int _version = 0;
+  Timer? _temporizadorGps;
   String? _abriendoId;
 
   Future<void> _abrir(String id) async {
@@ -94,22 +101,58 @@ class _PromocionesExplorarState extends State<PromocionesExplorar> {
   @override
   void didUpdateWidget(covariant PromocionesExplorar oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (!identical(oldWidget.establecimientos, widget.establecimientos) ||
-        oldWidget.cargarPromociones != widget.cargarPromociones ||
+    // La lista de establecimientos complementa las tarjetas y no requiere
+    // consultar nuevamente campañas patrocinadas.
+    final gpsAntes =
+        oldWidget.latitudUsuario != null && oldWidget.longitudUsuario != null;
+    final gpsAhora =
+        widget.latitudUsuario != null && widget.longitudUsuario != null;
+    final cambioGps =
         oldWidget.latitudUsuario != widget.latitudUsuario ||
-        oldWidget.longitudUsuario != widget.longitudUsuario ||
-        oldWidget.radioMaximoMetros != widget.radioMaximoMetros) {
+        oldWidget.longitudUsuario != widget.longitudUsuario;
+    final cambioRadio =
+        oldWidget.radioMaximoMetros != widget.radioMaximoMetros &&
+        (gpsAntes || gpsAhora);
+    final cambioCargador =
+        oldWidget.cargarPromociones != widget.cargarPromociones;
+
+    // Cambio de radio, origen de datos y concesión/revocación de GPS:
+    // actualizar inmediatamente, sin reutilizar una posición obsoleta.
+    if (cambioRadio ||
+        cambioCargador ||
+        oldWidget.revisionRecarga != widget.revisionRecarga ||
+        (cambioGps && gpsAntes != gpsAhora)) {
+      _temporizadorGps?.cancel();
+      ++_version;
       _cargar();
+    } else if (cambioGps) {
+      // Invalida la petición pendiente ahora, no tras el debounce.
+      _temporizadorGps?.cancel();
+      ++_version;
+      setState(() {
+        _promociones = const [];
+        _cargando = true;
+        _error = false;
+      });
+      _temporizadorGps = Timer(const Duration(milliseconds: 350), _cargar);
     }
   }
 
+  @override
+  void dispose() {
+    _temporizadorGps?.cancel();
+    ++_version;
+    super.dispose();
+  }
+
   Future<void> _cargar() async {
+    _temporizadorGps?.cancel();
     final version = ++_version;
     _promociones = const [];
     _error = false;
 
-    // Las campanas destacadas se consultan sin depender del GPS ni de
-    // los establecimientos cargados en la primera pagina de Explorar.
+    // Las campañas se consultan sin depender de la paginación de
+    // establecimientos; cuando hay GPS usan el radio del usuario.
     final cargaInyectada = widget.cargarPromociones;
 
     if (mounted) {
@@ -121,7 +164,15 @@ class _PromocionesExplorarState extends State<PromocionesExplorar> {
     try {
       final promociones = cargaInyectada != null
           ? await cargaInyectada()
-          : await PromocionesDestacadasPublicasService().listarVigentes();
+          : await PromocionesDestacadasPublicasService().listarVigentes(
+              latitudUsuario: widget.latitudUsuario,
+              longitudUsuario: widget.longitudUsuario,
+              radioMaximoMetros:
+                  widget.latitudUsuario != null &&
+                      widget.longitudUsuario != null
+                  ? widget.radioMaximoMetros
+                  : null,
+            );
 
       if (!mounted || version != _version) return;
       setState(() {
