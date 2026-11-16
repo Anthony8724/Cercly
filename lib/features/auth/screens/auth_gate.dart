@@ -295,6 +295,7 @@ class _PantallaSegunRol extends StatefulWidget {
 class _PantallaSegunRolState extends State<_PantallaSegunRol>
     with WidgetsBindingObserver {
   late Future<_EstadoModo> _estadoFuture;
+  int _capabilitiesGeneration = 0;
   // Permite explorar sin asumir permisos de cuenta cuando falla la consulta.
   bool _exploracionPublicaTemporal = false;
 
@@ -329,6 +330,7 @@ class _PantallaSegunRolState extends State<_PantallaSegunRol>
   }
 
   void _cargarCapacidades() {
+    _capabilitiesGeneration++;
     _exploracionPublicaTemporal = false;
     _estadoFuture = _obtenerEstado();
   }
@@ -370,9 +372,15 @@ class _PantallaSegunRolState extends State<_PantallaSegunRol>
   }
 
   Future<void> _seleccionarModo(AccountMode mode) async {
+    final generation = _capabilitiesGeneration;
+    final userId = widget.usuario.id;
     try {
       final capabilities = await _obtenerCapacidades();
-      if (!mounted) return;
+      if (!mounted ||
+          generation != _capabilitiesGeneration ||
+          userId != widget.usuario.id) {
+        return;
+      }
       if (!capabilities.allows(mode)) {
         setState(_cargarCapacidades);
         ScaffoldMessenger.of(context).showSnackBar(
@@ -389,12 +397,20 @@ class _PantallaSegunRolState extends State<_PantallaSegunRol>
         // El cambio sigue siendo válido durante esta sesión.
       }
       if (mounted) {
-        setState(
-          () => _estadoFuture = Future.value(_EstadoModo(capabilities, mode)),
-        );
+        setState(() {
+          _estadoFuture = Future.value(_EstadoModo(capabilities, mode));
+        });
       }
-    } catch (_) {
-      if (!mounted) return;
+    } catch (error) {
+      if (!mounted ||
+          generation != _capabilitiesGeneration ||
+          userId != widget.usuario.id) {
+        return;
+      }
+      debugPrint(
+        'Account mode capability check failed: '
+        'category=${ProfileService.diagnosticCategory(error).name}',
+      );
       setState(_cargarCapacidades);
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
