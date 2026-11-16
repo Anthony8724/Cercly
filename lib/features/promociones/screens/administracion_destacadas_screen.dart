@@ -111,32 +111,67 @@ class _AdministracionDestacadasScreenState
 
   Future<void> _confirmarPago(CampanaDestacadaAdmin campana) async {
     if (_procesando) return;
-    final aceptar = await showDialog<bool>(
+    String referencia = '';
+    final referenciaConfirmada = await showDialog<String>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Confirmar pago recibido'),
-        content: Text(
-          '¿Verificaste fuera de Cercly que se recibió el pago de la campaña '
-          '${campana.titulo} · ${campana.establecimiento}? '
-          'Esta acción no cobra dinero.',
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (dialogContext, actualizarDialogo) => AlertDialog(
+          title: const Text('Confirmar pago recibido'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '¿Verificaste fuera de Cercly que se recibió el pago de '
+                  '${campana.titulo} · ${campana.establecimiento}? '
+                  'Esta acción no cobra dinero.',
+                ),
+                const SizedBox(height: 14),
+                TextField(
+                  key: const Key('referencia-pago-destacada'),
+                  autofocus: true,
+                  maxLength: 100,
+                  autocorrect: false,
+                  textCapitalization: TextCapitalization.characters,
+                  onChanged: (texto) =>
+                      actualizarDialogo(() => referencia = texto),
+                  decoration: const InputDecoration(
+                    labelText: 'Referencia del comprobante',
+                    hintText: 'Ejemplo: TRANSF-2026-001',
+                    helperText:
+                        'No ingreses claves, tarjetas ni cuentas completas.',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: const Text('Volver'),
+            ),
+            FilledButton(
+              onPressed:
+                  referencia.trim().length >= 4 &&
+                      !RegExp(r'[\x00-\x1F\x7F]').hasMatch(referencia)
+                  ? () => Navigator.of(dialogContext).pop(referencia.trim())
+                  : null,
+              child: const Text('Sí, pago verificado'),
+            ),
+          ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Volver'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Sí, pago verificado'),
-          ),
-        ],
       ),
     );
-    if (aceptar != true || !mounted) return;
+    if (referenciaConfirmada == null || !mounted) return;
     setState(() => _procesando = true);
     try {
-      await _servicio.confirmarPago(campana);
-      _mensaje('Pago verificado. Ya puedes aprobar la campaña.');
+      await _servicio.confirmarPago(
+        campana,
+        referenciaPago: referenciaConfirmada,
+      );
+      _mensaje('Pago verificado y auditado. Ya puedes aprobar la campaña.');
       await _recargar();
     } catch (error) {
       _mensaje('No se pudo confirmar el pago: $error', error: true);

@@ -180,9 +180,25 @@ class AdministracionDestacadasService {
     });
   }
 
+  /// Normaliza la referencia que el administrador comprobó fuera de Cercly.
+  /// No introducir datos bancarios sensibles; solo el identificador del pago.
+  static String validarReferenciaPago(String referencia) {
+    final valor = referencia.trim();
+    if (valor.length < 4 ||
+        valor.length > 100 ||
+        RegExp(r'[\x00-\x1F\x7F]').hasMatch(valor)) {
+      throw ArgumentError('Referencia de pago inválida (4 a 100 caracteres).');
+    }
+    return valor;
+  }
+
   /// El administrador verifica que se recibio el pago FUERA de la app.
   /// No realiza un cobro ni valida automaticamente una transferencia.
-  Future<void> confirmarPago(CampanaDestacadaAdmin campana) async {
+  Future<void> confirmarPago(
+    CampanaDestacadaAdmin campana, {
+    required String referenciaPago,
+  }) async {
+    final referencia = validarReferenciaPago(referenciaPago);
     await _exigirAdministrador();
     if ((campana.estado != 'pendiente' && campana.estado != 'aprobada') ||
         campana.pagoConfirmado) {
@@ -193,18 +209,12 @@ class AdministracionDestacadasService {
     if (!campana.fechaFin.isAfter(DateTime.now())) {
       throw StateError('La campaña ya venció.');
     }
-    final respuesta = await _supabase
-        .from('promociones_destacadas')
-        .update({
-          'pago_confirmado_en': DateTime.now().toUtc().toIso8601String(),
-        })
-        .eq('id', campana.id)
-        .inFilter('estado', ['pendiente', 'aprobada'])
-        .filter('pago_confirmado_en', 'is', 'null')
-        .select('id');
-    if (respuesta.isEmpty) {
-      throw StateError('La campaña cambió. Actualiza e inténtalo de nuevo.');
-    }
+    // Fecha, identidad y auditoria se crean atomicamente en PostgreSQL.
+    // No se cobra dinero ni se verifica una transferencia automaticamente.
+    await _supabase.rpc(
+      'confirmar_pago_destacada',
+      params: {'p_campana_id': campana.id, 'p_referencia': referencia},
+    );
   }
 
   /// Solo cambia estados permitidos; la RLS exige además ser administrador.
