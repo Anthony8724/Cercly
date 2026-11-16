@@ -37,6 +37,7 @@ class CampanaDestacadaAdmin {
     required this.fechaInicio,
     required this.fechaFin,
     required this.estado,
+    this.pagoConfirmadoEn,
   });
 
   final String id;
@@ -46,6 +47,8 @@ class CampanaDestacadaAdmin {
   final DateTime fechaInicio;
   final DateTime fechaFin;
   final String estado;
+  final DateTime? pagoConfirmadoEn;
+  bool get pagoConfirmado => pagoConfirmadoEn != null;
 
   factory CampanaDestacadaAdmin.fromSupabase(Map<String, dynamic> fila) {
     final promocion = Map<String, dynamic>.from(fila['promociones'] as Map);
@@ -60,6 +63,9 @@ class CampanaDestacadaAdmin {
       fechaInicio: DateTime.parse(fila['fecha_inicio'] as String).toLocal(),
       fechaFin: DateTime.parse(fila['fecha_fin'] as String).toLocal(),
       estado: fila['estado'] as String,
+      pagoConfirmadoEn: fila['pago_confirmado_en'] == null
+          ? null
+          : DateTime.parse(fila['pago_confirmado_en'] as String).toLocal(),
     );
   }
 }
@@ -125,7 +131,7 @@ class AdministracionDestacadasService {
     final filas = await _supabase
         .from('promociones_destacadas')
         .select('''
-          id, promocion_id, estado, fecha_inicio, fecha_fin,
+          id, promocion_id, estado, fecha_inicio, fecha_fin, pago_confirmado_en,
           promociones!inner(
             id, titulo,
             establecimientos!inner(nombre)
@@ -176,6 +182,33 @@ class AdministracionDestacadasService {
     });
   }
 
+  /// El administrador verifica que se recibio el pago FUERA de la app.
+  /// No realiza un cobro ni valida automaticamente una transferencia.
+  Future<void> confirmarPago(CampanaDestacadaAdmin campana) async {
+    await _exigirAdministrador();
+    if ((campana.estado != 'pendiente' && campana.estado != 'aprobada') ||
+        campana.pagoConfirmado) {
+      throw StateError(
+        'Solo puedes confirmar pagos no verificados de campañas pendientes o aprobadas.',
+      );
+    }
+    if (!campana.fechaFin.isAfter(DateTime.now())) {
+      throw StateError('La campaña ya venció.');
+    }
+    final respuesta = await _supabase
+        .from('promociones_destacadas')
+        .update({
+          'pago_confirmado_en': DateTime.now().toUtc().toIso8601String(),
+        })
+        .eq('id', campana.id)
+        .inFilter('estado', ['pendiente', 'aprobada'])
+        .filter('pago_confirmado_en', 'is', 'null')
+        .select('id');
+    if (respuesta.isEmpty) {
+      throw StateError('La campaña cambió. Actualiza e inténtalo de nuevo.');
+    }
+  }
+
   /// Solo cambia estados permitidos; la RLS exige además ser administrador.
   Future<void> cambiarEstado({
     required CampanaDestacadaAdmin campana,
@@ -190,6 +223,11 @@ class AdministracionDestacadasService {
     if (!permitido) throw StateError('Cambio de estado no permitido.');
 
     if (nuevoEstado == 'aprobada') {
+      if (!campana.pagoConfirmado) {
+        throw StateError(
+          'Debes verificar el pago antes de aprobar la campaña.',
+        );
+      }
       final ahora = DateTime.now();
       if (!campana.fechaFin.isAfter(ahora)) {
         throw StateError('La campaña ya venció.');

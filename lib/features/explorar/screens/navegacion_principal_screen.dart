@@ -3,11 +3,13 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../../../sky/sky_theme.dart';
+import '../../establecimientos/models/establecimiento_publico_model.dart';
 import '../../notificaciones/controllers/monitor_proximidad_controller.dart';
 import '../../notificaciones/widgets/monitor_proximidad_app.dart';
 import '../../notificaciones/widgets/radar_cercly_panel.dart';
 import '../../promociones/screens/promociones_screen.dart';
 import '../controllers/explorar_controller.dart';
+import '../models/ubicacion_usuario.dart';
 import '../widgets/promociones_explorar.dart';
 import 'explorar_screen.dart';
 import 'mapa_establecimientos_screen.dart';
@@ -22,6 +24,7 @@ class NavegacionPrincipalScreen extends StatefulWidget {
     this.inicializarController = true,
     this.mostrarTilesMapa = true,
     this.cargarPromociones,
+    this.resolverEstablecimiento,
     this.crearDetalle,
     super.key,
   });
@@ -34,6 +37,8 @@ class NavegacionPrincipalScreen extends StatefulWidget {
   final bool inicializarController;
   final bool mostrarTilesMapa;
   final CargarPromocionesExplorar? cargarPromociones;
+  final Future<EstablecimientoPublicoModel?> Function(String id)?
+  resolverEstablecimiento;
   final CrearDetalleEstablecimiento? crearDetalle;
 
   @override
@@ -102,13 +107,30 @@ class _NavegacionPrincipalScreenState extends State<NavegacionPrincipalScreen>
             onPerfil: () => _seleccionarPestana(3),
             onVerPromociones: () => _seleccionarPestana(1),
             cargarPromociones: widget.cargarPromociones,
+            resolverEstablecimiento: widget.resolverEstablecimiento,
             crearDetalle: widget.crearDetalle,
           ),
           // Carga las promociones solo cuando se abre esta pestaña.
           _mostrarPromociones
-              ? PromocionesScreen(
-                  cargarPromociones: widget.cargarPromociones,
-                  crearDetalle: widget.crearDetalle,
+              ? AnimatedBuilder(
+                  animation: _controller,
+                  builder: (context, _) {
+                    final posicion =
+                        _controller.estadoUbicacion ==
+                            EstadoUbicacion.disponible
+                        ? _controller.ubicacion
+                        : null;
+                    return PromocionesScreen(
+                      cargarPromociones: widget.cargarPromociones,
+                      latitudUsuario: posicion?.latitud,
+                      longitudUsuario: posicion?.longitud,
+                      radioMaximoMetros: posicion == null
+                          ? null
+                          : _controller.radioMetros.toDouble(),
+                      resolverEstablecimiento: widget.resolverEstablecimiento,
+                      crearDetalle: widget.crearDetalle,
+                    );
+                  },
                 )
               : const SizedBox.shrink(),
           Stack(

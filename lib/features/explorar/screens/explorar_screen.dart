@@ -25,6 +25,7 @@ class ExplorarScreen extends StatelessWidget {
     this.onPerfil,
     this.onVerPromociones,
     this.cargarPromociones,
+    this.resolverEstablecimiento,
     this.crearDetalle,
     super.key,
   });
@@ -33,6 +34,8 @@ class ExplorarScreen extends StatelessWidget {
   final VoidCallback? onPerfil;
   final VoidCallback? onVerPromociones;
   final CargarPromocionesExplorar? cargarPromociones;
+  final Future<EstablecimientoPublicoModel?> Function(String id)?
+  resolverEstablecimiento;
   final CrearDetalleEstablecimiento? crearDetalle;
 
   void _abrirDetalle(
@@ -125,6 +128,7 @@ class ExplorarScreen extends StatelessWidget {
                             PromocionesExplorar(
                               establecimientos: controller.establecimientos,
                               cargarPromociones: cargarPromociones,
+                              resolverEstablecimiento: resolverEstablecimiento,
                               latitudUsuario: ubicacion?.latitud,
                               longitudUsuario: ubicacion?.longitud,
                               radioMaximoMetros: controller.radioMetros

@@ -15,6 +15,9 @@ class PromocionesScreen extends StatefulWidget {
     this.cargarPromociones,
     this.ciudad = 'Tulcán',
     this.provincia = 'Carchi',
+    this.latitudUsuario,
+    this.longitudUsuario,
+    this.radioMaximoMetros,
     this.resolverEstablecimiento,
     this.crearDetalle,
     super.key,
@@ -23,6 +26,9 @@ class PromocionesScreen extends StatefulWidget {
   final Future<List<PromocionDestacadaModel>> Function()? cargarPromociones;
   final String ciudad;
   final String provincia;
+  final double? latitudUsuario;
+  final double? longitudUsuario;
+  final double? radioMaximoMetros;
   final Future<EstablecimientoPublicoModel?> Function(String id)?
   resolverEstablecimiento;
   final Widget Function(
@@ -41,6 +47,10 @@ class _PromocionesScreenState extends State<PromocionesScreen> {
   bool _error = false;
   String _busqueda = '';
   String? _abriendoEstablecimiento;
+  int _versionCarga = 0;
+
+  bool get _tieneUbicacion =>
+      widget.latitudUsuario != null && widget.longitudUsuario != null;
 
   @override
   void initState() {
@@ -53,12 +63,16 @@ class _PromocionesScreenState extends State<PromocionesScreen> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.ciudad != widget.ciudad ||
         oldWidget.provincia != widget.provincia ||
+        oldWidget.latitudUsuario != widget.latitudUsuario ||
+        oldWidget.longitudUsuario != widget.longitudUsuario ||
+        oldWidget.radioMaximoMetros != widget.radioMaximoMetros ||
         oldWidget.cargarPromociones != widget.cargarPromociones) {
       _cargar();
     }
   }
 
   Future<void> _cargar() async {
+    final version = ++_versionCarga;
     if (mounted) {
       setState(() {
         _cargando = true;
@@ -69,16 +83,22 @@ class _PromocionesScreenState extends State<PromocionesScreen> {
       final promociones =
           await (widget.cargarPromociones?.call() ??
               PromocionPublicaService().listarVigentes(
-                ciudad: widget.ciudad,
-                provincia: widget.provincia,
+                // Con ubicacion, buscar tambien al otro lado de un limite municipal.
+                ciudad: _tieneUbicacion ? null : widget.ciudad,
+                provincia: _tieneUbicacion ? null : widget.provincia,
+                latitudUsuario: widget.latitudUsuario,
+                longitudUsuario: widget.longitudUsuario,
+                radioMaximoMetros: _tieneUbicacion
+                    ? widget.radioMaximoMetros
+                    : null,
               ));
-      if (!mounted) return;
+      if (!mounted || version != _versionCarga) return;
       setState(() {
         _promociones = promociones;
         _cargando = false;
       });
     } catch (_) {
-      if (!mounted) return;
+      if (!mounted || version != _versionCarga) return;
       setState(() {
         _cargando = false;
         _error = true;
@@ -124,16 +144,29 @@ class _PromocionesScreenState extends State<PromocionesScreen> {
   List<PromocionDestacadaModel> get _resultados {
     final ahora = DateTime.now();
     final texto = _busqueda.trim().toLowerCase();
-    return _promociones
-        .where((p) {
-          if (!p.activa || !p.estaVigenteEn(ahora)) return false;
-          if (texto.isEmpty) return true;
-          return p.titulo.toLowerCase().contains(texto) ||
-              p.descripcion.toLowerCase().contains(texto) ||
-              p.establecimientoNombre.toLowerCase().contains(texto) ||
-              p.categoriaNombre.toLowerCase().contains(texto);
-        })
-        .toList(growable: false);
+    final resultados = _promociones.where((p) {
+      if (!p.activa || !p.estaVigenteEn(ahora)) return false;
+      // Aplica tambien a las promociones de evaluacion inyectadas.
+      if (_tieneUbicacion && widget.radioMaximoMetros != null) {
+        final distancia = p.distanciaMetros;
+        if (distancia == null || distancia > widget.radioMaximoMetros!) {
+          return false;
+        }
+      }
+      if (texto.isEmpty) return true;
+      return p.titulo.toLowerCase().contains(texto) ||
+          p.descripcion.toLowerCase().contains(texto) ||
+          p.establecimientoNombre.toLowerCase().contains(texto) ||
+          p.categoriaNombre.toLowerCase().contains(texto);
+    }).toList();
+    if (_tieneUbicacion) {
+      resultados.sort(
+        (a, b) => (a.distanciaMetros ?? double.infinity).compareTo(
+          b.distanciaMetros ?? double.infinity,
+        ),
+      );
+    }
+    return resultados;
   }
 
   @override
@@ -146,8 +179,9 @@ class _PromocionesScreenState extends State<PromocionesScreen> {
         children: [
           CerclyPageHeader(
             title: 'Promociones',
-            subtitle:
-                'Ofertas vigentes en ${widget.ciudad}, ${widget.provincia}',
+            subtitle: _tieneUbicacion && widget.radioMaximoMetros != null
+                ? 'Ofertas a ${(widget.radioMaximoMetros! / 1000).toStringAsFixed(1)} km de ti'
+                : 'Ofertas vigentes en ${widget.ciudad}, ${widget.provincia}',
             icon: Icons.local_offer_rounded,
           ),
           Expanded(
@@ -163,7 +197,9 @@ class _PromocionesScreenState extends State<PromocionesScreen> {
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
-                          'Mostrando promociones de ${widget.ciudad}, ${widget.provincia}',
+                          _tieneUbicacion && widget.radioMaximoMetros != null
+                              ? 'Mostrando promociones dentro del radio seleccionado'
+                              : 'Mostrando promociones de ${widget.ciudad}, ${widget.provincia} (sin filtro por distancia)',
                           key: const Key('ciudad-promociones'),
                           style: TextStyle(
                             color: sky.text,

@@ -98,10 +98,48 @@ class _AdministracionDestacadasScreenState
         inicio: inicio,
         fin: fin,
       );
-      _mensaje('Campaña pendiente creada. Debes aprobarla.');
+      _mensaje(
+        'Campaña pendiente creada. Verifica el pago antes de aprobarla.',
+      );
       await _recargar();
     } catch (error) {
       _mensaje('No se pudo crear: $error', error: true);
+    } finally {
+      if (mounted) setState(() => _procesando = false);
+    }
+  }
+
+  Future<void> _confirmarPago(CampanaDestacadaAdmin campana) async {
+    if (_procesando) return;
+    final aceptar = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Confirmar pago recibido'),
+        content: Text(
+          '¿Verificaste fuera de Cercly que se recibió el pago de la campaña '
+          '${campana.titulo} · ${campana.establecimiento}? '
+          'Esta acción no cobra dinero.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Volver'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Sí, pago verificado'),
+          ),
+        ],
+      ),
+    );
+    if (aceptar != true || !mounted) return;
+    setState(() => _procesando = true);
+    try {
+      await _servicio.confirmarPago(campana);
+      _mensaje('Pago verificado. Ya puedes aprobar la campaña.');
+      await _recargar();
+    } catch (error) {
+      _mensaje('No se pudo confirmar el pago: $error', error: true);
     } finally {
       if (mounted) setState(() => _procesando = false);
     }
@@ -204,16 +242,33 @@ class _AdministracionDestacadasScreenState
             Text(
               '${_fecha(campana.fechaInicio)} — ${_fecha(campana.fechaFin)}',
             ),
-            if (campana.estado == 'aprobada' && vigente)
+            if (campana.pagoConfirmado)
+              Text('Pago verificado el ${_fecha(campana.pagoConfirmadoEn!)}')
+            else
+              const Text('Pago pendiente de verificación'),
+            if (campana.estado == 'aprobada' &&
+                vigente &&
+                campana.pagoConfirmado)
               const Text('Visible en Explorar mientras siga vigente.'),
             const SizedBox(height: 6),
             Wrap(
               spacing: 8,
               children: [
+                if ((campana.estado == 'pendiente' ||
+                        campana.estado == 'aprobada') &&
+                    !campana.pagoConfirmado)
+                  OutlinedButton.icon(
+                    key: Key('confirmar-pago-${campana.id}'),
+                    onPressed: _procesando
+                        ? null
+                        : () => _confirmarPago(campana),
+                    icon: const Icon(Icons.verified_outlined),
+                    label: const Text('Verificar pago'),
+                  ),
                 if (campana.estado == 'pendiente') ...[
                   FilledButton(
                     key: Key('aprobar-campana-${campana.id}'),
-                    onPressed: _procesando
+                    onPressed: _procesando || !campana.pagoConfirmado
                         ? null
                         : () => _cambiar(campana, 'aprobada'),
                     child: const Text('Aprobar'),
@@ -293,7 +348,7 @@ class _AdministracionDestacadasScreenState
                   ),
                   const SizedBox(height: 5),
                   Text(
-                    'Solo administradores. No se procesan pagos.',
+                    'Solo administradores. La verificación de pagos es manual; no se procesan cobros.',
                     style: TextStyle(color: sky.muted),
                   ),
                   const SizedBox(height: 18),

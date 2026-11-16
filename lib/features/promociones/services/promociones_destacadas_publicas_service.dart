@@ -58,6 +58,7 @@ class PromocionesDestacadasPublicasService {
         .from('promociones_destacadas')
         .select(_columnas)
         .eq('estado', 'aprobada')
+        .not('pago_confirmado_en', 'is', null)
         .lte('fecha_inicio', ahora)
         .gte('fecha_fin', ahora)
         .eq('promociones.activa', true)
