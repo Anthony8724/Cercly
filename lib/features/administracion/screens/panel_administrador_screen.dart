@@ -6,6 +6,7 @@ import '../../../sky/sky_theme.dart';
 
 import '../../auth/services/auth_service.dart';
 import '../widgets/moderacion_establecimiento_dialog.dart';
+import 'estadisticas_administrador_screen.dart';
 import '../../auth/screens/account_mode_selector.dart';
 import '../../auth/screens/account_settings_screen.dart';
 import '../../notificaciones/widgets/monitor_proximidad_app.dart';
@@ -73,6 +74,14 @@ class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
     if (mounted) {
       await _recargar();
     }
+  }
+
+  Future<void> _abrirEstadisticas() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => const EstadisticasAdministradorScreen(),
+      ),
+    );
   }
 
   Future<void> _cambiarEstado(
@@ -444,6 +453,12 @@ class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
                         icono: Icons.assignment_outlined,
                         tooltip: 'Solicitudes',
                         onPressed: _abrirSolicitudes,
+                      ),
+                      const SizedBox(width: 8),
+                      _accionCabecera(
+                        icono: Icons.bar_chart_rounded,
+                        tooltip: 'Estadísticas',
+                        onPressed: _abrirEstadisticas,
                       ),
                       const SizedBox(width: 8),
                       _accionCabecera(
