@@ -2,13 +2,13 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../establecimientos/models/establecimiento_publico_model.dart';
 import '../../establecimientos/services/establecimiento_publico_service.dart';
 import '../../explorar/screens/detalle_establecimiento_screen.dart';
 import '../../promociones/services/promocion_publica_service.dart';
 import '../controllers/monitor_proximidad_controller.dart';
-import '../services/geofencing_experimental_service.dart';
 import '../services/production_geofencing_service.dart';
 import '../push/fcm_promotion_message.dart';
 import '../push/fcm_push_service.dart';
@@ -37,10 +37,9 @@ class _MonitorProximidadAppState extends State<MonitorProximidadApp>
   late final MonitorProximidadController _controller;
   late final FcmPushService _pushService =
       widget.pushService ?? FcmPushService.shared;
+  StreamSubscription<AuthState>? _authSubscription;
   static const _geofenceChannel = MethodChannel(
-    ProductionGeofencingService.enabledBuild
-        ? ProductionGeofencingService.channelName
-        : 'cercly/geofence_experiment',
+    ProductionGeofencingService.channelName,
   );
 
   @override
@@ -52,6 +51,13 @@ class _MonitorProximidadAppState extends State<MonitorProximidadApp>
           alAbrirEstablecimiento: _abrirEstablecimiento,
         );
     WidgetsBinding.instance.addObserver(this);
+    _authSubscription = Supabase.instance.client.auth.onAuthStateChange.listen((
+      state,
+    ) {
+      if (ProductionGeofencingService.enabledBuild) {
+        unawaited(_synchronizeGeofenceAccount(state.session?.user.id));
+      }
+    });
     try {
       _pushService.observeAuthentication(
         openPromotion: _abrirPromocionPush,
@@ -62,8 +68,7 @@ class _MonitorProximidadAppState extends State<MonitorProximidadApp>
       // client and the user explicitly enables promotional push.
     }
     unawaited(_start());
-    if (GeofencingExperimentalService.staging ||
-        ProductionGeofencingService.enabledBuild) {
+    if (ProductionGeofencingService.enabledBuild) {
       _geofenceChannel.setMethodCallHandler(_onNativeMethod);
       WidgetsBinding.instance.addPostFrameCallback((_) {
         unawaited(_consumeNativeNotification());
@@ -71,9 +76,18 @@ class _MonitorProximidadAppState extends State<MonitorProximidadApp>
     }
   }
 
+  Future<void> _synchronizeGeofenceAccount(String? userId) async {
+    final service = ProductionGeofencingService();
+    await service.accountChanged(userId);
+    if (userId != null) await service.prepareHistory();
+  }
+
   Future<void> _start() async {
     if (ProductionGeofencingService.enabledBuild) {
       try {
+        await ProductionGeofencingService().accountChanged(
+          Supabase.instance.client.auth.currentUser?.id,
+        );
         await ProductionGeofencingService().prepareHistory();
       } catch (_) {
         /* Native delivery fails closed until imported. */
@@ -87,18 +101,35 @@ class _MonitorProximidadAppState extends State<MonitorProximidadApp>
   }
 
   Future<void> _onNativeMethod(MethodCall call) async {
-    if (call.method != 'notificationOpened' || call.arguments is! String) {
-      return;
+    if (call.method != 'notificationOpened') return;
+    final args = call.arguments;
+    if (args is Map) {
+      final promotionId = args['promotionId'];
+      final establishmentId = args['establishmentId'];
+      if (promotionId is String && establishmentId is String) {
+        await _abrirPromocionPush(
+          FcmPromotionMessage(
+            eventId: promotionId,
+            promotionId: promotionId,
+            establishmentId: establishmentId,
+            title: 'Promoción cercana',
+            body: '',
+          ),
+        );
+      }
+    } else if (args is String) {
+      await _abrirEstablecimiento(args);
     }
-    await _abrirEstablecimiento(call.arguments as String);
   }
 
   Future<void> _consumeNativeNotification() async {
     try {
-      final id = await _geofenceChannel.invokeMethod<String>(
+      final payload = await _geofenceChannel.invokeMethod<Object?>(
         'consumePendingNotification',
       );
-      if (id != null && id.isNotEmpty) await _abrirEstablecimiento(id);
+      if (payload is Map) {
+        await _onNativeMethod(MethodCall('notificationOpened', payload));
+      }
     } on PlatformException {
       // El canal solo existe en Android y el build experimental de Staging.
     } on MissingPluginException {
@@ -147,8 +178,12 @@ class _MonitorProximidadAppState extends State<MonitorProximidadApp>
         message.promotionId,
       );
       if (!mounted) return;
+      final ahora = DateTime.now();
       if (promocion == null ||
-          promocion.establecimientoId != message.establishmentId) {
+          promocion.establecimientoId != message.establishmentId ||
+          !promocion.activa ||
+          promocion.fechaInicio.isAfter(ahora) ||
+          !promocion.fechaFin.isAfter(ahora)) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Esta promoción ya no está disponible.'),
@@ -205,6 +240,7 @@ class _MonitorProximidadAppState extends State<MonitorProximidadApp>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    unawaited(_authSubscription?.cancel());
     _controller.dispose();
     super.dispose();
   }

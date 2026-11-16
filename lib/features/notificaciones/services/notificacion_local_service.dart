@@ -4,9 +4,9 @@ import 'dart:developer' as developer;
 import 'package:flutter/services.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../promociones/models/promocion_destacada_model.dart';
-import 'geofencing_experimental_service.dart';
 import 'production_geofencing_service.dart';
 
 abstract interface class NotificacionPromocionGateway {
@@ -308,17 +308,15 @@ class NotificacionLocalService
     if (!await tienePermisoParaNotificar()) return false;
     if (sesionVigente != null && !sesionVigente()) return false;
 
-    if (GeofencingExperimentalService.staging ||
-        ProductionGeofencingService.enabledBuild) {
+    if (ProductionGeofencingService.enabledBuild) {
       try {
         final reserva =
-            await const MethodChannel(
-              ProductionGeofencingService.enabledBuild
-                  ? ProductionGeofencingService.channelName
-                  : 'cercly/geofence_experiment',
-            ).invokeMethod<String>('reserveForegroundSlot', {
-              'promotionId': promocion.id,
-            });
+            await const MethodChannel(ProductionGeofencingService.channelName)
+                .invokeMethod<String>('reserveForegroundSlot', {
+                  'promotionId': promocion.id,
+                  'businessId': promocion.establecimientoId,
+                  'userId': Supabase.instance.client.auth.currentUser?.id ?? '',
+                });
         if (ProductionGeofencingService.enabledBuild && reserva != 'reserved') {
           return false;
         }
