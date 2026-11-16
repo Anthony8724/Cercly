@@ -347,7 +347,18 @@ object StagingPromotionalGeofencing {
         reserve(c, row.getString("id"), business.getString("id"))?.let { return it }
         return try {
             val manager = c.getSystemService(NotificationManager::class.java)
-            if (Build.VERSION.SDK_INT >= 26) manager.createNotificationChannel(NotificationChannel(CHANNEL, "Promociones cercanas", NotificationManager.IMPORTANCE_HIGH))
+            if (Build.VERSION.SDK_INT >= 26) manager.createNotificationChannel(
+                NotificationChannel(CHANNEL, "Promociones cercanas", NotificationManager.IMPORTANCE_HIGH).apply {
+                    description = "Avisos de promociones de cercanía en Staging"
+                    enableVibration(true)
+                    setSound(
+                        android.provider.Settings.System.DEFAULT_NOTIFICATION_URI,
+                        android.media.AudioAttributes.Builder()
+                            .setUsage(android.media.AudioAttributes.USAGE_NOTIFICATION)
+                            .build(),
+                    )
+                },
+            )
             val intent = Intent(c, MainActivity::class.java)
                 .putExtra(EXTRA_ESTABLISHMENT_ID, business.getString("id"))
                 .putExtra(EXTRA_PROMOTION_ID, row.getString("id"))
