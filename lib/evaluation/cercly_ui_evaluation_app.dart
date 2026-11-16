@@ -156,6 +156,7 @@ class _EvaluationNavigationState extends State<_EvaluationNavigation> {
     terceraOpcionIcon: Icons.person_outline_rounded,
     terceraOpcionSelectedIcon: Icons.person_rounded,
     cargarPromociones: _cargarPromocionesDemo,
+    resolverEstablecimiento: _resolverEstablecimientoDemo,
     crearDetalle: _crearDetalleDemo,
     terceraOpcionBuilder: (_) => _EvaluationHub(
       sky: SkyScope.maybeOf(context),
@@ -182,6 +183,18 @@ Widget _crearDetalleDemo(
     detail: 'El flujo se presenta en la app real. En esta demo no se envían reclamos.',
   ),
 );
+
+Future<EstablecimientoPublicoModel?> _resolverEstablecimientoDemo(
+  String id,
+) async {
+  for (final establecimiento in [
+    ..._establecimientosDemo,
+    ..._DemoDataStore.publicados,
+  ]) {
+    if (establecimiento.id == id) return establecimiento;
+  }
+  return null;
+}
 
 Future<List<PromocionDestacadaModel>> _cargarPromocionesDemo() async =>
     _promocionesDemo;

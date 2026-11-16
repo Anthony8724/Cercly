@@ -23,14 +23,19 @@ class ExplorarScreen extends StatelessWidget {
   const ExplorarScreen({
     required this.controller,
     this.onPerfil,
+    this.onVerPromociones,
     this.cargarPromociones,
+    this.resolverEstablecimiento,
     this.crearDetalle,
     super.key,
   });
 
   final ExplorarController controller;
   final VoidCallback? onPerfil;
+  final VoidCallback? onVerPromociones;
   final CargarPromocionesExplorar? cargarPromociones;
+  final Future<EstablecimientoPublicoModel?> Function(String id)?
+  resolverEstablecimiento;
   final CrearDetalleEstablecimiento? crearDetalle;
 
   void _abrirDetalle(
@@ -52,7 +57,11 @@ class ExplorarScreen extends StatelessWidget {
     return AnimatedBuilder(
       animation: controller,
       builder: (context, _) {
-        final ubicacion = controller.ubicacion;
+        // Solo compartir coordenadas mientras la ubicación está disponible.
+        final ubicacion =
+            controller.estadoUbicacion == EstadoUbicacion.disponible
+            ? controller.ubicacion
+            : null;
 
         return AnnotatedRegion<SystemUiOverlayStyle>(
           value: SystemUiOverlayStyle.light.copyWith(
@@ -66,7 +75,10 @@ class ExplorarScreen extends StatelessWidget {
           child: SkySurface(
             intensity: 1,
             child: RefreshIndicator(
-              onRefresh: controller.buscar,
+              onRefresh: () async {
+                await controller.buscar();
+                controller.solicitarRecargaDestacadas();
+              },
               child: CustomScrollView(
                 physics: const AlwaysScrollableScrollPhysics(),
                 slivers: [
@@ -119,22 +131,23 @@ class ExplorarScreen extends StatelessWidget {
                                 ),
                               ),
                           ],
-                          if (controller.estadoUbicacion ==
-                                  EstadoUbicacion.disponible &&
-                              !controller.cargandoResultados &&
-                              controller.errorResultados == null)
-                            PromocionesExplorar(
-                              establecimientos: controller.establecimientos,
-                              cargarPromociones: cargarPromociones,
-                              latitudUsuario: ubicacion?.latitud,
-                              longitudUsuario: ubicacion?.longitud,
-                              radioMaximoMetros: controller.radioMetros
-                                  .toDouble(),
-                              onEstablecimiento: (establecimiento) =>
-                                  _abrirDetalle(context, establecimiento),
-                              onVerTodas: () =>
-                                  controller.cambiarSoloPromociones(true),
-                            ),
+                          // Mantener el State del carrusel durante búsquedas de lugares.
+                          PromocionesExplorar(
+                            key: const ValueKey('destacadas-estables'),
+                            establecimientos: controller.establecimientos,
+                            cargarPromociones: cargarPromociones,
+                            revisionRecarga: controller.revisionDestacadas,
+                            resolverEstablecimiento: resolverEstablecimiento,
+                            latitudUsuario: ubicacion?.latitud,
+                            longitudUsuario: ubicacion?.longitud,
+                            radioMaximoMetros: controller.radioMetros
+                                .toDouble(),
+                            onEstablecimiento: (establecimiento) =>
+                                _abrirDetalle(context, establecimiento),
+                            onVerTodas:
+                                onVerPromociones ??
+                                () => controller.cambiarSoloPromociones(true),
+                          ),
                           const SizedBox(height: 14),
                           _EncabezadoResultados(controller: controller),
                         ],

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../../../sky/sky_theme.dart';
@@ -5,7 +7,7 @@ import '../../../sky/sky_theme.dart';
 import '../../establecimientos/models/establecimiento_publico_model.dart';
 import '../../establecimientos/services/establecimiento_publico_service.dart';
 import '../../promociones/models/promocion_destacada_model.dart';
-import '../../promociones/services/promocion_publica_service.dart';
+import '../../promociones/services/promociones_destacadas_publicas_service.dart';
 
 typedef CargarPromocionesExplorar =
     Future<List<PromocionDestacadaModel>> Function();
@@ -16,6 +18,7 @@ class PromocionesExplorar extends StatefulWidget {
     required this.onEstablecimiento,
     required this.onVerTodas,
     this.cargarPromociones,
+    this.revisionRecarga = 0,
     this.resolverEstablecimiento,
     this.latitudUsuario,
     this.longitudUsuario,
@@ -27,6 +30,9 @@ class PromocionesExplorar extends StatefulWidget {
   final ValueChanged<EstablecimientoPublicoModel> onEstablecimiento;
   final VoidCallback onVerTodas;
   final CargarPromocionesExplorar? cargarPromociones;
+
+  /// Cambia exclusivamente cuando se solicita una recarga explicita.
+  final int revisionRecarga;
   final Future<EstablecimientoPublicoModel?> Function(String id)?
   resolverEstablecimiento;
   final double? latitudUsuario;
@@ -42,6 +48,7 @@ class _PromocionesExplorarState extends State<PromocionesExplorar> {
   bool _cargando = false;
   bool _error = false;
   int _version = 0;
+  Timer? _temporizadorGps;
   String? _abriendoId;
 
   Future<void> _abrir(String id) async {
@@ -94,32 +101,59 @@ class _PromocionesExplorarState extends State<PromocionesExplorar> {
   @override
   void didUpdateWidget(covariant PromocionesExplorar oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (!identical(oldWidget.establecimientos, widget.establecimientos) ||
-        oldWidget.cargarPromociones != widget.cargarPromociones ||
+    // La lista de establecimientos complementa las tarjetas y no requiere
+    // consultar nuevamente campañas patrocinadas.
+    final gpsAntes =
+        oldWidget.latitudUsuario != null && oldWidget.longitudUsuario != null;
+    final gpsAhora =
+        widget.latitudUsuario != null && widget.longitudUsuario != null;
+    final cambioGps =
         oldWidget.latitudUsuario != widget.latitudUsuario ||
-        oldWidget.longitudUsuario != widget.longitudUsuario ||
-        oldWidget.radioMaximoMetros != widget.radioMaximoMetros) {
+        oldWidget.longitudUsuario != widget.longitudUsuario;
+    final cambioRadio =
+        oldWidget.radioMaximoMetros != widget.radioMaximoMetros &&
+        (gpsAntes || gpsAhora);
+    final cambioCargador =
+        oldWidget.cargarPromociones != widget.cargarPromociones;
+
+    // Cambio de radio, origen de datos y concesión/revocación de GPS:
+    // actualizar inmediatamente, sin reutilizar una posición obsoleta.
+    if (cambioRadio ||
+        cambioCargador ||
+        oldWidget.revisionRecarga != widget.revisionRecarga ||
+        (cambioGps && gpsAntes != gpsAhora)) {
+      _temporizadorGps?.cancel();
+      ++_version;
       _cargar();
+    } else if (cambioGps) {
+      // Invalida la petición pendiente ahora, no tras el debounce.
+      _temporizadorGps?.cancel();
+      ++_version;
+      setState(() {
+        _promociones = const [];
+        _cargando = true;
+        _error = false;
+      });
+      _temporizadorGps = Timer(const Duration(milliseconds: 350), _cargar);
     }
   }
 
+  @override
+  void dispose() {
+    _temporizadorGps?.cancel();
+    ++_version;
+    super.dispose();
+  }
+
   Future<void> _cargar() async {
+    _temporizadorGps?.cancel();
     final version = ++_version;
     _promociones = const [];
     _error = false;
 
+    // Las campañas se consultan sin depender de la paginación de
+    // establecimientos; cuando hay GPS usan el radio del usuario.
     final cargaInyectada = widget.cargarPromociones;
-    final tieneUbicacion =
-        widget.latitudUsuario != null && widget.longitudUsuario != null;
-
-    // En producción se permiten promociones cercanas aunque el negocio no haya
-    // entrado todavía en la primera página del listado de establecimientos.
-    if (cargaInyectada == null &&
-        !tieneUbicacion &&
-        !widget.establecimientos.any((e) => e.tienePromociones)) {
-      _cargando = false;
-      return;
-    }
 
     if (mounted) {
       setState(() => _cargando = true);
@@ -130,10 +164,14 @@ class _PromocionesExplorarState extends State<PromocionesExplorar> {
     try {
       final promociones = cargaInyectada != null
           ? await cargaInyectada()
-          : await PromocionPublicaService().listarVigentes(
+          : await PromocionesDestacadasPublicasService().listarVigentes(
               latitudUsuario: widget.latitudUsuario,
               longitudUsuario: widget.longitudUsuario,
-              radioMaximoMetros: widget.radioMaximoMetros,
+              radioMaximoMetros:
+                  widget.latitudUsuario != null &&
+                      widget.longitudUsuario != null
+                  ? widget.radioMaximoMetros
+                  : null,
             );
 
       if (!mounted || version != _version) return;
@@ -198,7 +236,7 @@ class _PromocionesExplorarState extends State<PromocionesExplorar> {
             const SizedBox(width: 5),
             Expanded(
               child: Text(
-                'Promociones cerca de ti',
+                'Promociones destacadas',
                 style: TextStyle(
                   color: sky.text,
                   fontSize: 18,
@@ -314,6 +352,31 @@ class _TarjetaPromocion extends StatelessWidget {
                           semanticsLabel: 'Abriendo establecimiento',
                         ),
                       ),
+                    Positioned(
+                      bottom: 7,
+                      left: 7,
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          color: const Color(0xE8192846),
+                          borderRadius: BorderRadius.circular(7),
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 7,
+                            vertical: 4,
+                          ),
+                          child: Text(
+                            'Patrocinado',
+                            key: Key('patrocinado-${promocion.id}'),
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
                     Positioned(
                       top: 7,
                       right: 7,
