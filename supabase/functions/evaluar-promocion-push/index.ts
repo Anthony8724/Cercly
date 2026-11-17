@@ -1,4 +1,5 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.75.0';
+import { verifiedFcmSession, maySendReservedFcm } from '../_shared/fcm_session_guard.mjs';
 import {
   buildFcmMessage,
   isFcmReservation,
@@ -40,6 +41,12 @@ Deno.serve(async (request) => {
   const { data: authData, error: authError } = await userClient.auth.getUser();
   if (authError || !authData.user) return response(401, { error: 'invalid_session' });
 
+  // getUser validates the JWT, but a still-valid JWT can outlive its session.
+  const sessionId = await verifiedFcmSession(userClient);
+  if (!sessionId) {
+    return response(401, { error: 'invalid_session' });
+  }
+
   let raw: unknown;
   try {
     raw = await request.json();
@@ -70,6 +77,7 @@ Deno.serve(async (request) => {
   });
   const { data, error } = await admin.rpc('reservar_promocion_push_reciente', {
     p_user_id: authData.user.id,
+    p_session_id: sessionId,
     p_installation_id: location.installationId,
     p_event_id: location.eventId,
     p_latitude: location.latitude,
@@ -93,6 +101,13 @@ Deno.serve(async (request) => {
     const fcmMessage = buildFcmMessage(reservation);
     if (!fcmMessage) throw new Error('invalid_fcm_reservation');
     const payload = { message: fcmMessage };
+    const stillAllowed = await maySendReservedFcm(admin, reservation.reservation_id, sessionId);
+    if (!stillAllowed) {
+      await admin.rpc('finalizar_reserva_promocion_push', {
+        p_reservation_id: reservation.reservation_id, p_status: 'failed', p_provider_message_id: null,
+      });
+      return response(200, { reserved: true, sent: false });
+    }
     const fcmResponse = await fetch(
       `https://fcm.googleapis.com/v1/projects/${serviceAccount.project_id}/messages:send`,
       {

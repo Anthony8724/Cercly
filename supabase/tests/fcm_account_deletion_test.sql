@@ -1,6 +1,6 @@
 -- Exclusivo para PostgreSQL desechable y rollback. Identidades sintéticas.
 begin;
-select plan(40);
+select plan(42);
 
 insert into auth.users(id,email,raw_user_meta_data,last_sign_in_at) values
  ('f9100000-0000-0000-0000-000000000001','fcm-delete-clean@cercly.test','{}',now()),
@@ -18,9 +18,14 @@ insert into public.push_preferences(user_id,enabled,consented_at,location_consen
 values('f9100000-0000-0000-0000-000000000002',false,null,null),
  ('f9100000-0000-0000-0000-000000000003',true,now(),now()),
  ('f9100000-0000-0000-0000-000000000004',true,now(),now());
-insert into public.fcm_installations(installation_id,user_id,fcm_installation_id,platform)
-values ('f9300000-0000-0000-0000-000000000003','f9100000-0000-0000-0000-000000000003','fcm-delete-device-fixture-0003','android'),
- ('f9300000-0000-0000-0000-000000000004','f9100000-0000-0000-0000-000000000004','fcm-delete-device-fixture-0004','android');
+insert into public.fcm_installations(installation_id,user_id,fcm_installation_id,platform,authorized_session_id)
+values ('f9300000-0000-0000-0000-000000000003','f9100000-0000-0000-0000-000000000003','fcm-delete-device-fixture-0003','android','f9200000-0000-0000-0000-000000000003'),
+ ('f9300000-0000-0000-0000-000000000004','f9100000-0000-0000-0000-000000000004','fcm-delete-device-fixture-0004','android','f9200000-0000-0000-0000-000000000004');
+
+insert into cercly_notification_private.fcm_retired_sessions(installation_id,session_id)
+ values('f9300000-0000-0000-0000-000000000004','f9200000-0000-0000-0000-000000000004');
+select ok(not cercly_account_private.tiene_dependencias('f9100000-0000-0000-0000-000000000004'),
+ 'retirement tombstone introduces no protected auth dependency');
 
 insert into public.establecimientos(id,propietario_id,categoria_id,nombre,direccion,latitud,longitud,estado,publicable)
 select 'f9400000-0000-0000-0000-000000000001','f9100000-0000-0000-0000-000000000005',id,
@@ -149,5 +154,8 @@ select ok(not cercly_account_private.tiene_dependencias('f9100000-0000-0000-0000
  and not cercly_account_private.bloqueo_externo_supresion('f9100000-0000-0000-0000-000000000006'),
  'restaurar la FK exacta retira el bloqueo sin ampliar la excepción');
 
+select ok(not exists(select 1 from cercly_notification_private.fcm_retired_sessions
+ where installation_id='f9300000-0000-0000-0000-000000000004'),
+ 'retirement tombstone is removed when the user and installation are deleted');
 select * from finish();
 rollback;

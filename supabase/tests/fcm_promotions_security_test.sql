@@ -34,8 +34,10 @@ select ok(has_function_privilege('authenticated',
   'authenticated users can request owner-scoped installation revocation');
 select ok(not has_function_privilege('authenticated',
   'public.reservar_promocion_push_reciente(uuid,uuid,uuid,double precision,double precision,double precision,timestamptz,smallint)','EXECUTE')
+  and not has_function_privilege('service_role',
+  'public.reservar_promocion_push_reciente(uuid,uuid,uuid,double precision,double precision,double precision,timestamptz,smallint)','EXECUTE')
   and has_function_privilege('service_role',
-  'public.reservar_promocion_push_reciente(uuid,uuid,uuid,double precision,double precision,double precision,timestamptz,smallint)','EXECUTE'),
+  'public.reservar_promocion_push_reciente(uuid,uuid,uuid,double precision,double precision,double precision,timestamptz,smallint,uuid)','EXECUTE'),
   'only the server role can reserve a promotional push');
 select ok(not has_function_privilege('authenticated',
   'public.finalizar_reserva_promocion_push(uuid,text,text)','EXECUTE')

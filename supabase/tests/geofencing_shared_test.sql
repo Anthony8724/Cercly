@@ -32,10 +32,10 @@ reset role;
 select ok(not (select enabled from public.push_preferences where user_id='e8100000-0000-4000-8000-000000000001'),'enabling geofencing does not enable FCM');
 select ok((select geofencing_enabled from public.push_preferences where user_id='e8100000-0000-4000-8000-000000000001'),'withdrawing FCM consent preserves separate geofencing consent');
 select is((select count(*)::int from public.fcm_installations where user_id='e8100000-0000-4000-8000-000000000001'),0,'no FCM registration required');
-insert into public.fcm_installations(installation_id,user_id,fcm_installation_id,platform)
- values('e8400000-0000-4000-8000-000000000001','e8100000-0000-4000-8000-000000000001','synthetic-fid-without-consent','android');
+insert into public.fcm_installations(installation_id,user_id,fcm_installation_id,platform,authorized_session_id)
+ values('e8400000-0000-4000-8000-000000000001','e8100000-0000-4000-8000-000000000001','synthetic-fid-without-consent','android','e8100000-0000-4000-8000-000000000001');
 set local role service_role;
-select is((select count(*)::int from public.reservar_promocion_push_reciente('e8100000-0000-4000-8000-000000000001','e8400000-0000-4000-8000-000000000001','e8500000-0000-4000-8000-000000000002',0::float8,0::float8,20::float8,now(),0::smallint)),0,'FCM refuses when disabled');
+select is((select count(*)::int from public.reservar_promocion_push_reciente('e8100000-0000-4000-8000-000000000001','e8400000-0000-4000-8000-000000000001','e8500000-0000-4000-8000-000000000002',0::float8,0::float8,20::float8,now(),0::smallint,'e8100000-0000-4000-8000-000000000001'::uuid)),0,'FCM refuses when disabled');
 reset role;
 delete from public.fcm_installations where installation_id='e8400000-0000-4000-8000-000000000001';
 set local role authenticated;
