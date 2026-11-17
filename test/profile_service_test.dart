@@ -188,6 +188,27 @@ void main() {
       expect(client.auth.currentUser?.id, 'b');
     },
   );
+  test(
+    'cambio de cuenta durante retiro nativo no retira FCM de la cuenta nueva',
+    () async {
+      final client = await clientFor((_) async => http.Response('', 204));
+      final wait = Completer<void>();
+      var fcmCalled = false;
+      final service = AuthService(
+        supabase: client,
+        retireNativeGeofence: () => wait.future,
+        retirePromotionalPush: () async {
+          fcmCalled = true;
+        },
+      );
+      final logout = service.signOut();
+      await client.auth.recoverSession(jsonEncode(sessionJson(id: 'b')));
+      wait.complete();
+      await logout;
+      expect(fcmCalled, false);
+      expect(client.auth.currentUser?.id, 'b');
+    },
+  );
   test('logout invalida nativo, retira FCM y después cierra sesión', () async {
     final calls = <String>[];
     final client = await clientFor((request) async {

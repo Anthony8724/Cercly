@@ -9,6 +9,8 @@ import '../../promociones/models/promocion_destacada_model.dart';
 import '../../promociones/services/promocion_publica_service.dart';
 import '../models/configuracion_alertas_proximidad.dart';
 import 'historial_notificaciones_promocion.dart';
+import 'geofence_authorization_gate.dart';
+import 'session_notification_barrier.dart';
 import 'preferencias_alertas_proximidad.dart';
 
 /// Compile-time private candidate. No QA methods or fixed establishment IDs.
@@ -40,14 +42,113 @@ class ProductionGeofencingService {
   Future<Map<Object?, Object?>> status() async => _enabled
       ? await _channel.invokeMapMethod<Object?, Object?>('status') ?? {}
       : {};
-  Future<bool> setConsent(bool enabled) async =>
-      _enabled &&
-      await _channel.invokeMethod<bool>('setConsent', {'enabled': enabled}) ==
+  Future<bool> setConsent(bool enabled) async {
+    if (!_enabled) return false;
+    if (_staging) {
+      return await _channel.invokeMethod<bool>('setConsent', {
+            'enabled': enabled,
+          }) ==
           true;
-  Future<bool> accountChanged(String? userId) async {
+    }
+    // Disable locally before attempting network revocation.
+    if (!enabled) {
+      final client = Supabase.instance.client;
+      final session = client.auth.currentSession;
+      if (!await GeofenceAuthorizationGate.block()) return false;
+      if (session == null ||
+          client.auth.currentSession?.accessToken != session.accessToken) {
+        return false;
+      }
+      final local =
+          await _channel.invokeMethod<bool>('setConsent', {'enabled': false}) ==
+          true;
+      try {
+        if (client.auth.currentSession?.accessToken != session.accessToken) {
+          return false;
+        }
+        await client.rpc(
+          'configurar_mis_alertas_geofencing',
+          params: {'p_enabled': false, 'p_location_consent': false},
+        );
+        return local;
+      } catch (_) {
+        return false;
+      }
+    }
+    final client = Supabase.instance.client;
+    final session = client.auth.currentSession;
+    if (session == null) return false;
+    try {
+      await client.rpc(
+        'configurar_mis_alertas_geofencing',
+        params: {'p_enabled': true, 'p_location_consent': true},
+      );
+      if (client.auth.currentSession?.accessToken != session.accessToken) {
+        return false;
+      }
+      if (await _channel.invokeMethod<bool>('setConsent', {'enabled': true}) !=
+          true) {
+        return false;
+      }
+      if (!await updateSession(session)) {
+        await _channel.invokeMethod<bool>('setConsent', {'enabled': false});
+        return false;
+      }
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<bool> updateSession(Session session) async {
+    if (!_enabled || _staging) return false;
+    final current = Supabase.instance.client.auth.currentSession;
+    if (current == null || current.accessToken != session.accessToken) {
+      return false;
+    }
+    final sessionId = SessionNotificationBarrier.sessionId(session);
+    if (sessionId == null || SessionNotificationBarrier.blocked) return false;
+    if (await _channel.invokeMethod<bool>('setAccessToken', {
+          'userId': session.user.id,
+          'accessToken': session.accessToken,
+        }) !=
+        true) {
+      return false;
+    }
+    return GeofenceAuthorizationGate.arm(
+      userId: session.user.id,
+      sessionId: sessionId,
+      stillAuthorized: () =>
+          !SessionNotificationBarrier.blocked &&
+          Supabase.instance.client.auth.currentSession?.accessToken ==
+              session.accessToken,
+    );
+  }
+
+  /// Acknowledgement is serialized with the native notification posting lock.
+  /// A false result must never be interpreted as a confirmed native logout.
+  Future<bool> retireLocalSession({
+    required String? expectedUserId,
+    required String? expectedSessionId,
+  }) async {
+    if (!_enabled || _staging) return false;
+    return await _channel.invokeMethod<bool>('retireLocalSession', {
+          'expectedUserId': expectedUserId,
+          'expectedSessionId': expectedSessionId,
+        }) ==
+        true;
+  }
+
+  Future<bool> accountChanged(
+    String? userId, {
+    String? expectedUserId,
+    String? expectedSessionId,
+  }) async {
     if (!_enabled) return false;
     return await _channel.invokeMethod<bool>('accountChanged', {
           'userId': userId,
+          'expectedUserId': ?expectedUserId,
+          'expectedSessionId': ?expectedSessionId,
         }) ==
         true;
   }

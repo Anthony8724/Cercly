@@ -4,6 +4,25 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class ProximityPolicyTest {
+    @Test fun delayedLogoutDoesNotEraseNewAccountOrSession() {
+        assertTrue(ProximityPolicy.mayRetireExpectedSession("a", "old", "a", "old"))
+        assertFalse(ProximityPolicy.mayRetireExpectedSession("a", "old", "b", "new"))
+        assertFalse(ProximityPolicy.mayRetireExpectedSession("a", "old", "a", "new"))
+    }
+    @Test fun persistedGateBindsAccountAndSession() {
+        val user="11111111-1111-4111-8111-111111111111"
+        val other="22222222-2222-4222-8222-222222222222"
+        val session="33333333-3333-4333-8333-333333333333"
+        assertTrue(ProximityPolicy.authorizedSession("$user|$session",user,session))
+        assertFalse(ProximityPolicy.authorizedSession("",user,session))
+        assertFalse(ProximityPolicy.authorizedSession(null,user,session))
+        assertFalse(ProximityPolicy.authorizedSession("$user|$session",other,session))
+        assertFalse(ProximityPolicy.authorizedSession("$user|$session",user,other))
+    }
+    @Test fun legacyForegroundIsSuppressedWhileGeofenceIsEnabled() {
+        assertFalse(ProximityPolicy.allowLegacyForeground(true))
+        assertTrue(ProximityPolicy.allowLegacyForeground(false))
+    }
     private val time = 100_000_000L
     @Test fun freshSlotAllowed() { assertNull(ProximityPolicy.cooldown(time, 0, 0, emptyList())) }
     @Test fun duplicatePromotionBlocked() { assertEquals("promotion_cooldown", ProximityPolicy.cooldown(time, time - 1, 0, emptyList())) }

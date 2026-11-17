@@ -106,6 +106,7 @@ void main() {
     final service = ProductionGeofencingService(
       channel: channel,
       enabled: true,
+      staging: true,
     );
     await service.setConsent(true);
     await service.setConsent(false);

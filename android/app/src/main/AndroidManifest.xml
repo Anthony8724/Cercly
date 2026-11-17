@@ -14,6 +14,9 @@
         <meta-data android:name="firebase_messaging_installation_id_enabled" android:value="true" />
         <meta-data android:name="firebase_messaging_auto_init_enabled" android:value="false" />
         <meta-data android:name="firebase_analytics_collection_enabled" android:value="false" />
+        <!-- Compiled into the official package but inactive until validated. -->
+        <receiver android:name=".proximity.ProductionGeofenceReceiver" android:exported="false" android:enabled="false" />
+        <receiver android:name=".proximity.ProductionGeofenceRestoreReceiver" android:exported="false" android:enabled="false" />
         <activity
             android:name=".MainActivity"
             android:exported="true"

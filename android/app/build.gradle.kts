@@ -92,15 +92,16 @@ android {
             throw GradleException("Private proximity requires Production and a publishable key only.")
         }
         sourceSets.getByName("main").manifest.srcFile("src/productionCandidate/AndroidManifest.xml")
-        sourceSets.getByName("test").kotlin.srcDir("src/productionCandidateTest/kotlin")
     }
     if (isCerclyStaging) {
         sourceSets.getByName("test").kotlin.srcDir("src/stagingTest/kotlin")
+    } else {
+        sourceSets.getByName("test").kotlin.srcDir("src/productionCandidateTest/kotlin")
     }
+    // One implementation per build. Public builds compile the receiver but the
+    // main manifest keeps it disabled and requests no background permission.
     sourceSets.getByName("main").kotlin.setSrcDirs(listOf(
-        if (isCerclyStaging) "src/staging/kotlin"
-        else if (isPrivateProximity) "src/productionCandidate/kotlin"
-        else "src/production/kotlin",
+        if (isCerclyStaging) "src/staging/kotlin" else "src/productionCandidate/kotlin",
     ))
     defaultConfig {
         buildConfigField("String", "PROXIMITY_URL", if (isPrivateProximity) configuredSupabaseUrl!!.asBuildConfigString() else "\"\"")

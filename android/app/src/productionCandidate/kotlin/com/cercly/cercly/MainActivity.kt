@@ -23,7 +23,11 @@ class MainActivity : FlutterActivity() {
                 when (call.method) {
                     "status" -> result.success(Engine.status(this))
                     "setConsent" -> result.success(Engine.consent(this, call.argument<Boolean>("enabled") == true))
-                    "accountChanged" -> result.success(Engine.accountChanged(this, call.argument<String>("userId")))
+                    "accountChanged" -> result.success(Engine.accountChanged(this, call.argument<String>("userId"),
+                        call.argument<String>("expectedUserId"), call.argument<String>("expectedSessionId")))
+                    "retireLocalSession" -> result.success(Engine.retireLocalSession(this,
+                        call.argument<String>("expectedUserId"), call.argument<String>("expectedSessionId")))
+                    "setAccessToken" -> result.success(Engine.setAccessToken(this, call.argument<String>("userId") ?: "", call.argument<String>("accessToken") ?: ""))
                     "importHistory" -> result.success(Engine.importHistory(this, call.argument<Map<String, Number>>("last") ?: emptyMap(), call.argument<List<Number>>("recent") ?: emptyList()))
                     "register" -> Engine.register(this, call.argument<String>("zones") ?: "[]") { result.success(it) }
                     "remove" -> { Engine.remove(this); result.success(null) }

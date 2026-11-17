@@ -11,6 +11,7 @@ import '../../promociones/services/promocion_publica_service.dart';
 import '../controllers/monitor_proximidad_controller.dart';
 import '../services/production_geofencing_service.dart';
 import '../services/session_notification_barrier.dart';
+import '../services/geofence_authorization_gate.dart';
 import '../push/fcm_promotion_message.dart';
 import '../push/fcm_push_service.dart';
 
@@ -59,7 +60,7 @@ class _MonitorProximidadAppState extends State<MonitorProximidadApp>
         SessionNotificationBarrier.signedIn(state.session);
       }
       if (ProductionGeofencingService.enabledBuild) {
-        unawaited(_synchronizeGeofenceAccount(state.session?.user.id));
+        unawaited(_synchronizeGeofenceAccount(state.session));
       }
     });
     try {
@@ -80,19 +81,41 @@ class _MonitorProximidadAppState extends State<MonitorProximidadApp>
     }
   }
 
-  Future<void> _synchronizeGeofenceAccount(String? userId) async {
+  Future<void> _synchronizeGeofenceAccount(Session? session) async {
     final service = ProductionGeofencingService();
-    await service.accountChanged(userId);
-    if (userId != null) await service.prepareHistory();
+    // Ignore an outdated queued authentication event.
+    if (Supabase.instance.client.auth.currentSession?.accessToken !=
+        session?.accessToken) {
+      return;
+    }
+    if (!ProductionGeofencingService.stagingBuild) {
+      try {
+        await GeofenceAuthorizationGate.block().timeout(
+          const Duration(seconds: 2),
+        );
+      } catch (_) {
+        // Still attempt native cleanup when the separate persistence channel fails.
+      }
+    }
+    if (Supabase.instance.client.auth.currentSession?.accessToken !=
+        session?.accessToken) {
+      return;
+    }
+    await service.accountChanged(session?.user.id);
+    if (session != null &&
+        Supabase.instance.client.auth.currentSession?.accessToken ==
+            session.accessToken) {
+      await service.updateSession(session);
+      await service.prepareHistory();
+    }
   }
 
   Future<void> _start() async {
     if (ProductionGeofencingService.enabledBuild) {
       try {
-        await ProductionGeofencingService().accountChanged(
-          Supabase.instance.client.auth.currentUser?.id,
+        await _synchronizeGeofenceAccount(
+          Supabase.instance.client.auth.currentSession,
         );
-        await ProductionGeofencingService().prepareHistory();
       } catch (_) {
         /* Native delivery fails closed until imported. */
       }

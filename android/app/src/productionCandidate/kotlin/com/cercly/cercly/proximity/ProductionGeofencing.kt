@@ -27,6 +27,8 @@ import java.net.HttpURLConnection
 import java.net.URL
 import java.time.Instant
 import java.util.concurrent.Executors
+import java.util.UUID
+import java.util.TimeZone
 
 /** Private Production candidate. No QA entry points, coordinates in logs or continuous GPS. */
 object ProductionGeofencing {
@@ -46,6 +48,10 @@ object ProductionGeofencing {
         prefs(c).edit().putString("result", value).putLong("checkedAt", now()).apply()
     }
     private fun allowed(c: Context): Boolean {
+        val session = GeofenceSessionStore.load(c) ?: return false
+        val gate = foreground(c).getString("flutter.cercly.geofence.authorized_session.v1", null)
+        if (!ProximityPolicy.authorizedSession(gate, prefs(c).getString("userId", null), session.sessionId) ||
+            session.userId != prefs(c).getString("userId", null)) return false
         val s = status(c)
         return listOf("consent", "foregroundAlerts", "precise", "background", "notifications", "location", "gms")
             .all { s[it] == true }
@@ -77,16 +83,64 @@ object ProductionGeofencing {
     }
     @Synchronized fun consent(c: Context, enabled: Boolean): Boolean {
         val saved = prefs(c).edit().putBoolean("consent", enabled).commit()
-        if (!enabled || !saved) remove(c)
-        return saved
+        if (!enabled || !saved) {
+            val cleared = GeofenceSessionStore.clear(c)
+            remove(c)
+            return saved && cleared
+        }
+        return true
     }
     // Do not carry zones, consent or the local ledger over to another account.
-    @Synchronized fun accountChanged(c: Context, userId: String?): Boolean {
+    @Synchronized fun accountChanged(c: Context, userId: String?, expectedUserId: String? = null, expectedSessionId: String? = null): Boolean {
         val p = prefs(c)
         val previous = p.getString("userId", null)
+        if (userId == null && expectedUserId != null) {
+            val current = GeofenceSessionStore.load(c)
+            if (!ProximityPolicy.mayRetireExpectedSession(expectedUserId, expectedSessionId, previous, current?.sessionId)) return false
+        }
         if (previous == userId && userId != null) return true
+        val cleared = GeofenceSessionStore.clear(c)
         remove(c)
-        return p.edit().clear().putString("userId", userId).commit()
+        val saved = p.edit().clear().putString("userId", userId).commit()
+        return cleared && saved
+    }
+    /**
+     * Native retirement is serialized with publishIfAuthorized (which also
+     * synchronizes on this object). After this method acknowledges retirement,
+     * an in-flight event cannot post a new notification for the old session.
+     *
+     * The Flutter preferences gate is written before clearing tokens. A crash
+     * halfway through retirement therefore leaves native delivery disabled.
+     */
+    @Synchronized fun retireLocalSession(
+        c: Context,
+        expectedUserId: String?,
+        expectedSessionId: String?,
+    ): Boolean {
+        val p = prefs(c)
+        val previousUser = p.getString("userId", null)
+        val currentSession = GeofenceSessionStore.load(c)
+        if (!ProximityPolicy.mayRetireExpectedSession(
+                expectedUserId, expectedSessionId, previousUser, currentSession?.sessionId)) return false
+        // Same SharedPreferences namespace as GeofenceAuthorizationGate in Dart.
+        // Commit synchronously while holding the native notification lock.
+        val gateSaved = foreground(c).edit()
+            .putString("flutter.cercly.geofence.authorized_session.v1", "")
+            .commit()
+        if (!gateSaved) return false
+        generation++
+        val tokenCleared = GeofenceSessionStore.clear(c)
+        val consentDisabled = p.edit().putBoolean("consent", false).commit()
+        remove(c)
+        // Remove an alert which was published just before retirement began.
+        NotificationManagerCompat.from(c).cancel(4819)
+        return tokenCleared && consentDisabled
+    }
+
+    @Synchronized fun setAccessToken(c: Context, userId: String, token: String): Boolean {
+        if (prefs(c).getString("userId", null) != userId || !prefs(c).getBoolean("consent", false)) return false
+        generation++
+        return GeofenceSessionStore.save(c, userId, token)
     }
     @Synchronized fun importHistory(c: Context, last: Map<String, Number>, recent: List<Number>): Boolean {
         val p = prefs(c)
@@ -98,6 +152,9 @@ object ProductionGeofencing {
         return e.putBoolean("historyImported", true).commit()
     }
     @Synchronized fun reserveForeground(c: Context, id: String): String {
+        // The foreground ledger cannot coordinate with the server reservation.
+        // Suppress this legacy delivery path while geofencing is consented.
+        if (!ProximityPolicy.allowLegacyForeground(prefs(c).getBoolean("consent", false))) return "blocked"
         if (!ProximityPolicy.uuid(id) || !prefs(c).getBoolean("historyImported", false) ||
             status(c)["foregroundAlerts"] != true || status(c)["notifications"] != true) return "blocked"
         return reserve(c, id) ?: "reserved"
@@ -251,7 +308,9 @@ object ProductionGeofencing {
             return (0 until a.length()).map { a.getJSONObject(it) }
         } finally { connection.disconnect() }
     }
-    @Synchronized private fun validateAndNotify(c: Context, z: JSONObject, row: JSONObject, location: Location): String {
+    private fun validateAndNotify(c: Context, z: JSONObject, row: JSONObject, location: Location): String {
+        val revision = synchronized(this) { generation }
+        val session = GeofenceSessionStore.load(c) ?: return "authentication_required"
         if (!allowed(c) || !prefs(c).getBoolean("historyImported", false) ||
             z.optString("userId") != prefs(c).getString("userId", null)) return "authorization_required"
         // Recheck persisted generation/zone after the network request and before reserving a slot.
@@ -268,8 +327,25 @@ object ProductionGeofencing {
         val distance = ProximityPolicy.distance(location.latitude, location.longitude, z.getDouble("lat"), z.getDouble("lon"))
         val age = (SystemClock.elapsedRealtimeNanos() - location.elapsedRealtimeNanos) / 1_000_000
         if (!location.hasAccuracy() || !ProximityPolicy.inRange(distance, location.accuracy.toDouble(), age, radius)) return "location_outside_or_uncertain"
-        reserve(c, row.getString("id"))?.let { return it }
-        return try {
+        if (session.userId != z.optString("userId")) return "authentication_required"
+        val payload = JSONObject().put("p_promotion_id", row.getString("id"))
+            .put("p_event_id", UUID.randomUUID().toString())
+            .put("p_latitude", location.latitude).put("p_longitude", location.longitude)
+            .put("p_accuracy_meters", location.accuracy.toDouble())
+            .put("p_observed_at", Instant.ofEpochMilli(location.time).toString())
+            .put("p_utc_offset_minutes", TimeZone.getDefault().getOffset(time) / 60000)
+        return GeofenceDelivery.deliver(
+            reserve = {
+                val response = JSONArray(rpc("reservar_promocion_geofencing", payload, session.token))
+                if (response.length() != 1) null else response.getJSONObject(0).optString("reservation_id")
+            },
+            publishIfAuthorized = {
+                synchronized(this) {
+            val current = GeofenceSessionStore.load(c)
+            if (generation != revision || current != session || !allowed(c) ||
+                prefs(c).getString("userId", null) != session.userId || zones(c).none { it.toString() == z.toString() }) {
+                "authorization_changed"
+            } else try {
             val manager = c.getSystemService(NotificationManager::class.java)
             if (Build.VERSION.SDK_INT >= 26) manager.createNotificationChannel(NotificationChannel(CHANNEL, "Promociones cercanas", NotificationManager.IMPORTANCE_HIGH))
             val intent = Intent(c, MainActivity::class.java).putExtra(EXTRA_ID, business.getString("id"))
@@ -283,8 +359,20 @@ object ProductionGeofencing {
             manager.notify(4819, notification)
             prefs(c).edit().putLong("notificationAt", time).apply()
             "native_notification_posted"
-        } catch (_: Exception) { "delivery_error" } // Reservation remains: fail closed rather than flood retries.
+            } catch (_: Exception) { "delivery_error" }
+        }
+            },
+            finish = { reservation, status ->
+                rpc("finalizar_reserva_geofencing", JSONObject().put("p_reservation_id", reservation)
+                    .put("p_status", status), session.token)
+            },
+        )
     }
+
+    private fun rpc(name: String, payload: JSONObject, token: String): String =
+        GeofenceRpcClient(BuildConfig.PROXIMITY_URL, BuildConfig.PROXIMITY_KEY, BuildConfig.CERCLY_STAGING)
+            .post(name, payload.toString(), token)
+
 }
 
 class ProductionGeofenceReceiver : BroadcastReceiver() {
