@@ -14,6 +14,7 @@ def verificar_concurrencia_fcm(execute):
     sql("""
       insert into auth.users(id,email,raw_user_meta_data) values
        ('d8100000-0000-4000-8000-000000000001','fcm-race@cercly.test','{}');
+      insert into auth.sessions(id,user_id) values ('d8100000-0000-4000-8000-000000000001','d8100000-0000-4000-8000-000000000001');
       insert into public.establecimientos(id,propietario_id,categoria_id,nombre,direccion,latitud,longitud,estado,publicable)
        select 'd8200000-0000-4000-8000-000000000001','d8100000-0000-4000-8000-000000000001',id,
        'FCM concurrency','Synthetic',0,0,'aprobado',true from public.categorias where activa limit 1;
@@ -81,7 +82,7 @@ def verificar_concurrencia_fcm(execute):
     sql("""delete from public.promotion_push_reservations where user_id='d8100000-0000-4000-8000-000000000001';
       update public.fcm_installations set active=true where user_id='d8100000-0000-4000-8000-000000000001';""")
     sql("""begin; set local role authenticated;
-      select set_config('request.jwt.claim.sub','d8100000-0000-4000-8000-000000000001',true);
+      select set_config('request.jwt.claim.sub','d8100000-0000-4000-8000-000000000001',true); select set_config('request.jwt.claims','{"session_id":"d8100000-0000-4000-8000-000000000001"}',true);
       select public.configurar_mis_alertas_geofencing(true,true); commit;""")
     for reverse in (False, True):
         barrier = Barrier(2)
@@ -95,7 +96,7 @@ def verificar_concurrencia_fcm(execute):
                  20::double precision,now(),0::smallint); commit;"""
             else:
                 query="""begin; set local role authenticated;
-                 select set_config('request.jwt.claim.sub','d8100000-0000-4000-8000-000000000001',true);
+                 select set_config('request.jwt.claim.sub','d8100000-0000-4000-8000-000000000001',true); select set_config('request.jwt.claims','{"session_id":"d8100000-0000-4000-8000-000000000001"}',true);
                  select count(*) from public.reservar_promocion_geofencing(
                  'd8300000-0000-4000-8000-000000000001','d8500000-0000-4000-8000-000000000011',
                  0::double precision,0::double precision,20::double precision,now(),0::smallint); commit;"""
@@ -124,7 +125,7 @@ def verificar_concurrencia_fcm(execute):
             'd8500000-0000-4000-8000-000000000020',0::float8,0::float8,20::float8,now(),0::smallint);"""
         else:
             body="""set local role authenticated;
-            select set_config('request.jwt.claim.sub','d8100000-0000-4000-8000-000000000001',true);
+            select set_config('request.jwt.claim.sub','d8100000-0000-4000-8000-000000000001',true); select set_config('request.jwt.claims','{"session_id":"d8100000-0000-4000-8000-000000000001"}',true);
             select count(*) from public.reservar_promocion_geofencing(
             'd8300000-0000-4000-8000-000000000001','d8500000-0000-4000-8000-000000000021',
             0::float8,0::float8,20::float8,now(),0::smallint);"""
@@ -155,7 +156,7 @@ def verificar_concurrencia_fcm(execute):
     def geo_attempt(index):
         barrier.wait(timeout=10)
         output=sql(f"""begin; set local role authenticated;
-          select set_config('request.jwt.claim.sub','d8100000-0000-4000-8000-000000000001',true);
+          select set_config('request.jwt.claim.sub','d8100000-0000-4000-8000-000000000001',true); select set_config('request.jwt.claims','{{"session_id":"d8100000-0000-4000-8000-000000000001"}}',true);
           select count(*) from public.reservar_promocion_geofencing(
           'd8300000-0000-4000-8000-000000000001','d8500000-0000-4000-8000-{30+index:012d}',
           0::float8,0::float8,20::float8,now(),0::smallint); commit;""")
@@ -167,7 +168,7 @@ def verificar_concurrencia_fcm(execute):
     print('Two simultaneous geofencing events: 1/2 reserved PASS',flush=True)
 
     revocation="""begin; set application_name='cercly-geo-revocation'; set local role authenticated;
-      select set_config('request.jwt.claim.sub','d8100000-0000-4000-8000-000000000001',true);
+      select set_config('request.jwt.claim.sub','d8100000-0000-4000-8000-000000000001',true); select set_config('request.jwt.claims','{"session_id":"d8100000-0000-4000-8000-000000000001"}',true);
       select public.configurar_mis_alertas_geofencing(false,false); select pg_sleep(2); commit;"""
     with ThreadPoolExecutor(max_workers=1) as pool:
         future=pool.submit(sql,revocation)

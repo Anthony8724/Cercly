@@ -16,6 +16,7 @@ create table if not exists auth.sessions (
   id uuid primary key, user_id uuid not null references auth.users(id) on delete cascade,
   created_at timestamptz not null default now()
 );
+grant select, insert, delete on auth.sessions to postgres;
 create table storage.buckets(id text primary key,name text,public boolean,file_size_limit bigint,allowed_mime_types text[]);
 create table storage.objects(id uuid primary key default gen_random_uuid(),bucket_id text references storage.buckets(id),name text,owner_id text);
 alter table storage.objects enable row level security;
