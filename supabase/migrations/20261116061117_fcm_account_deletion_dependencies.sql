@@ -61,10 +61,7 @@ returns boolean language sql stable security definer set search_path='' as $$
    where n.nspname='public' and c.contype='f' and c.confrelid in
      ('public.usuarios'::regclass,'auth.users'::regclass)
    and not cercly_account_private.es_referencia_fcm_cascada(c.oid)
-   and c.conname not in ('usuarios_id_fkey','miembros_establecimiento_usuario_id_fkey',
-    'establecimientos_propietario_id_fkey','solicitudes_establecimientos_solicitante_id_fkey',
-    'establecimientos_verificado_por_fkey','solicitudes_establecimientos_revisado_por_fkey',
-    'preferencias_usuario_usuario_id_fkey'))
+   and not ((c.conrelid = 'public.usuarios'::regclass and c.conname = 'usuarios_id_fkey') or (c.conrelid = 'public.miembros_establecimiento'::regclass and c.conname = 'miembros_establecimiento_usuario_id_fkey') or (c.conrelid = 'public.establecimientos'::regclass and c.conname = 'establecimientos_propietario_id_fkey') or (c.conrelid = 'public.solicitudes_establecimientos'::regclass and c.conname = 'solicitudes_establecimientos_solicitante_id_fkey') or (c.conrelid = 'public.establecimientos'::regclass and c.conname = 'establecimientos_verificado_por_fkey') or (c.conrelid = 'public.solicitudes_establecimientos'::regclass and c.conname = 'solicitudes_establecimientos_revisado_por_fkey') or (c.conrelid = 'public.preferencias_usuario'::regclass and c.conname = 'preferencias_usuario_usuario_id_fkey')))
  or exists(select 1 from storage.objects where owner_id=p_id::text
    or (bucket_id in ('establecimientos-imagenes','promociones-imagenes') and name like p_id::text||'/%'));
 $$;
@@ -84,9 +81,7 @@ returns boolean language sql stable security definer set search_path='' as $$
    join pg_catalog.pg_namespace n on n.oid=t.relnamespace where n.nspname='public' and c.contype='f'
    and c.confrelid in ('public.usuarios'::regclass,'auth.users'::regclass)
    and not cercly_account_private.es_referencia_fcm_cascada(c.oid)
-   and c.conname not in ('usuarios_id_fkey','miembros_establecimiento_usuario_id_fkey',
-    'establecimientos_propietario_id_fkey','solicitudes_establecimientos_solicitante_id_fkey',
-    'establecimientos_verificado_por_fkey','solicitudes_establecimientos_revisado_por_fkey','preferencias_usuario_usuario_id_fkey'));
+   and not ((c.conrelid = 'public.usuarios'::regclass and c.conname = 'usuarios_id_fkey') or (c.conrelid = 'public.miembros_establecimiento'::regclass and c.conname = 'miembros_establecimiento_usuario_id_fkey') or (c.conrelid = 'public.establecimientos'::regclass and c.conname = 'establecimientos_propietario_id_fkey') or (c.conrelid = 'public.solicitudes_establecimientos'::regclass and c.conname = 'solicitudes_establecimientos_solicitante_id_fkey') or (c.conrelid = 'public.establecimientos'::regclass and c.conname = 'establecimientos_verificado_por_fkey') or (c.conrelid = 'public.solicitudes_establecimientos'::regclass and c.conname = 'solicitudes_establecimientos_revisado_por_fkey') or (c.conrelid = 'public.preferencias_usuario'::regclass and c.conname = 'preferencias_usuario_usuario_id_fkey')));
 $$;
 alter function cercly_account_private.bloqueo_externo_supresion(uuid) owner to postgres;
 revoke all on function cercly_account_private.bloqueo_externo_supresion(uuid) from public,anon,authenticated,service_role;

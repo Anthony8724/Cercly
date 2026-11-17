@@ -1,6 +1,6 @@
 -- Exclusivo para PostgreSQL desechable y rollback. Identidades sintéticas.
 begin;
-select plan(34);
+select plan(36);
 
 insert into auth.users(id,email,raw_user_meta_data,last_sign_in_at) values
  ('f9100000-0000-0000-0000-000000000001','fcm-delete-clean@cercly.test','{}',now()),
@@ -106,6 +106,14 @@ select throws_ok($$delete from auth.users where id='f9100000-0000-0000-0000-0000
 select ok(exists(select 1 from auth.users where id='f9100000-0000-0000-0000-000000000006'),
  'cuenta con dependencia desconocida sigue intacta');
 drop table public.qa_unknown_auth_reference;
+create table public.qa_reused_fk_name (
+  user_id uuid constraint usuarios_id_fkey references auth.users(id) on delete cascade
+);
+select ok(cercly_account_private.tiene_dependencias('f9100000-0000-0000-0000-000000000006'),
+ 'FK desconocida con nombre permitido sigue bloqueando eliminación');
+select ok(cercly_account_private.bloqueo_externo_supresion('f9100000-0000-0000-0000-000000000006'),
+ 'FK desconocida con nombre permitido sigue bloqueando supresión revisada');
+drop table public.qa_reused_fk_name;
 select ok(not cercly_account_private.tiene_dependencias('f9100000-0000-0000-0000-000000000006'),
  'sin FK desconocida el detector conserva la clasificación FCM');
 alter table public.push_preferences drop constraint push_preferences_user_id_fkey;
