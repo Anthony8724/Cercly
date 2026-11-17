@@ -19,7 +19,9 @@ begin
       (c.conrelid = 'public.promotion_push_reservations'::regclass and c.conname = 'promotion_push_reservations_user_id_fkey')
     )
     and c.conkey = array[(select a.attnum::smallint from pg_catalog.pg_attribute a
-      where a.attrelid = c.conrelid and a.attname = 'user_id' and not a.attisdropped)];
+      where a.attrelid = c.conrelid and a.attname = 'user_id' and not a.attisdropped)]
+    and c.confkey = array[(select a.attnum::smallint from pg_catalog.pg_attribute a
+      where a.attrelid = c.confrelid and a.attname = 'id' and not a.attisdropped)];
   if expected <> 3 then
     raise exception 'FCM account-deletion constraints differ from reviewed schema';
   end if;
@@ -39,10 +41,47 @@ returns boolean language sql stable security definer set search_path='' as $$
       )
       and c.conkey=array[(select a.attnum::smallint from pg_catalog.pg_attribute a
         where a.attrelid=c.conrelid and a.attname='user_id' and not a.attisdropped)]
+      and c.confkey=array[(select a.attnum::smallint from pg_catalog.pg_attribute a
+        where a.attrelid=c.confrelid and a.attname='id' and not a.attisdropped)]
   );
 $$;
 alter function cercly_account_private.es_referencia_fcm_cascada(oid) owner to postgres;
 revoke all on function cercly_account_private.es_referencia_fcm_cascada(oid) from public,anon,authenticated,service_role;
+
+-- Known platform/private identity references, matched by complete signature.
+-- Unknown foreign keys in any schema remain blockers.
+create or replace function cercly_account_private.es_referencia_identidad_plataforma(p_constraint oid)
+returns boolean language sql stable security definer set search_path='' as $$
+ select exists (
+  select 1 from pg_catalog.pg_constraint c
+  join pg_catalog.pg_class t on t.oid=c.conrelid
+  join pg_catalog.pg_namespace n on n.oid=t.relnamespace
+  join (values
+    ('auth','identities','identities_user_id_fkey','user_id','c'),
+    ('auth','mfa_factors','mfa_factors_user_id_fkey','user_id','c'),
+    ('auth','mfa_recovery_code_sets','mfa_recovery_code_sets_user_id_fkey','user_id','c'),
+    ('auth','oauth_authorizations','oauth_authorizations_user_id_fkey','user_id','c'),
+    ('auth','oauth_consents','oauth_consents_user_id_fkey','user_id','c'),
+    ('auth','one_time_tokens','one_time_tokens_user_id_fkey','user_id','c'),
+    ('auth','scim_users','scim_users_user_id_fkey','user_id','n'),
+    ('auth','sessions','sessions_user_id_fkey','user_id','c'),
+    ('auth','webauthn_challenges','webauthn_challenges_user_id_fkey','user_id','c'),
+    ('auth','webauthn_credentials','webauthn_credentials_user_id_fkey','user_id','c'),
+    ('cercly_account_private','planes_supresion','planes_supresion_revisor_id_fkey','revisor_id','c'),
+    ('cercly_account_private','planes_supresion','planes_supresion_sujeto_id_fkey','sujeto_id','c'),
+    ('cercly_account_private','sujetos_qa_supresion','sujetos_qa_supresion_usuario_id_fkey','usuario_id','c')
+  ) known(schema_name,table_name,constraint_name,column_name,delete_action)
+   on n.nspname=known.schema_name and t.relname=known.table_name and c.conname=known.constraint_name
+  where c.oid=p_constraint and c.contype='f' and c.convalidated
+   and c.confrelid='auth.users'::regclass and c.confdeltype::text=known.delete_action
+   and c.conkey=array[(select a.attnum::smallint from pg_catalog.pg_attribute a
+     where a.attrelid=c.conrelid and a.attname=known.column_name and not a.attisdropped)]
+   and c.confkey=array[(select a.attnum::smallint from pg_catalog.pg_attribute a
+     where a.attrelid=c.confrelid and a.attname='id' and not a.attisdropped)]
+ );
+$$;
+alter function cercly_account_private.es_referencia_identidad_plataforma(oid) owner to postgres;
+revoke all on function cercly_account_private.es_referencia_identidad_plataforma(oid) from public,anon,authenticated,service_role;
 
 create or replace function cercly_account_private.tiene_dependencias(p_id uuid)
 returns boolean language sql stable security definer set search_path='' as $$
@@ -58,9 +97,10 @@ returns boolean language sql stable security definer set search_path='' as $$
  or exists(select 1 from pg_catalog.pg_constraint c
    join pg_catalog.pg_class t on t.oid=c.conrelid
    join pg_catalog.pg_namespace n on n.oid=t.relnamespace
-   where n.nspname='public' and c.contype='f' and c.confrelid in
+   where c.contype='f' and c.confrelid in
      ('public.usuarios'::regclass,'auth.users'::regclass)
    and not cercly_account_private.es_referencia_fcm_cascada(c.oid)
+   and not cercly_account_private.es_referencia_identidad_plataforma(c.oid)
    and not ((c.conrelid = 'public.usuarios'::regclass and c.conname = 'usuarios_id_fkey' and c.confrelid = 'auth.users'::regclass and c.confdeltype = 'c' and c.convalidated and c.conkey = array[(select a.attnum::smallint from pg_catalog.pg_attribute a where a.attrelid=c.conrelid and a.attname='id' and not a.attisdropped)] and c.confkey = array[(select a.attnum::smallint from pg_catalog.pg_attribute a where a.attrelid=c.confrelid and a.attname='id' and not a.attisdropped)]) or (c.conrelid = 'public.miembros_establecimiento'::regclass and c.conname = 'miembros_establecimiento_usuario_id_fkey' and c.confrelid = 'public.usuarios'::regclass and c.confdeltype = 'c' and c.convalidated and c.conkey = array[(select a.attnum::smallint from pg_catalog.pg_attribute a where a.attrelid=c.conrelid and a.attname='usuario_id' and not a.attisdropped)] and c.confkey = array[(select a.attnum::smallint from pg_catalog.pg_attribute a where a.attrelid=c.confrelid and a.attname='id' and not a.attisdropped)]) or (c.conrelid = 'public.establecimientos'::regclass and c.conname = 'establecimientos_propietario_id_fkey' and c.confrelid = 'public.usuarios'::regclass and c.confdeltype = 'r' and c.convalidated and c.conkey = array[(select a.attnum::smallint from pg_catalog.pg_attribute a where a.attrelid=c.conrelid and a.attname='propietario_id' and not a.attisdropped)] and c.confkey = array[(select a.attnum::smallint from pg_catalog.pg_attribute a where a.attrelid=c.confrelid and a.attname='id' and not a.attisdropped)]) or (c.conrelid = 'public.solicitudes_establecimientos'::regclass and c.conname = 'solicitudes_establecimientos_solicitante_id_fkey' and c.confrelid = 'public.usuarios'::regclass and c.confdeltype = 'r' and c.convalidated and c.conkey = array[(select a.attnum::smallint from pg_catalog.pg_attribute a where a.attrelid=c.conrelid and a.attname='solicitante_id' and not a.attisdropped)] and c.confkey = array[(select a.attnum::smallint from pg_catalog.pg_attribute a where a.attrelid=c.confrelid and a.attname='id' and not a.attisdropped)]) or (c.conrelid = 'public.establecimientos'::regclass and c.conname = 'establecimientos_verificado_por_fkey' and c.confrelid = 'public.usuarios'::regclass and c.confdeltype = 'n' and c.convalidated and c.conkey = array[(select a.attnum::smallint from pg_catalog.pg_attribute a where a.attrelid=c.conrelid and a.attname='verificado_por' and not a.attisdropped)] and c.confkey = array[(select a.attnum::smallint from pg_catalog.pg_attribute a where a.attrelid=c.confrelid and a.attname='id' and not a.attisdropped)]) or (c.conrelid = 'public.solicitudes_establecimientos'::regclass and c.conname = 'solicitudes_establecimientos_revisado_por_fkey' and c.confrelid = 'public.usuarios'::regclass and c.confdeltype = 'n' and c.convalidated and c.conkey = array[(select a.attnum::smallint from pg_catalog.pg_attribute a where a.attrelid=c.conrelid and a.attname='revisado_por' and not a.attisdropped)] and c.confkey = array[(select a.attnum::smallint from pg_catalog.pg_attribute a where a.attrelid=c.confrelid and a.attname='id' and not a.attisdropped)]) or (c.conrelid = 'public.preferencias_usuario'::regclass and c.conname = 'preferencias_usuario_usuario_id_fkey' and c.confrelid = 'auth.users'::regclass and c.confdeltype = 'c' and c.convalidated and c.conkey = array[(select a.attnum::smallint from pg_catalog.pg_attribute a where a.attrelid=c.conrelid and a.attname='usuario_id' and not a.attisdropped)] and c.confkey = array[(select a.attnum::smallint from pg_catalog.pg_attribute a where a.attrelid=c.confrelid and a.attname='id' and not a.attisdropped)])))
  or exists(select 1 from storage.objects where owner_id=p_id::text
    or (bucket_id in ('establecimientos-imagenes','promociones-imagenes') and name like p_id::text||'/%'));
@@ -78,9 +118,10 @@ returns boolean language sql stable security definer set search_path='' as $$
  or exists(select 1 from cercly_auth_private.auditoria_superadministradores where usuario_id=p_id or actor_id=p_id)
  or exists(select 1 from public.usuarios where id=p_id and rol='administrador')
  or exists(select 1 from pg_catalog.pg_constraint c join pg_catalog.pg_class t on t.oid=c.conrelid
-   join pg_catalog.pg_namespace n on n.oid=t.relnamespace where n.nspname='public' and c.contype='f'
+   join pg_catalog.pg_namespace n on n.oid=t.relnamespace where c.contype='f'
    and c.confrelid in ('public.usuarios'::regclass,'auth.users'::regclass)
    and not cercly_account_private.es_referencia_fcm_cascada(c.oid)
+   and not cercly_account_private.es_referencia_identidad_plataforma(c.oid)
    and not ((c.conrelid = 'public.usuarios'::regclass and c.conname = 'usuarios_id_fkey' and c.confrelid = 'auth.users'::regclass and c.confdeltype = 'c' and c.convalidated and c.conkey = array[(select a.attnum::smallint from pg_catalog.pg_attribute a where a.attrelid=c.conrelid and a.attname='id' and not a.attisdropped)] and c.confkey = array[(select a.attnum::smallint from pg_catalog.pg_attribute a where a.attrelid=c.confrelid and a.attname='id' and not a.attisdropped)]) or (c.conrelid = 'public.miembros_establecimiento'::regclass and c.conname = 'miembros_establecimiento_usuario_id_fkey' and c.confrelid = 'public.usuarios'::regclass and c.confdeltype = 'c' and c.convalidated and c.conkey = array[(select a.attnum::smallint from pg_catalog.pg_attribute a where a.attrelid=c.conrelid and a.attname='usuario_id' and not a.attisdropped)] and c.confkey = array[(select a.attnum::smallint from pg_catalog.pg_attribute a where a.attrelid=c.confrelid and a.attname='id' and not a.attisdropped)]) or (c.conrelid = 'public.establecimientos'::regclass and c.conname = 'establecimientos_propietario_id_fkey' and c.confrelid = 'public.usuarios'::regclass and c.confdeltype = 'r' and c.convalidated and c.conkey = array[(select a.attnum::smallint from pg_catalog.pg_attribute a where a.attrelid=c.conrelid and a.attname='propietario_id' and not a.attisdropped)] and c.confkey = array[(select a.attnum::smallint from pg_catalog.pg_attribute a where a.attrelid=c.confrelid and a.attname='id' and not a.attisdropped)]) or (c.conrelid = 'public.solicitudes_establecimientos'::regclass and c.conname = 'solicitudes_establecimientos_solicitante_id_fkey' and c.confrelid = 'public.usuarios'::regclass and c.confdeltype = 'r' and c.convalidated and c.conkey = array[(select a.attnum::smallint from pg_catalog.pg_attribute a where a.attrelid=c.conrelid and a.attname='solicitante_id' and not a.attisdropped)] and c.confkey = array[(select a.attnum::smallint from pg_catalog.pg_attribute a where a.attrelid=c.confrelid and a.attname='id' and not a.attisdropped)]) or (c.conrelid = 'public.establecimientos'::regclass and c.conname = 'establecimientos_verificado_por_fkey' and c.confrelid = 'public.usuarios'::regclass and c.confdeltype = 'n' and c.convalidated and c.conkey = array[(select a.attnum::smallint from pg_catalog.pg_attribute a where a.attrelid=c.conrelid and a.attname='verificado_por' and not a.attisdropped)] and c.confkey = array[(select a.attnum::smallint from pg_catalog.pg_attribute a where a.attrelid=c.confrelid and a.attname='id' and not a.attisdropped)]) or (c.conrelid = 'public.solicitudes_establecimientos'::regclass and c.conname = 'solicitudes_establecimientos_revisado_por_fkey' and c.confrelid = 'public.usuarios'::regclass and c.confdeltype = 'n' and c.convalidated and c.conkey = array[(select a.attnum::smallint from pg_catalog.pg_attribute a where a.attrelid=c.conrelid and a.attname='revisado_por' and not a.attisdropped)] and c.confkey = array[(select a.attnum::smallint from pg_catalog.pg_attribute a where a.attrelid=c.confrelid and a.attname='id' and not a.attisdropped)]) or (c.conrelid = 'public.preferencias_usuario'::regclass and c.conname = 'preferencias_usuario_usuario_id_fkey' and c.confrelid = 'auth.users'::regclass and c.confdeltype = 'c' and c.convalidated and c.conkey = array[(select a.attnum::smallint from pg_catalog.pg_attribute a where a.attrelid=c.conrelid and a.attname='usuario_id' and not a.attisdropped)] and c.confkey = array[(select a.attnum::smallint from pg_catalog.pg_attribute a where a.attrelid=c.confrelid and a.attname='id' and not a.attisdropped)])));
 $$;
 alter function cercly_account_private.bloqueo_externo_supresion(uuid) owner to postgres;
