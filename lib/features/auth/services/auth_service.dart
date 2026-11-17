@@ -9,6 +9,8 @@ import 'package:flutter/foundation.dart';
 import 'auth_options.dart';
 import 'profile_service.dart';
 import '../../notificaciones/push/fcm_push_service.dart';
+import '../../notificaciones/services/production_geofencing_service.dart';
+import '../../notificaciones/services/session_notification_barrier.dart';
 
 typedef OAuthLauncher = Future<bool> Function(
   OAuthProvider provider, {
@@ -23,12 +25,14 @@ class AuthService {
     this.options = const AuthOptions(),
     this.oauthLauncher,
     this.retirePromotionalPush,
+    this.retireNativeGeofence,
   }) : _client = supabase;
 
   final SupabaseClient? _client;
   final AuthOptions options;
   final OAuthLauncher? oauthLauncher;
   final Future<void> Function()? retirePromotionalPush;
+  final Future<void> Function()? retireNativeGeofence;
   SupabaseClient get _supabase => _client ?? Supabase.instance.client;
 
   Stream<AuthState> get events => _supabase.auth.onAuthStateChange;
@@ -187,12 +191,47 @@ class AuthService {
   }
 
   Future<void> signOut() async {
-    if (retirePromotionalPush case final revoke?) {
-      await revoke();
-    } else if (_client == null) {
-      await FcmPushService.shared.retireBeforeSignOut();
+    final sessionBeforeLogout = _supabase.auth.currentSession;
+    SessionNotificationBarrier.beginLogout(sessionBeforeLogout);
+    try {
+      if (retireNativeGeofence case final retire?) {
+        await retire().timeout(const Duration(seconds: 3));
+      } else if (_client == null && ProductionGeofencingService.enabledBuild) {
+        await ProductionGeofencingService()
+            .accountChanged(null)
+            .timeout(const Duration(seconds: 3));
+      }
+    } catch (_) {
+      debugPrint('No se pudo invalidar el acceso local de geofencing.');
     }
-    await _supabase.auth.signOut().timeout(const Duration(seconds: 15));
+    try {
+      if (retirePromotionalPush case final revoke?) {
+        await revoke().timeout(const Duration(seconds: 5));
+      } else if (_client == null) {
+        await FcmPushService.shared.retireBeforeSignOut().timeout(
+          const Duration(seconds: 5),
+        );
+      }
+    } catch (_) {
+      debugPrint('No se confirmó la retirada remota de notificaciones.');
+    }
+    final currentSession = _supabase.auth.currentSession;
+    if (!SessionNotificationBarrier.sameSession(
+      sessionBeforeLogout,
+      currentSession,
+    )) {
+      SessionNotificationBarrier.signedIn(currentSession);
+      return;
+    }
+    try {
+      await _supabase.auth.signOut().timeout(const Duration(seconds: 15));
+    } catch (_) {
+      if (_supabase.auth.currentSession != null) rethrow;
+      // The SDK cleared local auth first; the remote session may still exist.
+      debugPrint(
+        'Cierre local completado; no se confirmó la revocación remota.',
+      );
+    }
   }
 
   /// Reintento explícito: una nueva suscripción sola repetiría el último error

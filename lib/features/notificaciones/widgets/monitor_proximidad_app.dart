@@ -10,6 +10,7 @@ import '../../explorar/screens/detalle_establecimiento_screen.dart';
 import '../../promociones/services/promocion_publica_service.dart';
 import '../controllers/monitor_proximidad_controller.dart';
 import '../services/production_geofencing_service.dart';
+import '../services/session_notification_barrier.dart';
 import '../push/fcm_promotion_message.dart';
 import '../push/fcm_push_service.dart';
 
@@ -54,6 +55,9 @@ class _MonitorProximidadAppState extends State<MonitorProximidadApp>
     _authSubscription = Supabase.instance.client.auth.onAuthStateChange.listen((
       state,
     ) {
+      if (state.event == AuthChangeEvent.signedIn) {
+        SessionNotificationBarrier.signedIn(state.session);
+      }
       if (ProductionGeofencingService.enabledBuild) {
         unawaited(_synchronizeGeofenceAccount(state.session?.user.id));
       }

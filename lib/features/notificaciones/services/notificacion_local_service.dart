@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../promociones/models/promocion_destacada_model.dart';
+import 'session_notification_barrier.dart';
 import 'production_geofencing_service.dart';
 
 abstract interface class NotificacionPromocionGateway {
@@ -303,10 +304,17 @@ class NotificacionLocalService
     required bool simulada,
     bool Function()? sesionVigente,
   }) async {
+    if (SessionNotificationBarrier.blocked) return false;
     await inicializar();
-    if (sesionVigente != null && !sesionVigente()) return false;
+    if (SessionNotificationBarrier.blocked ||
+        (sesionVigente != null && !sesionVigente())) {
+      return false;
+    }
     if (!await tienePermisoParaNotificar()) return false;
-    if (sesionVigente != null && !sesionVigente()) return false;
+    if (SessionNotificationBarrier.blocked ||
+        (sesionVigente != null && !sesionVigente())) {
+      return false;
+    }
 
     if (ProductionGeofencingService.enabledBuild) {
       try {
@@ -329,7 +337,10 @@ class NotificacionLocalService
         return false;
       }
     }
-    if (sesionVigente != null && !sesionVigente()) return false;
+    if (SessionNotificationBarrier.blocked ||
+        (sesionVigente != null && !sesionVigente())) {
+      return false;
+    }
 
     final descripcion = promocion.descripcion.trim();
     final cuerpo = descripcion.isEmpty
