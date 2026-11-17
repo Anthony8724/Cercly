@@ -1,6 +1,6 @@
 -- Fixtures sintéticos. Corre únicamente contra el PostgreSQL local de Supabase.
 begin;
-select plan(19);
+select plan(23);
 
 insert into auth.users(id, email, raw_user_meta_data, last_sign_in_at) values
   ('c8100000-0000-0000-0000-000000000001', 'fcm-owner@cercly.test', '{}', now()),
@@ -131,6 +131,36 @@ select is((select count(*)::integer from public.fcm_installations
   where installation_id='c8400000-0000-0000-0000-000000000001'
     and user_id='c8100000-0000-0000-0000-000000000001'), 1,
   'el intento de otra cuenta no cambió el propietario de la instalación');
+
+delete from public.promotion_push_reservations where user_id='c8100000-0000-0000-0000-000000000001';
+set local role service_role;
+select is((select count(*)::integer from public.reservar_promocion_push_reciente(
+  'c8100000-0000-0000-0000-000000000002','c8400000-0000-0000-0000-000000000001',
+  'c8500000-0000-0000-0000-000000000010',0::double precision,0::double precision,20::double precision,now(),0::smallint)),0,
+  'no reserva usando una instalación perteneciente a otro usuario');
+reset role;
+update public.promociones set activa=false where id in
+ ('c8300000-0000-0000-0000-000000000001','c8300000-0000-0000-0000-000000000002','c8300000-0000-0000-0000-000000000003');
+set local role service_role;
+select is((select count(*)::integer from public.reservar_promocion_push_reciente(
+  'c8100000-0000-0000-0000-000000000001','c8400000-0000-0000-0000-000000000001',
+  'c8500000-0000-0000-0000-000000000011',0::double precision,0::double precision,20::double precision,now(),0::smallint)),0,
+  'no reserva promociones desactivadas');
+reset role;
+update public.promociones set activa=true,fecha_inicio=now()-interval '2 days',fecha_fin=now()-interval '1 day' where id in
+ ('c8300000-0000-0000-0000-000000000001','c8300000-0000-0000-0000-000000000002','c8300000-0000-0000-0000-000000000003');
+set local role service_role;
+select is((select count(*)::integer from public.reservar_promocion_push_reciente(
+  'c8100000-0000-0000-0000-000000000001','c8400000-0000-0000-0000-000000000001',
+  'c8500000-0000-0000-0000-000000000012',0::double precision,0::double precision,20::double precision,now(),0::smallint)),0,
+  'no reserva promociones caducadas');
+reset role;
+set local role authenticated;
+select set_config('request.jwt.claim.sub','c8100000-0000-0000-0000-000000000001',true);
+select public.configurar_mis_alertas_push_promociones(false,false,6::smallint,null::smallint,null::smallint,1500::smallint);
+reset role;
+select is((select count(*)::integer from public.fcm_installations where user_id='c8100000-0000-0000-0000-000000000001'),0,
+  'retirar consentimiento elimina las instalaciones asociadas');
 
 select * from finish();
 rollback;
