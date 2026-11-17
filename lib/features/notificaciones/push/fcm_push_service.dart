@@ -45,6 +45,7 @@ class FcmPushService implements FreshLocationPushEvaluator {
   static final FcmPushService shared = FcmPushService();
   static const _installationIdKey = 'cercly.fcm.installation_id.v1';
   static const _pendingDisablePrefix = 'cercly.fcm.pending_disable.';
+  static const _pendingOwnerKey = 'cercly.fcm.pending_owner.v1';
 
   final SupabaseClient? _client;
   final FcmMessagingGateway _messaging;
@@ -65,11 +66,21 @@ class FcmPushService implements FreshLocationPushEvaluator {
   StreamSubscription<FcmPromotionMessage>? _foregroundSubscription;
   StreamSubscription<FcmPromotionMessage>? _openedSubscription;
   String? _activeUserId;
+  bool _retiring = false;
+  int _generation = 0;
+  final Set<Future<void>> _registrationsInFlight = {};
   Future<void> Function(FcmPromotionMessage message)? _openPromotion;
   void Function(FcmPromotionMessage message)? _showForegroundMessage;
   final Set<String> _seenEvents = <String>{};
 
   Future<void> reconcileAfterResume() async {
+    final initialUser = _currentUserId();
+    if (_retiring ||
+        await _localPreferences.getString(_pendingOwnerKey) != null ||
+        _retiring ||
+        _currentUserId() != initialUser) {
+      return;
+    }
     if (!available) {
       await _cleanupUnavailable();
       return;
@@ -120,7 +131,7 @@ class FcmPushService implements FreshLocationPushEvaluator {
         await _repository.revokeInstallation(installationId);
         return;
       }
-      await _repository.registerInstallation(
+      await _registerTracked(
         installationId: installationId,
         fcmInstallationId: fcmInstallationId,
         platform: _platformName,
@@ -157,41 +168,76 @@ class FcmPushService implements FreshLocationPushEvaluator {
   Future<FcmActivationResult> enablePromotionalPush({
     required bool explicitConsent,
   }) async {
-    if (!available) return FcmActivationResult.unavailable;
-    if (!explicitConsent) return FcmActivationResult.consentRequired;
+    final generation = _generation;
     final userId = _currentUserId();
+    if (!available ||
+        _retiring ||
+        await _localPreferences.getString(_pendingOwnerKey) != null ||
+        _retiring ||
+        (_currentUserId() != userId ||
+            _generation != generation ||
+            _retiring)) {
+      return FcmActivationResult.unavailable;
+    }
+    if (!explicitConsent) return FcmActivationResult.consentRequired;
     if (userId == null) return FcmActivationResult.signedOut;
+    _activeUserId = userId;
     if (!await _messaging.initialize()) {
       return FcmActivationResult.firebaseNotConfigured;
     }
     if (!await _messaging.requestPermission()) {
       return FcmActivationResult.permissionDenied;
     }
-    if (_currentUserId() != userId) return FcmActivationResult.signedOut;
+    if ((_currentUserId() != userId ||
+        _generation != generation ||
+        _retiring)) {
+      return FcmActivationResult.signedOut;
+    }
 
     final current = await _preferences.cargar();
-    if (_currentUserId() != userId) return FcmActivationResult.signedOut;
+    if ((_currentUserId() != userId ||
+        _generation != generation ||
+        _retiring)) {
+      return FcmActivationResult.signedOut;
+    }
     final enabled = current.copiarCon(pushPromocionesActivadas: true);
     await _preferences.guardar(enabled);
     try {
-      if (_currentUserId() != userId) return FcmActivationResult.signedOut;
+      if ((_currentUserId() != userId ||
+          _generation != generation ||
+          _retiring)) {
+        return FcmActivationResult.signedOut;
+      }
       await _repository.savePreferences(enabled);
-      if (_currentUserId() != userId) return FcmActivationResult.signedOut;
+      if ((_currentUserId() != userId ||
+          _generation != generation ||
+          _retiring)) {
+        return FcmActivationResult.signedOut;
+      }
       await _messaging.setAutoInitEnabled(true);
       final fcmInstallationId = await _messaging.register();
-      if (_currentUserId() != userId) return FcmActivationResult.signedOut;
+      if ((_currentUserId() != userId ||
+          _generation != generation ||
+          _retiring)) {
+        return FcmActivationResult.signedOut;
+      }
       if (fcmInstallationId.isEmpty) {
         throw StateError('Firebase no entregó un token para esta instalación.');
       }
       final installationId = await _installationId();
-      if (_currentUserId() != userId) return FcmActivationResult.signedOut;
-      await _repository.registerInstallation(
+      if ((_currentUserId() != userId ||
+          _generation != generation ||
+          _retiring)) {
+        return FcmActivationResult.signedOut;
+      }
+      await _registerTracked(
         installationId: installationId,
         fcmInstallationId: fcmInstallationId,
         platform: _platformName,
       );
-      if (_currentUserId() != userId) {
-        await _repository.revokeInstallation(installationId);
+      if ((_currentUserId() != userId ||
+          _generation != generation ||
+          _retiring)) {
         return FcmActivationResult.signedOut;
       }
       await _startListeners(userId);
@@ -253,19 +299,46 @@ class FcmPushService implements FreshLocationPushEvaluator {
 
   Future<void> retireBeforeSignOut() async {
     final userId = _currentUserId();
+    _generation++;
+    _retiring = true;
+    _activeUserId = null;
+    await _stopListeners();
     if (userId == null) return;
     final id = await _readInstallationId();
-    if (id != null) await _repository.revokeInstallation(id);
-    await _stopListeners();
-    if (!available && id == null) return;
-    try {
-      if (await _messaging.initialize()) {
-        await _messaging.disableRegistration();
-      }
-    } catch (_) {
-      // Supabase association was already retired; never block sign-out on SDK.
+    if (id != null) {
+      // Quarantine the installation across accounts and process restarts. A
+      // successful retry must run as the original user in a fresh process.
+      await _localPreferences.setString(_pendingOwnerKey, userId);
+      await _markDisablePending(userId);
     }
-    _activeUserId = null;
+    final config = await _preferences.cargar();
+    if (_currentUserId() == userId && config.pushPromocionesActivadas) {
+      await _preferences.guardar(
+        config.copiarCon(pushPromocionesActivadas: false),
+      );
+    }
+    try {
+      await _messaging.disableRegistration().timeout(
+        const Duration(seconds: 2),
+      );
+    } catch (_) {
+      // FCM remains quarantined; remote delivery might still be possible.
+    }
+    if (_registrationsInFlight.isNotEmpty) {
+      try {
+        await Future.wait(_registrationsInFlight.toList())
+            .timeout(const Duration(seconds: 1));
+      } catch (_) {
+        // The server-side session tombstone must also reject late requests.
+      }
+    }
+    if (id != null && _currentUserId() == userId) {
+      await _repository
+          .revokeInstallation(id)
+          .timeout(const Duration(seconds: 2));
+      // Keep the durable marker until a fresh process has repeated revocation:
+      // an older in-flight registration might complete after this response.
+    }
   }
 
   Future<void> retireAfterAccountDeletion() async {
@@ -286,11 +359,23 @@ class FcmPushService implements FreshLocationPushEvaluator {
     required double accuracyMeters,
     required DateTime observedAt,
   }) async {
-    if (!available) return;
+    final generation = _generation;
     final userId = _currentUserId();
+    if (!available ||
+        _retiring ||
+        await _localPreferences.getString(_pendingOwnerKey) != null ||
+        _retiring ||
+        (_currentUserId() != userId ||
+            _generation != generation ||
+            _retiring)) {
+      return;
+    }
     if (userId == null) return;
     final config = await _preferences.cargar();
-    if (!config.pushPromocionesActivadas || _currentUserId() != userId) {
+    if (!config.pushPromocionesActivadas ||
+        (_currentUserId() != userId ||
+            _generation != generation ||
+            _retiring)) {
       return;
     }
     final now = _now();
@@ -309,9 +394,18 @@ class FcmPushService implements FreshLocationPushEvaluator {
       return;
     }
     final installationId = await _installationId();
-    if (_currentUserId() != userId) return;
+    if ((_currentUserId() != userId ||
+        _generation != generation ||
+        _retiring)) {
+      return;
+    }
     final latest = await _preferences.cargar();
-    if (_currentUserId() != userId || !latest.pushPromocionesActivadas) return;
+    if ((_currentUserId() != userId ||
+            _generation != generation ||
+            _retiring) ||
+        !latest.pushPromocionesActivadas) {
+      return;
+    }
     await _repository.evaluateFreshLocation(
       installationId: installationId,
       eventId: _newUuid(),
@@ -331,23 +425,60 @@ class FcmPushService implements FreshLocationPushEvaluator {
     await _stopListeners();
   }
 
+  Future<void> synchronizeAccount() => _handleAccount(_currentUserId());
+
   Future<void> _handleAccount(String? userId) async {
+    if (_retiring || _currentUserId() != userId) return;
+    final previous = _activeUserId;
+    if (previous != null && previous != userId) {
+      // The current session is no longer authorised to revoke the previous
+      // user's association. Quarantine locally until that user returns.
+      _generation++;
+      _retiring = true;
+      _activeUserId = null;
+      await _stopListeners();
+      final id = await _readInstallationId();
+      if (id != null) {
+        await _localPreferences.setString(_pendingOwnerKey, previous);
+        await _markDisablePending(previous);
+      }
+      try {
+        await _messaging.disableRegistration().timeout(
+          const Duration(seconds: 2),
+        );
+      } catch (_) {
+        // Remote delivery may remain possible until the server confirms revocation.
+      }
+      return;
+    }
+    final pendingOwner = await _localPreferences.getString(_pendingOwnerKey);
+    if (pendingOwner != null) {
+      if (userId == null ||
+          pendingOwner != userId ||
+          _currentUserId() != userId) {
+        return;
+      }
+      final id = await _readInstallationId();
+      if (id == null) return;
+      {
+        try {
+          await _repository.revokeInstallation(id);
+          if (_currentUserId() != userId) return;
+        } catch (_) {
+          return;
+        }
+      }
+      await _clearDisablePending(userId);
+      await _localPreferences.remove(_installationIdKey);
+      await _localPreferences.remove(_pendingOwnerKey);
+    }
     if (!available) {
       await _cleanupUnavailable();
       return;
     }
     if (userId == _activeUserId) return;
-    final previous = _activeUserId;
     await _stopListeners();
     _activeUserId = userId;
-    if (previous != null && userId != null) {
-      try {
-        await _repository.revokeInstallation(await _installationId());
-      } catch (_) {
-        // The installation is not re-bound when cleanup cannot be confirmed.
-        return;
-      }
-    }
     if (userId == null) return;
     final pending = await _isDisablePending(userId);
     if (pending) {
@@ -378,7 +509,7 @@ class FcmPushService implements FreshLocationPushEvaluator {
       if (_currentUserId() != userId) return;
       final installationId = await _installationId();
       if (_currentUserId() != userId) return;
-      await _repository.registerInstallation(
+      await _registerTracked(
         installationId: installationId,
         fcmInstallationId: fcmInstallationId,
         platform: _platformName,
@@ -390,7 +521,13 @@ class FcmPushService implements FreshLocationPushEvaluator {
   }
 
   Future<void> _startListeners(String userId) async {
+    if (_retiring ||
+        _currentUserId() != userId ||
+        await _localPreferences.getString(_pendingOwnerKey) != null) {
+      return;
+    }
     await _stopListeners();
+    if (_retiring || _currentUserId() != userId) return;
     _activeUserId = userId;
     _tokenSubscription = _messaging.tokenRefreshes.listen((token) {
       unawaited(_registerRefreshedToken(token, userId));
@@ -409,15 +546,32 @@ class FcmPushService implements FreshLocationPushEvaluator {
     String fcmInstallationId,
     String userId,
   ) async {
-    if (!available) return;
-    if (fcmInstallationId.isEmpty || _currentUserId() != userId) return;
+    final generation = _generation;
+    if (!available ||
+        _retiring ||
+        await _localPreferences.getString(_pendingOwnerKey) != null) {
+      return;
+    }
+    if (fcmInstallationId.isEmpty ||
+        (_currentUserId() != userId ||
+            _generation != generation ||
+            _retiring)) {
+      return;
+    }
     final config = await _preferences.cargar();
-    if (!config.pushPromocionesActivadas || _currentUserId() != userId) {
+    if (!config.pushPromocionesActivadas ||
+        (_currentUserId() != userId ||
+            _generation != generation ||
+            _retiring)) {
       return;
     }
     final installationId = await _installationId();
-    if (_currentUserId() != userId) return;
-    await _repository.registerInstallation(
+    if ((_currentUserId() != userId ||
+        _generation != generation ||
+        _retiring)) {
+      return;
+    }
+    await _registerTracked(
       installationId: installationId,
       fcmInstallationId: fcmInstallationId,
       platform: _platformName,
@@ -442,23 +596,35 @@ class FcmPushService implements FreshLocationPushEvaluator {
     FcmPromotionMessage message,
     String userId,
   ) async {
-    if (!available) return;
+    if (!available ||
+        _retiring ||
+        await _localPreferences.getString(_pendingOwnerKey) != null) {
+      return;
+    }
     if (!_markEventSeen(message.eventId) || _currentUserId() != userId) {
       return;
     }
     final config = await _preferences.cargar();
-    if (config.pushPromocionesActivadas && _currentUserId() == userId) {
+    if (config.pushPromocionesActivadas &&
+        !_retiring &&
+        _currentUserId() == userId) {
       _showForegroundMessage?.call(message);
     }
   }
 
   Future<void> _handleOpened(FcmPromotionMessage message, String userId) async {
-    if (!available) return;
+    if (!available ||
+        _retiring ||
+        await _localPreferences.getString(_pendingOwnerKey) != null) {
+      return;
+    }
     if (!_markEventSeen(message.eventId) || _currentUserId() != userId) {
       return;
     }
     final config = await _preferences.cargar();
-    if (config.pushPromocionesActivadas && _currentUserId() == userId) {
+    if (config.pushPromocionesActivadas &&
+        !_retiring &&
+        _currentUserId() == userId) {
       await _openPromotion?.call(message);
     }
   }
@@ -506,6 +672,24 @@ class FcmPushService implements FreshLocationPushEvaluator {
     }
     if (!failed && _currentUserId() == userId) {
       await _clearDisablePending(userId);
+    }
+  }
+
+  Future<void> _registerTracked({
+    required String installationId,
+    required String fcmInstallationId,
+    required String platform,
+  }) async {
+    final operation = _repository.registerInstallation(
+      installationId: installationId,
+      fcmInstallationId: fcmInstallationId,
+      platform: platform,
+    );
+    _registrationsInFlight.add(operation);
+    try {
+      await operation;
+    } finally {
+      _registrationsInFlight.remove(operation);
     }
   }
 

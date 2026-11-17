@@ -183,6 +183,108 @@ void main() {
     await service.dispose();
   });
 
+  test(
+    'logout sin red detiene FCM y bloquea el registro de otra cuenta',
+    () async {
+      var user = userA;
+      final messaging = _FakeMessaging();
+      final repository = _FakeRepository();
+      final preferences = _FakePreferences();
+      final service = _service(
+        userId: () => user,
+        messaging: messaging,
+        repository: repository,
+        preferences: preferences,
+      );
+      await service.enablePromotionalPush(explicitConsent: true);
+      final count = repository.registrations.length;
+      repository.failRevoke = true;
+      await expectLater(service.retireBeforeSignOut(), throwsStateError);
+      messaging.tokenController.add('fid-after-logout');
+      await Future<void>.delayed(Duration.zero);
+      expect(repository.registrations.length, count);
+      expect(preferences.value.pushPromocionesActivadas, false);
+      expect(messaging.disableCalls, 1);
+      user = userB;
+      final another = _service(
+        userId: () => user,
+        messaging: messaging,
+        repository: repository,
+      );
+      expect(
+        await another.enablePromotionalPush(explicitConsent: true),
+        FcmActivationResult.unavailable,
+      );
+      expect(repository.registrations.length, count);
+      await service.dispose();
+      await another.dispose();
+    },
+  );
+
+  test('logout invalida un registro FCM que sigue en vuelo', () async {
+    var user = userA;
+    final messaging = _FakeMessaging();
+    final repository = _FakeRepository();
+    final block = Completer<void>();
+    repository.registrationBlock = block;
+    final service = _service(
+      userId: () => user,
+      messaging: messaging,
+      repository: repository,
+    );
+    final activation = service.enablePromotionalPush(explicitConsent: true);
+    await _until(() => repository.registrations.isNotEmpty);
+    await service.retireBeforeSignOut();
+    user = userB;
+    block.complete();
+    expect(await activation, FcmActivationResult.signedOut);
+    messaging.tokenController.add('late-token');
+    await Future<void>.delayed(Duration.zero);
+    expect(repository.registrations.length, 1);
+    final another = _service(
+      userId: () => user,
+      messaging: messaging,
+      repository: repository,
+    );
+    expect(
+      await another.enablePromotionalPush(explicitConsent: true),
+      FcmActivationResult.unavailable,
+    );
+    await service.dispose();
+    await another.dispose();
+  });
+
+  test('cambio de cuenta durante registro entra en cuarentena', () async {
+    var user = userA;
+    final messaging = _FakeMessaging();
+    final repository = _FakeRepository();
+    final block = Completer<void>();
+    repository.registrationBlock = block;
+    final service = _service(
+      userId: () => user,
+      messaging: messaging,
+      repository: repository,
+    );
+    final activation = service.enablePromotionalPush(explicitConsent: true);
+    await _until(() => repository.registrations.isNotEmpty);
+    user = userB;
+    await service.synchronizeAccount();
+    block.complete();
+    expect(await activation, FcmActivationResult.signedOut);
+    expect(repository.revocations, isEmpty);
+    final next = _service(
+      userId: () => user,
+      messaging: messaging,
+      repository: repository,
+    );
+    expect(
+      await next.enablePromotionalPush(explicitConsent: true),
+      FcmActivationResult.unavailable,
+    );
+    await service.dispose();
+    await next.dispose();
+  });
+
   test('revoca el registro al detectar permiso de sistema retirado', () async {
     final messaging = _FakeMessaging();
     final repository = _FakeRepository();
@@ -438,12 +540,14 @@ class _FakeMessaging implements FcmMessagingGateway {
 }
 
 class _FakeRepository implements PushPromotionsRepository {
+  bool failRevoke = false;
   final preferenceSaves = <ConfiguracionAlertasProximidad>[];
   final registrations =
       <({String installationId, String fcmInstallationId, String platform})>[];
   final evaluations = <({String installationId, String eventId})>[];
   final revocations = <String>[];
   Completer<void>? registrationCompleter;
+  Completer<void>? registrationBlock;
 
   @override
   Future<void> savePreferences(ConfiguracionAlertasProximidad config) async {
@@ -465,10 +569,14 @@ class _FakeRepository implements PushPromotionsRepository {
       registrationCompleter = null;
       completer.complete();
     }
+    if (registrationBlock case final block?) {
+      await block.future;
+    }
   }
 
   @override
   Future<void> revokeInstallation(String installationId) async {
+    if (failRevoke) throw StateError('offline');
     revocations.add(installationId);
   }
 
