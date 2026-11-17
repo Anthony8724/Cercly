@@ -8,10 +8,13 @@ import java.net.URL
 internal class GeofenceRpcClient(
     private val baseUrl: String,
     private val publicKey: String,
+    private val staging: Boolean = false,
     private val connect: (URL) -> HttpURLConnection = { it.openConnection() as HttpURLConnection },
 ) {
     fun post(name: String, body: String, accessToken: String): String {
-        require(baseUrl == "https://aimubazregckmjchnszf.supabase.co")
+        val expected = if (staging) "https://dlajxviqhkdcqnmczhvr.supabase.co"
+            else "https://aimubazregckmjchnszf.supabase.co"
+        require(baseUrl == expected)
         require(publicKey.startsWith("sb_publishable_"))
         require(name == "reservar_promocion_geofencing" || name == "finalizar_reserva_geofencing")
         require(accessToken.isNotBlank() && '\n' !in accessToken && '\r' !in accessToken)

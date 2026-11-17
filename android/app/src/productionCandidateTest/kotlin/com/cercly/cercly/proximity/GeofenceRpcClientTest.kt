@@ -86,6 +86,17 @@ class GeofenceRpcClientTest {
             } finally { worker.shutdownNow() }
         }
     }
+    @Test fun stagingIsAllowedOnlyInStagingBuild() {
+        val staging = "https://dlajxviqhkdcqnmczhvr.supabase.co"
+        val client = GeofenceRpcClient(staging, "sb_publishable_test", true) { Fake(it, 200, "[]") }
+        assertEquals("[]", client.post("reservar_promocion_geofencing", "{}", "jwt"))
+        assertThrows(IllegalArgumentException::class.java) {
+            GeofenceRpcClient(base, "sb_publishable_test", true).post("reservar_promocion_geofencing", "{}", "jwt")
+        }
+        assertThrows(IllegalArgumentException::class.java) {
+            GeofenceRpcClient(staging, "sb_publishable_test", false).post("reservar_promocion_geofencing", "{}", "jwt")
+        }
+    }
     @Test fun refusesOtherBackendSecretKeyAndUnknownRpc() {
         assertThrows(IllegalArgumentException::class.java) { GeofenceRpcClient("https://evil.example", "sb_publishable_test").post("reservar_promocion_geofencing", "{}", "jwt") }
         assertThrows(IllegalArgumentException::class.java) { GeofenceRpcClient(base, "sb_secret_test").post("reservar_promocion_geofencing", "{}", "jwt") }
