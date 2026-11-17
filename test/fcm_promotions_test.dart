@@ -5,6 +5,7 @@ import 'package:cercly/features/notificaciones/models/configuracion_alertas_prox
 import 'package:cercly/features/notificaciones/push/fcm_messaging_gateway.dart';
 import 'package:cercly/features/notificaciones/push/fcm_promotion_message.dart';
 import 'package:cercly/features/notificaciones/push/fcm_push_service.dart';
+import 'package:cercly/features/notificaciones/push/fcm_environment_policy.dart';
 import 'package:cercly/features/notificaciones/push/push_promotions_repository.dart';
 import 'package:cercly/features/notificaciones/services/preferencias_alertas_proximidad.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -24,6 +25,72 @@ void main() {
     SharedPreferencesAsyncPlatform.instance =
         InMemorySharedPreferencesAsync.empty();
   });
+
+  test('política exige Staging, opt-in y URL exacta', () {
+    expect(const FcmEnvironmentPolicy.build().enabled, isFalse);
+    expect(stagingPolicy.enabled, isTrue);
+    expect(
+      const FcmEnvironmentPolicy(
+        staging: true,
+        optIn: false,
+        url: 'https://dlajxviqhkdcqnmczhvr.supabase.co',
+      ).enabled,
+      isFalse,
+    );
+    expect(
+      const FcmEnvironmentPolicy(
+        staging: true,
+        optIn: true,
+        url: 'https://example.test',
+      ).enabled,
+      isFalse,
+    );
+  });
+
+  test(
+    'producción bloquea activación y evaluación y limpia preferencia previa',
+    () async {
+      final messaging = _FakeMessaging();
+      final repository = _FakeRepository();
+      final preferences = _FakePreferences(
+        initial: const ConfiguracionAlertasProximidad(
+          pushPromocionesActivadas: true,
+        ),
+      );
+      final service = FcmPushService(
+        currentUserId: () => userA,
+        messaging: messaging,
+        repository: repository,
+        preferences: preferences,
+        local: SharedPreferencesAsync(),
+        policy: const FcmEnvironmentPolicy(
+          staging: false,
+          optIn: true,
+          url: 'https://dlajxviqhkdcqnmczhvr.supabase.co',
+        ),
+      );
+      expect(
+        await service.enablePromotionalPush(explicitConsent: true),
+        FcmActivationResult.unavailable,
+      );
+      await service.evaluateFreshLocation(
+        latitude: 0,
+        longitude: 0,
+        accuracyMeters: 10,
+        observedAt: now,
+      );
+      await service.reconcileAfterResume();
+      expect(preferences.value.pushPromocionesActivadas, isFalse);
+      expect(messaging.initializeCalls, 0);
+      expect(repository.registrations, isEmpty);
+      expect(repository.evaluations, isEmpty);
+      expect(
+        repository.preferenceSaves.single.pushPromocionesActivadas,
+        isFalse,
+      );
+      await service.dispose();
+    },
+  );
 
   test('exige consentimiento explícito antes de inicializar FCM', () async {
     final messaging = _FakeMessaging();
@@ -181,6 +248,7 @@ void main() {
       repository: repository,
       preferences: preferences,
       local: SharedPreferencesAsync(),
+      policy: stagingPolicy,
     );
     final opened = <FcmPromotionMessage>[];
     service.observeAuthentication(
@@ -301,6 +369,12 @@ void main() {
   );
 }
 
+const stagingPolicy = FcmEnvironmentPolicy(
+  staging: true,
+  optIn: true,
+  url: 'https://dlajxviqhkdcqnmczhvr.supabase.co',
+);
+
 FcmPushService _service({
   required String? Function() userId,
   _FakeMessaging? messaging,
@@ -314,6 +388,7 @@ FcmPushService _service({
   preferences: preferences ?? _FakePreferences(),
   local: SharedPreferencesAsync(),
   now: now,
+  policy: stagingPolicy,
 );
 
 class _FakeMessaging implements FcmMessagingGateway {

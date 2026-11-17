@@ -15,6 +15,7 @@ import '../services/historial_notificaciones_promocion.dart';
 import '../services/notificacion_local_service.dart';
 import '../services/preferencias_alertas_proximidad.dart';
 import '../push/fcm_push_service.dart';
+import '../push/fcm_environment_policy.dart';
 import '../push/push_promotions_repository.dart';
 
 class MonitorProximidadController extends ChangeNotifier {
@@ -26,6 +27,7 @@ class MonitorProximidadController extends ChangeNotifier {
     HistorialNotificacionesPromocion? historial,
     PreferenciasAlertasProximidadRepository? preferencias,
     FreshLocationPushEvaluator? pushEvaluator,
+    FcmEnvironmentPolicy? pushPolicy,
     Future<void> Function(String establecimientoId)? alAbrirEstablecimiento,
     this.intervalo = const Duration(minutes: 3),
     this.precisionMaximaMetros = 100,
@@ -47,6 +49,7 @@ class MonitorProximidadController extends ChangeNotifier {
            ),
        _preferencias = preferencias ?? PreferenciasAlertasProximidadLocal(),
        _pushEvaluator = pushEvaluator ?? FcmPushService.shared,
+       _pushPolicy = pushPolicy ?? const FcmEnvironmentPolicy.build(),
        _ahora = ahora ?? DateTime.now,
        _usuarioId = usuarioId ?? _usuarioActual;
 
@@ -65,6 +68,7 @@ class MonitorProximidadController extends ChangeNotifier {
   final HistorialNotificacionesPromocion _historial;
   final PreferenciasAlertasProximidadRepository _preferencias;
   final FreshLocationPushEvaluator _pushEvaluator;
+  final FcmEnvironmentPolicy _pushPolicy;
   final DateTime Function() _ahora;
   final String? Function() _usuarioId;
   final Duration intervalo;
@@ -207,12 +211,14 @@ class MonitorProximidadController extends ChangeNotifier {
       final configuracion = await _preferencias.cargar();
       if (!_sesionSigueVigente(usuarioAlInicio)) return;
       if (!configuracion.activadas &&
-          !configuracion.pushPromocionesActivadas &&
+          !(configuracion.pushPromocionesActivadas && _pushPolicy.enabled) &&
           !mostrarEnRadar) {
         _ultimoResultadoDiagnostico = 'alertas_desactivadas';
         return;
       }
-      if (configuracion.pushPromocionesActivadas && !mostrarEnRadar) {
+      if (configuracion.pushPromocionesActivadas &&
+          _pushPolicy.enabled &&
+          !mostrarEnRadar) {
         _ultimoResultadoDiagnostico = 'push_requiere_radar_visible';
         return;
       }
@@ -358,11 +364,12 @@ class MonitorProximidadController extends ChangeNotifier {
       }
       final politica = await _preferencias.cargar();
       if (!_sesionSigueVigente(usuarioAlInicio)) return;
-      if (!politica.activadas && !politica.pushPromocionesActivadas) {
+      if (!politica.activadas &&
+          !(politica.pushPromocionesActivadas && _pushPolicy.enabled)) {
         _ultimoResultadoDiagnostico = 'alertas_desactivadas_o_permiso_revocado';
         return;
       }
-      if (politica.pushPromocionesActivadas) {
+      if (politica.pushPromocionesActivadas && _pushPolicy.enabled) {
         if (!mostrarEnRadar ||
             usuarioAlInicio == null ||
             !_radarActivo ||

@@ -8,11 +8,13 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/configuracion_alertas_proximidad.dart';
 import '../services/preferencias_alertas_proximidad.dart';
 import 'fcm_messaging_gateway.dart';
+import 'fcm_environment_policy.dart';
 import 'fcm_promotion_message.dart';
 import 'push_promotions_repository.dart';
 
 enum FcmActivationResult {
   activated,
+  unavailable,
   consentRequired,
   signedOut,
   firebaseNotConfigured,
@@ -28,6 +30,7 @@ class FcmPushService implements FreshLocationPushEvaluator {
     this._local,
     String? Function()? currentUserId,
     DateTime Function()? now,
+    FcmEnvironmentPolicy? policy,
   }) : _client = client,
        _messaging = messaging ?? FirebaseMessagingGateway(),
        _repository =
@@ -36,7 +39,8 @@ class FcmPushService implements FreshLocationPushEvaluator {
        _currentUserId =
            currentUserId ??
            (() => (client ?? Supabase.instance.client).auth.currentUser?.id),
-       _now = now ?? DateTime.now;
+       _now = now ?? DateTime.now,
+       _policy = policy ?? const FcmEnvironmentPolicy.build();
 
   static final FcmPushService shared = FcmPushService();
   static const _installationIdKey = 'cercly.fcm.installation_id.v1';
@@ -51,6 +55,8 @@ class FcmPushService implements FreshLocationPushEvaluator {
       _local ?? SharedPreferencesAsync();
   final String? Function() _currentUserId;
   final DateTime Function() _now;
+  final FcmEnvironmentPolicy _policy;
+  bool get available => _policy.enabled;
   SupabaseClient get _supabase => _client ?? Supabase.instance.client;
 
   StreamSubscription<AuthState>? _authSubscription;
@@ -64,6 +70,10 @@ class FcmPushService implements FreshLocationPushEvaluator {
   final Set<String> _seenEvents = <String>{};
 
   Future<void> reconcileAfterResume() async {
+    if (!available) {
+      await _cleanupUnavailable();
+      return;
+    }
     final userId = _currentUserId();
     if (userId == null) return;
     final config = await _preferences.cargar();
@@ -147,6 +157,7 @@ class FcmPushService implements FreshLocationPushEvaluator {
   Future<FcmActivationResult> enablePromotionalPush({
     required bool explicitConsent,
   }) async {
+    if (!available) return FcmActivationResult.unavailable;
     if (!explicitConsent) return FcmActivationResult.consentRequired;
     final userId = _currentUserId();
     if (userId == null) return FcmActivationResult.signedOut;
@@ -246,6 +257,7 @@ class FcmPushService implements FreshLocationPushEvaluator {
     final id = await _readInstallationId();
     if (id != null) await _repository.revokeInstallation(id);
     await _stopListeners();
+    if (!available && id == null) return;
     try {
       if (await _messaging.initialize()) {
         await _messaging.disableRegistration();
@@ -274,6 +286,7 @@ class FcmPushService implements FreshLocationPushEvaluator {
     required double accuracyMeters,
     required DateTime observedAt,
   }) async {
+    if (!available) return;
     final userId = _currentUserId();
     if (userId == null) return;
     final config = await _preferences.cargar();
@@ -319,6 +332,10 @@ class FcmPushService implements FreshLocationPushEvaluator {
   }
 
   Future<void> _handleAccount(String? userId) async {
+    if (!available) {
+      await _cleanupUnavailable();
+      return;
+    }
     if (userId == _activeUserId) return;
     final previous = _activeUserId;
     await _stopListeners();
@@ -392,6 +409,7 @@ class FcmPushService implements FreshLocationPushEvaluator {
     String fcmInstallationId,
     String userId,
   ) async {
+    if (!available) return;
     if (fcmInstallationId.isEmpty || _currentUserId() != userId) return;
     final config = await _preferences.cargar();
     if (!config.pushPromocionesActivadas || _currentUserId() != userId) {
@@ -410,6 +428,7 @@ class FcmPushService implements FreshLocationPushEvaluator {
     ConfiguracionAlertasProximidad config,
     String userId,
   ) async {
+    if (!available) return;
     if (_currentUserId() != userId) return;
     try {
       await _repository.savePreferences(config);
@@ -423,6 +442,7 @@ class FcmPushService implements FreshLocationPushEvaluator {
     FcmPromotionMessage message,
     String userId,
   ) async {
+    if (!available) return;
     if (!_markEventSeen(message.eventId) || _currentUserId() != userId) {
       return;
     }
@@ -433,6 +453,7 @@ class FcmPushService implements FreshLocationPushEvaluator {
   }
 
   Future<void> _handleOpened(FcmPromotionMessage message, String userId) async {
+    if (!available) return;
     if (!_markEventSeen(message.eventId) || _currentUserId() != userId) {
       return;
     }
@@ -446,6 +467,42 @@ class FcmPushService implements FreshLocationPushEvaluator {
     if (!_seenEvents.add(id)) return false;
     if (_seenEvents.length > 128) _seenEvents.remove(_seenEvents.first);
     return true;
+  }
+
+  Future<void> _cleanupUnavailable() async {
+    final userId = _currentUserId();
+    if (userId == null) return;
+    final config = await _preferences.cargar();
+    final pending = await _isDisablePending(userId);
+    final id = await _readInstallationId();
+    if (_currentUserId() != userId) return;
+    if (!config.pushPromocionesActivadas && !pending && id == null) return;
+    final disabled = config.copiarCon(pushPromocionesActivadas: false);
+    await _preferences.guardar(disabled);
+    await _markDisablePending(userId);
+    await _stopListeners();
+    var failed = false;
+    try {
+      await _messaging.disableRegistration();
+    } catch (_) {
+      failed = true;
+    }
+    if (_currentUserId() != userId) return;
+    try {
+      await _repository.savePreferences(disabled);
+    } catch (_) {
+      failed = true;
+    }
+    if (id != null && _currentUserId() == userId) {
+      try {
+        await _repository.revokeInstallation(id);
+      } catch (_) {
+        failed = true;
+      }
+    }
+    if (!failed && _currentUserId() == userId) {
+      await _clearDisablePending(userId);
+    }
   }
 
   Future<void> _stopListeners() async {

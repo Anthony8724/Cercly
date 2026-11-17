@@ -5,6 +5,7 @@ import '../../explorar/services/ubicacion_service.dart';
 import '../../../shared/ui/cercly_ui.dart';
 import '../../../sky/sky_theme.dart';
 import '../models/configuracion_alertas_proximidad.dart';
+import '../push/fcm_push_service.dart';
 import 'monitor_proximidad_app.dart';
 import '../services/notificacion_local_service.dart';
 import '../services/preferencias_alertas_proximidad.dart';
@@ -559,10 +560,11 @@ class _AlertasProximidadSectionState extends State<AlertasProximidadSection>
                   color: sky.interactive,
                 ),
               ),
-              PushPromotionsSection(
-                preferences: _preferencias,
-                initialEnabled: _configuracion.pushPromocionesActivadas,
-              ),
+              if (FcmPushService.shared.available)
+                PushPromotionsSection(
+                  preferences: _preferencias,
+                  initialEnabled: _configuracion.pushPromocionesActivadas,
+                ),
               if (_cargando || _guardando) ...[
                 const SizedBox(height: 4),
                 const LinearProgressIndicator(),

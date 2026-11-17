@@ -78,6 +78,8 @@ class _PushPromotionsSectionState extends State<PushPromotionsSection> {
             _message = switch (result) {
               FcmActivationResult.consentRequired =>
                 'Debes aceptar el aviso para activar las notificaciones push.',
+              FcmActivationResult.unavailable =>
+                'Las notificaciones push todavía no están disponibles.',
               FcmActivationResult.signedOut =>
                 'Inicia sesión para activar las notificaciones push.',
               FcmActivationResult.firebaseNotConfigured =>

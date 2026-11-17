@@ -1,5 +1,12 @@
 # Configuración Android de FCM para promociones
 
+El cliente solo habilita push cuando coinciden `CERCLY_STAGING=true`,
+`CERCLY_FCM_STAGING_ENABLED=true` y la URL exacta del proyecto Staging.
+La compilación pública queda desactivada aunque conserve una preferencia
+anterior. Al iniciar sesión se intenta apagar la preferencia y retirar una
+instalación previa; si falla la retirada se conserva un marcador de reintento.
+Las alertas locales y el radar conservan su propia configuración.
+
 El proyecto `cercly-sky` ya tiene registradas las apps Android de Producción y
 Staging. La configuración cliente se encuentra en
 `android/app/google-services.json`; el plugin Google Services selecciona dentro

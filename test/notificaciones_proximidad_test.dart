@@ -1,3 +1,4 @@
+import 'package:cercly/features/notificaciones/push/fcm_environment_policy.dart';
 import 'dart:async';
 
 import 'package:cercly/features/explorar/models/ubicacion_usuario.dart';
@@ -1169,6 +1170,7 @@ void main() {
           historial: _HistorialFalso(),
           preferencias: preferences,
           pushEvaluator: push,
+          pushPolicy: const FcmEnvironmentPolicy(staging: true, optIn: true, url: 'https://dlajxviqhkdcqnmczhvr.supabase.co'),
           usuarioId: () => 'usuario-1',
           ahora: () => instanteBase,
         );
