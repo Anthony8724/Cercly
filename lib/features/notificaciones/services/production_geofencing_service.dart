@@ -45,7 +45,7 @@ class ProductionGeofencingService {
       await _channel.invokeMethod<bool>('setConsent', {'enabled': enabled}) ==
           true;
   Future<bool> accountChanged(String? userId) async {
-    if (!_enabled || !_staging) return _enabled;
+    if (!_enabled) return false;
     return await _channel.invokeMethod<bool>('accountChanged', {
           'userId': userId,
         }) ==

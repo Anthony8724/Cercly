@@ -69,7 +69,7 @@ void main() {
               'gms': true,
               'zoneCount': 1,
             },
-            'setConsent' || 'importHistory' => true,
+            'setConsent' || 'importHistory' || 'accountChanged' => true,
             'register' => 'accepted_by_gms',
             _ => null,
           };
@@ -89,6 +89,19 @@ void main() {
     expect(await service.registerZones([]), 'unavailable');
     expect(calls, isEmpty);
   });
+  test(
+    'production candidate forwards account changes to the native side',
+    () async {
+      final service = ProductionGeofencingService(
+        channel: channel,
+        enabled: true,
+        staging: false,
+      );
+      expect(await service.accountChanged('user-a'), true);
+      expect(await service.accountChanged(null), true);
+      expect(calls.map((call) => call.arguments['userId']), ['user-a', null]);
+    },
+  );
   test('explicit consent travels independently and can be revoked', () async {
     final service = ProductionGeofencingService(
       channel: channel,

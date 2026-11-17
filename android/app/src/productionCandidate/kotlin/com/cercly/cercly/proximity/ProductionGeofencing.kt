@@ -80,6 +80,14 @@ object ProductionGeofencing {
         if (!enabled || !saved) remove(c)
         return saved
     }
+    // Do not carry zones, consent or the local ledger over to another account.
+    @Synchronized fun accountChanged(c: Context, userId: String?): Boolean {
+        val p = prefs(c)
+        val previous = p.getString("userId", null)
+        if (previous == userId && userId != null) return true
+        remove(c)
+        return p.edit().clear().putString("userId", userId).commit()
+    }
     @Synchronized fun importHistory(c: Context, last: Map<String, Number>, recent: List<Number>): Boolean {
         val p = prefs(c)
         if (p.getBoolean("historyImported", false)) return true
@@ -130,12 +138,13 @@ object ProductionGeofencing {
     }
     @Synchronized fun register(c: Context, json: String, done: (String) -> Unit) {
         if (registrationBusy) { done("registration_busy"); return }
-        if (!allowed(c) || !prefs(c).getBoolean("historyImported", false)) { done("authorization_required"); return }
+        if (!allowed(c) || prefs(c).getString("userId", null) == null || !prefs(c).getBoolean("historyImported", false)) { done("authorization_required"); return }
         val items = try {
             val array = JSONArray(json)
             require(array.length() <= ProximityPolicy.MAX_ZONES)
             (0 until array.length()).map { array.getJSONObject(it) }.onEach { z ->
                 require(ProximityPolicy.uuid(z.getString("id")) && ProximityPolicy.uuid(z.getString("business")))
+                require(z.getString("userId") == prefs(c).getString("userId", null))
                 require(ProximityPolicy.positionValid(z.getDouble("lat"), z.getDouble("lon")))
                 require(z.getDouble("radius") in 100.0..5000.0)
                 require(z.getLong("expires") > now())
@@ -243,7 +252,8 @@ object ProductionGeofencing {
         } finally { connection.disconnect() }
     }
     @Synchronized private fun validateAndNotify(c: Context, z: JSONObject, row: JSONObject, location: Location): String {
-        if (!allowed(c) || !prefs(c).getBoolean("historyImported", false)) return "authorization_required"
+        if (!allowed(c) || !prefs(c).getBoolean("historyImported", false) ||
+            z.optString("userId") != prefs(c).getString("userId", null)) return "authorization_required"
         // Recheck persisted generation/zone after the network request and before reserving a slot.
         if (zones(c).none { it.toString() == z.toString() }) return "zone_removed"
         val time = now(); val business = row.getJSONObject("establecimientos")
