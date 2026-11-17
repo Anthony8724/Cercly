@@ -294,3 +294,20 @@ def verificar_concurrencia_fcm(execute):
     state=sql(f"select active::text||':'||(fcm_installation_id is null)::text from public.fcm_installations where installation_id='{refresh_inst}';").strip()
     if state!='false:true': raise RuntimeError('LATE_TOKEN_REFRESH_LEFT_ASSOCIATION')
     print('FCM refresh after retirement: rejected; token detached PASS',flush=True)
+
+    # Pre-send check fails once a confirmed logout retires the installation.
+    delivery_inst='d8400000-0000-4000-8000-000000000093'
+    delivery_event='d8500000-0000-4000-8000-000000000093'
+    sql(f"delete from public.promotion_push_reservations where user_id='{uid}'; begin; {auth_sql} select public.registrar_mi_instalacion_fcm('{delivery_inst}','fid-pre-send-check-token-0001','android'); commit;")
+    sql(f"begin; set local role service_role; select count(*) from public.reservar_promocion_push_reciente('{uid}','{delivery_inst}','{delivery_event}',0::float8,0::float8,20::float8,now(),0::smallint,'{uid}'); commit;")
+    rid=sql(f"select id from public.promotion_push_reservations where event_id='{delivery_event}';").strip()
+    if not rid: raise RuntimeError('PRE_SEND_FIXTURE_NO_RESERVATION')
+    def preflight():
+        output=sql(f"begin; set local role service_role; select public.entrega_fcm_autorizada('{rid}','{uid}'); commit;")
+        values=[line for line in output.splitlines() if line in ('t','f')]
+        if len(values)!=1: raise RuntimeError('PRE_SEND_UNEXPECTED_RESULT')
+        return values[0]
+    if preflight()!='t': raise RuntimeError('VALID_PRE_SEND_REJECTED')
+    sql(f"begin; {auth_sql} select public.retirar_mi_instalacion_fcm('{delivery_inst}'); commit;")
+    if preflight()!='f': raise RuntimeError('RETIRED_RESERVATION_STILL_SENDABLE')
+    print('FCM pre-send check stops a retired reservation PASS',flush=True)
