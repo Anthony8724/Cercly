@@ -1,6 +1,6 @@
 -- Fixtures sintéticos. Corre únicamente contra el PostgreSQL local de Supabase.
 begin;
-select plan(23);
+select plan(31);
 
 insert into auth.users(id, email, raw_user_meta_data, last_sign_in_at) values
   ('c8100000-0000-0000-0000-000000000001', 'fcm-owner@cercly.test', '{}', now()),
@@ -131,6 +131,31 @@ select is((select count(*)::integer from public.fcm_installations
   where installation_id='c8400000-0000-0000-0000-000000000001'
     and user_id='c8100000-0000-0000-0000-000000000001'), 1,
   'el intento de otra cuenta no cambió el propietario de la instalación');
+
+set local role service_role;
+select lives_ok($$select public.finalizar_reserva_promocion_push(
+  (select id from public.promotion_push_reservations where event_id='c8500000-0000-0000-0000-000000000001'),
+  'sent','provider-original')$$, 'finaliza una reserva enviada');
+select lives_ok($$select public.finalizar_reserva_promocion_push(
+  (select id from public.promotion_push_reservations where event_id='c8500000-0000-0000-0000-000000000001'),
+  'invalid_token',null)$$, 'ignora un resultado contradictorio posterior');
+reset role;
+select is((select status from public.promotion_push_reservations where event_id='c8500000-0000-0000-0000-000000000001'),
+  'sent', 'un resultado posterior no cambia el estado final');
+select is((select provider_message_id from public.promotion_push_reservations where event_id='c8500000-0000-0000-0000-000000000001'),
+  'provider-original', 'un reintento conserva el identificador original');
+select ok((select active from public.fcm_installations where installation_id='c8400000-0000-0000-0000-000000000001'),
+  'un invalid_token tardío no desactiva la instalación');
+set local role service_role;
+select throws_ok($$select public.finalizar_reserva_promocion_push(null,null,null)$$,
+  '22023','invalid delivery status','rechaza un estado nulo');
+select lives_ok($$select public.finalizar_reserva_promocion_push(
+  (select id from public.promotion_push_reservations where event_id='c8500000-0000-0000-0000-000000000005'),
+  'invalid_token',null)$$, 'acepta token inválido en una reserva pendiente');
+reset role;
+select ok(not (select active from public.fcm_installations where installation_id='c8400000-0000-0000-0000-000000000001'),
+  'un token inválido confirmado desactiva la instalación');
+update public.fcm_installations set active=true where installation_id='c8400000-0000-0000-0000-000000000001';
 
 delete from public.promotion_push_reservations where user_id='c8100000-0000-0000-0000-000000000001';
 set local role service_role;

@@ -52,3 +52,25 @@ def verificar_concurrencia_fcm(execute):
             raise RuntimeError('FCM_CONCURRENCY_RESERVATION_COUNT')
         sql("delete from public.promotion_push_reservations where user_id='d8100000-0000-4000-8000-000000000001';")
         print('FCM two-device race:', 'same event' if same_event else 'different events', '1/2 reserved PASS', flush=True)
+
+    sql("""begin; set local role service_role;
+      select count(*) from public.reservar_promocion_push_reciente(
+      'd8100000-0000-4000-8000-000000000001','d8400000-0000-4000-8000-000000000001',
+      'd8500000-0000-4000-8000-000000000099',0::double precision,0::double precision,
+      20::double precision,now(),0::smallint); commit;""")
+    barrier = Barrier(2)
+    def finish(status):
+        barrier.wait(timeout=10)
+        sql(f"""begin; set local role service_role;
+          select public.finalizar_reserva_promocion_push(
+          (select id from public.promotion_push_reservations where event_id='d8500000-0000-4000-8000-000000000099'),
+          '{status}',null); commit;""")
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        list(pool.map(finish, ('sent', 'invalid_token')))
+    state = sql("""select r.status||':'||i.active::text
+       from public.promotion_push_reservations r
+       join public.fcm_installations i on i.installation_id=r.installation_id
+       where r.event_id='d8500000-0000-4000-8000-000000000099';""").strip()
+    if state not in ('sent:true', 'invalid_token:false'):
+        raise RuntimeError('FCM_CONCURRENT_FINALIZATION_INCONSISTENT:' + state)
+    print('FCM competing finalizations:', state, 'PASS', flush=True)
