@@ -483,7 +483,11 @@ class FcmPushService implements FreshLocationPushEvaluator {
     await _stopListeners();
     var failed = false;
     try {
-      await _messaging.disableRegistration();
+      if (await _messaging.initialize()) {
+        await _messaging.disableRegistration();
+      } else {
+        failed = true;
+      }
     } catch (_) {
       failed = true;
     }

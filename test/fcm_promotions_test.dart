@@ -81,7 +81,7 @@ void main() {
       );
       await service.reconcileAfterResume();
       expect(preferences.value.pushPromocionesActivadas, isFalse);
-      expect(messaging.initializeCalls, 0);
+      expect(messaging.initializeCalls, 1); // Limpieza de un registro previo.
       expect(repository.registrations, isEmpty);
       expect(repository.evaluations, isEmpty);
       expect(
