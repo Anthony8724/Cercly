@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:cercly/features/auth/screens/account_mode_selector.dart';
 import 'package:cercly/features/auth/screens/auth_gate.dart';
 import 'package:cercly/features/auth/services/account_capabilities.dart';
+import 'package:cercly/features/auth/services/profile_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -56,6 +57,53 @@ void main() {
     expect(AccountCapabilities.fromRole('administrador').superadmin, isFalse);
   });
 
+  test('clasifica errores de capacidades sin exponer sus mensajes', () {
+    expect(
+      ProfileService.diagnosticCategory(TimeoutException('private detail')),
+      ProfileDiagnosticCategory.timeout,
+    );
+    expect(
+      ProfileService.diagnosticCategory(
+        const PostgrestException(message: 'private detail', code: 'PGRST202'),
+      ),
+      ProfileDiagnosticCategory.rpc,
+    );
+    expect(
+      ProfileService.diagnosticCategory(
+        const PostgrestException(message: 'private detail', code: '08006'),
+      ),
+      ProfileDiagnosticCategory.http,
+    );
+    expect(
+      ProfileService.diagnosticCategory(
+        const AuthException('private detail', statusCode: '401'),
+      ),
+      ProfileDiagnosticCategory.sessionExpired,
+    );
+    expect(
+      ProfileService.diagnosticCategory(AuthSessionMissingException()),
+      ProfileDiagnosticCategory.sessionExpired,
+    );
+    expect(
+      ProfileService.diagnosticCategory(
+        const AuthException('private detail', statusCode: '503'),
+      ),
+      ProfileDiagnosticCategory.http,
+    );
+    expect(
+      ProfileService.diagnosticCategory(
+        const PostgrestException(message: 'private detail', code: '42501'),
+      ),
+      ProfileDiagnosticCategory.authorization,
+    );
+    expect(
+      ProfileService.diagnosticCategory(
+        const FormatException('private detail'),
+      ),
+      ProfileDiagnosticCategory.decoding,
+    );
+  });
+
   testWidgets('preferencia local no eleva a usuario normal', (tester) async {
     SharedPreferences.setMockInitialValues({
       'cercly_modo_cuenta_normal': 'administracion',
@@ -105,6 +153,10 @@ void main() {
     await tester.tap(find.text('Propietario'));
     await tester.pumpAndSettle();
     expect(find.text('negocio'), findsOneWidget);
+    expect(
+      find.text('No pudimos verificar tus permisos. Inténtalo de nuevo.'),
+      findsNothing,
+    );
     expect(checks, greaterThanOrEqualTo(2));
     final prefs = await SharedPreferences.getInstance();
     expect(prefs.getString('cercly_modo_cuenta_super'), 'propietario');
@@ -167,4 +219,52 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('cuenta'), findsOneWidget);
   });
+
+  testWidgets(
+    'una recarga exitosa al reanudar descarta un error obsoleto de cambio de modo',
+    (tester) async {
+      final pendingModeCheck = Completer<AccountCapabilities>();
+      var checks = 0;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: AuthGate(
+            authStateChanges: Stream.value(_user('race')),
+            cargarCapacidades: (_) {
+              checks++;
+              return checks == 2
+                  ? pendingModeCheck.future
+                  : Future.value(_super);
+            },
+            construirNavegacion: (_, destino) => Scaffold(
+              body: Column(
+                children: [Text(destino.name), const AccountModeSelector()],
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('selector-modos-cuenta')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Propietario'));
+      await tester.pump();
+      expect(checks, 2);
+
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+      await tester.pumpAndSettle();
+      expect(checks, 3);
+      pendingModeCheck.completeError(
+        TimeoutException('private transport detail'),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      expect(
+        find.text('No pudimos verificar tus permisos. Inténtalo de nuevo.'),
+        findsNothing,
+      );
+      expect(find.text('administrador'), findsOneWidget);
+    },
+  );
 }

@@ -53,6 +53,7 @@ class ExplorarController extends ChangeNotifier {
   String busqueda = '';
   int radioMetros = 5000;
   bool soloPromociones = false;
+  int revisionDestacadas = 0;
   bool cargandoTaxonomia = false;
   bool cargandoResultados = false;
   bool hayMasResultados = false;
@@ -214,6 +215,14 @@ class ExplorarController extends ChangeNotifier {
     } finally {
       _restaurandoUbicacion = false;
     }
+  }
+
+  /// Indica que la persona solicito actualizar el catalogo destacado.
+  /// No se incrementa con cada busqueda o filtro de establecimientos.
+  void solicitarRecargaDestacadas() {
+    if (_disposed) return;
+    revisionDestacadas++;
+    notifyListeners();
   }
 
   Future<void> cambiarRadio(int nuevoRadio) async {

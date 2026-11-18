@@ -11,6 +11,7 @@ import tempfile
 import time
 import uuid
 from correcciones_concurrencia_local import verificar_concurrencia, verificar_concurrencia_moderacion
+from fcm_concurrencia_local import verificar_concurrencia_fcm
 
 ROOT = Path(__file__).resolve().parents[1]
 IMAGE = 'public.ecr.aws/supabase/postgres@sha256:0450166354dc9c1d25f0322ac8b580774d4fb0184d2b087f6e4fe9499c66cf53'
@@ -52,7 +53,10 @@ def main():
         for path in [ROOT / 'supabase/tests/correcciones_aplicadas_test.sql',
                      ROOT / 'supabase/tests/correcciones_casos_adicionales_test.sql',
                      ROOT / 'supabase/tests/registro_nuevo_establecimiento_test.sql',
-                     ROOT / 'supabase/tests/reclamar_establecimiento_osm_test.sql']:
+                     ROOT / 'supabase/tests/reclamar_establecimiento_osm_test.sql',
+                     ROOT / 'supabase/tests/fcm_promotions_rules_test.sql',
+                     ROOT / 'supabase/tests/fcm_promotions_security_test.sql',
+                     ROOT / 'supabase/tests/geofencing_shared_test.sql']:
             output = sql(path)
             plans = re.findall(r'^1\.\.(\d+)$', output, re.M)
             passed = re.findall(r'^ok \d+', output, re.M)
@@ -61,6 +65,7 @@ def main():
             print(f'{path.name}: {len(passed)}/{plans[0]} PASS', flush=True)
         verificar_concurrencia(lambda query: run(['exec','-i',name,'psql','-X','-At','-U','postgres','-d','postgres','-v','ON_ERROR_STOP=1','-v','VERBOSITY=sqlstate'],query.encode()))
         verificar_concurrencia_moderacion(lambda query: run(['exec','-i',name,'psql','-X','-At','-U','postgres','-d','postgres','-v','ON_ERROR_STOP=1','-v','VERBOSITY=sqlstate'],query.encode()))
+        verificar_concurrencia_fcm(lambda query: run(['exec','-i',name,'psql','-X','-At','-U','postgres','-d','postgres','-v','ON_ERROR_STOP=1','-v','VERBOSITY=sqlstate'],query.encode()))
     finally:
         if started:
             result = run(['stop', '--time', '2', name])

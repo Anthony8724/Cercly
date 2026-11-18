@@ -145,6 +145,17 @@ def main():
             '20261108165118_compatibilidad_moderacion_y_privacidad.sql',
             '20261109005658_supresion_revisada_historial_minimo.sql',
             '20261109033653_conflictos_rpc_no_reintentables.sql',
+            '20261111090000_fcm_promotions.sql',
+            '20261112033320_promociones_destacadas.sql',
+            '20261115120000_estadisticas_administrador_lectura.sql',
+            '20261115235248_patrocinios_confirmacion_pago_manual.sql',
+            '20261116020650_auditoria_pagos_destacadas.sql',
+            '20261116061117_fcm_account_deletion_dependencies.sql',
+            '20261117041814_finalizar_push_idempotente.sql',
+            '20261117042746_reserva_compartida_geofencing.sql',
+            '20261117044632_geofencing_sesion_activa.sql',
+            '20261117050715_fcm_invalid_token_rotation_guard.sql',
+            '20261117050834_fcm_session_retirement.sql',
         )
         forward = [ROOT / 'supabase/migrations' / n for n in forward_names]
         if any(not p.is_file() for p in pending + forward):
@@ -166,7 +177,7 @@ begin
   for t in select schemaname,tablename from pg_tables
     where schemaname in ('public','auth')
       -- Nuevas tablas vacías añadidas por la migración no son datos preexistentes.
-      and tablename not in ('preferencias_usuario','preferencias_usuario_categorias','correcciones_aplicadas','auditoria_moderacion_establecimientos')
+      and tablename not in ('preferencias_usuario','preferencias_usuario_categorias','correcciones_aplicadas','auditoria_moderacion_establecimientos','push_preferences','fcm_installations','promotion_push_reservations','promociones_destacadas','auditoria_pagos_destacadas')
     order by schemaname,tablename
   loop
     execute format('select md5(coalesce(string_agg(row_data, chr(10) order by row_data), '''')) from (select to_jsonb(x)::text row_data from %I.%I x) s', t.schemaname,t.tablename) into h;
@@ -225,6 +236,15 @@ update public.usuarios set rol='propietario' where id='b4900000-0000-0000-0000-0
             sql(path.stem, path.read_text())
         if before != sql('profiles-after-forward', snapshot_query):
             raise RuntimeError('Las migraciones nuevas alteraron datos preexistentes')
+        new_tables_empty = sql('new-migration-tables-empty', """
+select (select count(*) from public.push_preferences)
+     + (select count(*) from public.fcm_installations)
+     + (select count(*) from public.promotion_push_reservations)
+     + (select count(*) from public.promociones_destacadas)
+     + (select count(*) from public.auditoria_pagos_destacadas);
+""").strip()
+        if new_tables_empty != '0':
+            raise RuntimeError('Las migraciones de demostración insertaron filas fuera de un flujo autorizado')
         if sql('audit-initially-empty', 'select (select count(*) from public.correcciones_aplicadas)+(select count(*) from public.auditoria_moderacion_establecimientos);').strip() != '0':
             raise RuntimeError('La migración creó historial no solicitado')
         print('Migraciones nuevas y conservación de datos: PASS', flush=True)

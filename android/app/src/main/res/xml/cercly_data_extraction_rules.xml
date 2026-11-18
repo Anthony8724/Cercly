@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Flutter's legacy session and other settings share one preferences file.
+     Exclude shared preferences and DataStore from device transfer so neither
+     credentials nor the native authorization gate can be restored elsewhere. -->
+<data-extraction-rules>
+    <cloud-backup>
+        <exclude domain="sharedpref" path="." />
+        <exclude domain="file" path="datastore/" />
+    </cloud-backup>
+    <device-transfer>
+        <exclude domain="sharedpref" path="." />
+        <exclude domain="file" path="datastore/" />
+    </device-transfer>
+</data-extraction-rules>

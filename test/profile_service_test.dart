@@ -173,6 +173,86 @@ void main() {
     },
   );
   test(
+    'logout pendiente no cierra la cuenta que inició sesión después',
+    () async {
+      final client = await clientFor((_) async => http.Response('', 204));
+      final wait = Completer<void>();
+      final service = AuthService(
+        supabase: client,
+        retirePromotionalPush: () => wait.future,
+      );
+      final logout = service.signOut();
+      await client.auth.recoverSession(jsonEncode(sessionJson(id: 'b')));
+      wait.complete();
+      await logout;
+      expect(client.auth.currentUser?.id, 'b');
+    },
+  );
+  test(
+    'cambio de cuenta durante retiro nativo no retira FCM de la cuenta nueva',
+    () async {
+      final client = await clientFor((_) async => http.Response('', 204));
+      final wait = Completer<void>();
+      var fcmCalled = false;
+      final service = AuthService(
+        supabase: client,
+        retireNativeGeofence: () => wait.future,
+        retirePromotionalPush: () async {
+          fcmCalled = true;
+        },
+      );
+      final logout = service.signOut();
+      await client.auth.recoverSession(jsonEncode(sessionJson(id: 'b')));
+      wait.complete();
+      await logout;
+      expect(fcmCalled, false);
+      expect(client.auth.currentUser?.id, 'b');
+    },
+  );
+  test('logout invalida nativo, retira FCM y después cierra sesión', () async {
+    final calls = <String>[];
+    final client = await clientFor((request) async {
+      if (request.url.path.endsWith('/logout')) calls.add('auth');
+      return http.Response('', 204);
+    });
+    final service = AuthService(
+      supabase: client,
+      retireNativeGeofence: () async {
+        calls.add('native');
+      },
+      retirePromotionalPush: () async {
+        calls.add('fcm');
+      },
+    );
+    await service.signOut();
+    expect(calls, ['native', 'fcm', 'auth']);
+    expect(client.auth.currentSession, isNull);
+  });
+  test('fallo del canal nativo y FCM no impide cierre local', () async {
+    final client = await clientFor((request) async {
+      if (request.url.path.endsWith('/logout')) {
+        throw http.ClientException('offline');
+      }
+      return http.Response('', 204);
+    });
+    final service = AuthService(
+      supabase: client,
+      retireNativeGeofence: () async => throw StateError('native unavailable'),
+      retirePromotionalPush: () async => throw StateError('offline'),
+    );
+    await service.signOut();
+    expect(client.auth.currentSession, isNull);
+  });
+  test('logout continúa si falla la retirada remota de FCM', () async {
+    final client = await clientFor((_) async => http.Response('', 204));
+    final service = AuthService(
+      supabase: client,
+      retirePromotionalPush: () async => throw StateError('offline'),
+    );
+    await service.signOut();
+    expect(client.auth.currentSession, isNull);
+  });
+  test(
     'sesión serializada se restaura y logout elimina identidad aun sin red',
     () async {
       final client = await clientFor((r) async {
@@ -193,10 +273,7 @@ void main() {
       expect(AuthService(supabase: restored).currentUser?.id, 'a');
       await AuthService(supabase: restored).signOut();
       expect(restored.auth.currentSession, isNull);
-      await expectLater(
-        AuthService(supabase: client).signOut(),
-        throwsA(isA<Exception>()),
-      );
+      await AuthService(supabase: client).signOut();
       expect(client.auth.currentSession, isNull);
       await expectLater(
         ProfileService(supabase: client).loadRole('a'),
@@ -204,6 +281,14 @@ void main() {
       );
     },
   );
+  test('logout termina aunque falle la retirada de push', () async {
+    final client = await clientFor((_) async => http.Response('', 204));
+    await AuthService(
+      supabase: client,
+      retirePromotionalPush: () async => throw TimeoutException('revocación'),
+    ).signOut();
+    expect(client.auth.currentSession, isNull);
+  });
   test('reintento de sesión renueva realmente el token una vez', () async {
     final requests = <http.Request>[];
     final client = await clientFor((request) async {

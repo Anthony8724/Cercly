@@ -8,9 +8,14 @@
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
     <application
+        android:allowBackup="false"
+        android:dataExtractionRules="@xml/cercly_data_extraction_rules"
         android:label="${appLabel}"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
+        <meta-data android:name="firebase_messaging_installation_id_enabled" android:value="true" />
+        <meta-data android:name="firebase_messaging_auto_init_enabled" android:value="false" />
+        <meta-data android:name="firebase_analytics_collection_enabled" android:value="false" />
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -34,10 +39,8 @@
             </intent-filter>
         </activity>
         <meta-data android:name="flutterEmbedding" android:value="2" />
-        <receiver android:name=".proximity.GeofenceBroadcastReceiver" android:enabled="true" android:exported="false" />
-        <receiver android:name=".proximity.GeofenceQaReceiver" android:enabled="true" android:exported="false" />
-        <receiver android:name=".proximity.ScreenLockQaReceiver" android:enabled="true" android:exported="false" />
-        <receiver android:name=".proximity.GeofenceBootReceiver" android:enabled="true" android:exported="false">
+        <receiver android:name=".proximity.StagingPromotionalGeofenceReceiver" android:enabled="true" android:exported="false" />
+        <receiver android:name=".proximity.StagingPromotionalGeofenceRestoreReceiver" android:enabled="true" android:exported="false">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
                 <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />

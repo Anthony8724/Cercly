@@ -4,6 +4,22 @@ import java.util.Properties
 plugins {
     id("com.android.application")
     id("dev.flutter.flutter-gradle-plugin")
+    id("com.google.gms.google-services") version "4.6.0" apply false
+}
+
+val firebaseBuildDefines = (project.findProperty("dart-defines") as? String)
+    .orEmpty()
+    .split(",")
+    .mapNotNull { encoded ->
+        runCatching { String(Base64.getDecoder().decode(encoded)) }.getOrNull()
+    }
+val firebaseUiEvaluation = "CERCLY_UI_EVALUATION=true" in firebaseBuildDefines
+val firebaseDemoRelease = "CERCLY_DEMO_RELEASE=true" in firebaseBuildDefines
+
+// Firebase is configured only for registered Production/Staging application IDs.
+// UI Evaluation and Demo deliberately remain Firebase-free.
+if (!firebaseUiEvaluation && !firebaseDemoRelease) {
+    apply(plugin = "com.google.gms.google-services")
 }
 
 android {
@@ -76,12 +92,16 @@ android {
             throw GradleException("Private proximity requires Production and a publishable key only.")
         }
         sourceSets.getByName("main").manifest.srcFile("src/productionCandidate/AndroidManifest.xml")
+    }
+    if (isCerclyStaging) {
+        sourceSets.getByName("test").kotlin.srcDir("src/stagingTest/kotlin")
+    } else {
         sourceSets.getByName("test").kotlin.srcDir("src/productionCandidateTest/kotlin")
     }
+    // One implementation per build. Public builds compile the receiver but the
+    // main manifest keeps it disabled and requests no background permission.
     sourceSets.getByName("main").kotlin.setSrcDirs(listOf(
-        if (isCerclyStaging) "src/staging/kotlin"
-        else if (isPrivateProximity) "src/productionCandidate/kotlin"
-        else "src/production/kotlin",
+        if (isCerclyStaging) "src/staging/kotlin" else "src/productionCandidate/kotlin",
     ))
     defaultConfig {
         buildConfigField("String", "PROXIMITY_URL", if (isPrivateProximity) configuredSupabaseUrl!!.asBuildConfigString() else "\"\"")

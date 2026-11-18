@@ -48,7 +48,7 @@ class _ProductionProximitySectionState extends State<ProductionProximitySection>
       builder: (context) => AlertDialog(
         title: const Text('Alertas aunque Cercly esté cerrada'),
         content: const Text(
-          'Cercly utiliza tu ubicación en segundo plano para avisarte cuando entras cerca de un negocio con una promoción vigente, incluso si la app no está visible. Google Play Services detecta las entradas; Cercly consulta la promoción y comprueba la distancia. No guardamos recorridos ni mantenemos GPS continuo. Android puede retrasar o bloquear los avisos. Puedes desactivar esta función aquí cuando quieras. Esta candidata privada aún requiere validación en tu dispositivo.',
+          'En Staging privado, si activas esta prueba, Android detectará entradas a zonas de promociones mientras Cercly está en segundo plano. Se consulta la promoción vigente y se valida la ubicación del evento; no se guarda un recorrido ni se mantiene GPS continuo. El permiso de ubicación en segundo plano es separado y revocable. Android puede retrasar o impedir alertas. Esta función experimental no está habilitada para publicación en Google Play.',
         ),
         actions: [
           TextButton(
@@ -64,18 +64,23 @@ class _ProductionProximitySectionState extends State<ProductionProximitySection>
     );
     if (accept != true || !mounted) return;
     await _run(() async {
-      final s = await _service.status();
-      if (s['foregroundAlerts'] != true ||
-          s['precise'] != true ||
-          s['notifications'] != true) {
-        return 'Activa primero las alertas cercanas, notificaciones y ubicación precisa en la sección anterior. Después vuelve a activar segundo plano.';
-      }
       if (!await _service.setConsent(true)) {
         return 'No se pudo guardar el consentimiento.';
       }
-      return s['background'] == true
-          ? 'Consentimiento guardado. Pulsa Actualizar zonas cercanas.'
-          : 'Consentimiento guardado. Abre Ajustes Android y elige Ubicación → Permitir todo el tiempo. Después vuelve y actualiza las zonas.';
+      final s = await _service.status();
+      if (s['precise'] != true || s['notifications'] != true) {
+        await _service.requestForegroundPermissions();
+        return 'Acepta los permisos de ubicación precisa y notificaciones. Al volver, continúa con el permiso de segundo plano.';
+      }
+      if (s['background'] == true) {
+        final resultado = await _service.synchronize(automatic: true);
+
+        return resultado == 'accepted_by_gms' || resultado == 'sync_recent'
+            ? 'Alertas automáticas activadas.'
+            : 'Consentimiento guardado. Sincronización: $resultado';
+      }
+
+      return 'Consentimiento guardado. Ahora concede por separado el permiso de ubicación en segundo plano.';
     });
   }
 
@@ -133,6 +138,16 @@ class _ProductionProximitySectionState extends State<ProductionProximitySection>
                 child: const Text('Activar segundo plano'),
               )
             else ...[
+              if (_status['background'] != true)
+                OutlinedButton(
+                  onPressed: _busy
+                      ? null
+                      : () => _run(() async {
+                          await _service.requestBackgroundPermission();
+                          return 'En Ajustes de Cercly, selecciona Ubicación → Permitir todo el tiempo. Vuelve a la app para comprobar el permiso.';
+                        }),
+                  child: const Text('Configurar ubicación en segundo plano'),
+                ),
               FilledButton(
                 onPressed: _busy
                     ? null

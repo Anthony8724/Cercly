@@ -8,6 +8,10 @@ import 'package:flutter/foundation.dart';
 
 import 'auth_options.dart';
 import 'profile_service.dart';
+import '../../notificaciones/push/fcm_push_service.dart';
+import '../../notificaciones/services/production_geofencing_service.dart';
+import '../../notificaciones/services/session_notification_barrier.dart';
+import '../../notificaciones/services/geofence_authorization_gate.dart';
 
 typedef OAuthLauncher = Future<bool> Function(
   OAuthProvider provider, {
@@ -21,11 +25,15 @@ class AuthService {
     SupabaseClient? supabase,
     this.options = const AuthOptions(),
     this.oauthLauncher,
+    this.retirePromotionalPush,
+    this.retireNativeGeofence,
   }) : _client = supabase;
 
   final SupabaseClient? _client;
   final AuthOptions options;
   final OAuthLauncher? oauthLauncher;
+  final Future<void> Function()? retirePromotionalPush;
+  final Future<void> Function()? retireNativeGeofence;
   SupabaseClient get _supabase => _client ?? Supabase.instance.client;
 
   Stream<AuthState> get events => _supabase.auth.onAuthStateChange;
@@ -183,8 +191,111 @@ class AuthService {
     return 'Ocurrió un error inesperado. Vuelve a intentarlo.';
   }
 
-  Future<void> signOut() {
-    return _supabase.auth.signOut().timeout(const Duration(seconds: 15));
+  Future<void> signOut() async {
+    final sessionBeforeLogout = _supabase.auth.currentSession;
+    SessionNotificationBarrier.beginLogout(sessionBeforeLogout);
+    var persistentBarrierConfirmed = false;
+    final needsNativeRetirement =
+        _client == null &&
+        ProductionGeofencingService.enabledBuild &&
+        !ProductionGeofencingService.stagingBuild;
+    if (needsNativeRetirement) {
+      try {
+        persistentBarrierConfirmed = await GeofenceAuthorizationGate.block()
+            .timeout(const Duration(seconds: 2));
+      } catch (_) {
+        debugPrint('No se confirmó el bloqueo persistente de geofencing.');
+      }
+    }
+    if (!SessionNotificationBarrier.sameSession(
+      sessionBeforeLogout,
+      _supabase.auth.currentSession,
+    )) {
+      SessionNotificationBarrier.signedIn(_supabase.auth.currentSession);
+      return;
+    }
+    var nativeRetirementConfirmed = false;
+    try {
+      if (retireNativeGeofence case final retire?) {
+        // The injected path is for tests and does not prove native retirement.
+        await retire().timeout(const Duration(seconds: 3));
+      } else if (_client == null && ProductionGeofencingService.enabledBuild) {
+        final service = ProductionGeofencingService();
+        if (needsNativeRetirement) {
+          nativeRetirementConfirmed = await service
+              .retireLocalSession(
+                expectedUserId: sessionBeforeLogout?.user.id,
+                expectedSessionId: SessionNotificationBarrier.sessionId(
+                  sessionBeforeLogout,
+                ),
+              )
+              .timeout(const Duration(seconds: 3));
+        }
+        if (nativeRetirementConfirmed || !needsNativeRetirement) {
+          final removed = await service
+              .accountChanged(
+                null,
+                expectedUserId: sessionBeforeLogout?.user.id,
+                expectedSessionId: SessionNotificationBarrier.sessionId(
+                  sessionBeforeLogout,
+                ),
+              )
+              .timeout(const Duration(seconds: 3));
+          if (!removed) {
+            debugPrint(
+              'No se confirmó la eliminación de la credencial nativa.',
+            );
+          }
+        }
+      }
+    } catch (_) {
+      debugPrint('No se pudo invalidar el acceso local de geofencing.');
+    }
+    // Do not sign out when both independent fail-closed protections failed.
+    // A pending native request might otherwise publish using the old token.
+    if (needsNativeRetirement &&
+        !persistentBarrierConfirmed &&
+        !nativeRetirementConfirmed) {
+      throw StateError(
+        'No se pudo confirmar el bloqueo local de notificaciones. '
+        'Vuelve a intentar cerrar sesión.',
+      );
+    }
+    if (!SessionNotificationBarrier.sameSession(
+      sessionBeforeLogout,
+      _supabase.auth.currentSession,
+    )) {
+      SessionNotificationBarrier.signedIn(_supabase.auth.currentSession);
+      return;
+    }
+    try {
+      if (retirePromotionalPush case final revoke?) {
+        await revoke().timeout(const Duration(seconds: 5));
+      } else if (_client == null) {
+        await FcmPushService.shared.retireBeforeSignOut().timeout(
+          const Duration(seconds: 5),
+        );
+      }
+    } catch (_) {
+      debugPrint('No se confirmó la retirada remota de notificaciones.');
+    }
+    final currentSession = _supabase.auth.currentSession;
+    if (!SessionNotificationBarrier.sameSession(
+      sessionBeforeLogout,
+      currentSession,
+    )) {
+      SessionNotificationBarrier.signedIn(currentSession);
+      return;
+    }
+    try {
+      await _supabase.auth.signOut().timeout(const Duration(seconds: 15));
+    } catch (_) {
+      if (_supabase.auth.currentSession != null) rethrow;
+      // The SDK cleared local auth first; the remote session may still exist.
+      debugPrint(
+        'Cierre local completado; no se confirmó la revocación remota.',
+      );
+    }
   }
 
   /// Reintento explícito: una nueva suscripción sola repetiría el último error

@@ -11,10 +11,12 @@ import '../../promociones/models/promocion_destacada_model.dart';
 import '../../promociones/services/promocion_publica_service.dart';
 import '../models/configuracion_alertas_proximidad.dart';
 import '../services/control_notificaciones_promocion.dart';
-import '../services/geofencing_experimental_service.dart';
 import '../services/historial_notificaciones_promocion.dart';
 import '../services/notificacion_local_service.dart';
 import '../services/preferencias_alertas_proximidad.dart';
+import '../push/fcm_push_service.dart';
+import '../push/fcm_environment_policy.dart';
+import '../push/push_promotions_repository.dart';
 
 class MonitorProximidadController extends ChangeNotifier {
   MonitorProximidadController({
@@ -24,13 +26,14 @@ class MonitorProximidadController extends ChangeNotifier {
     ControlNotificacionesPromocion? control,
     HistorialNotificacionesPromocion? historial,
     PreferenciasAlertasProximidadRepository? preferencias,
+    FreshLocationPushEvaluator? pushEvaluator,
+    FcmEnvironmentPolicy? pushPolicy,
     Future<void> Function(String establecimientoId)? alAbrirEstablecimiento,
     this.intervalo = const Duration(minutes: 3),
     this.precisionMaximaMetros = 100,
     this.edadMaximaUbicacion = const Duration(minutes: 2),
     DateTime Function()? ahora,
     String? Function()? usuarioId,
-    this.stagingQaEnabled = GeofencingExperimentalService.staging,
   }) : _ubicacionService = ubicacionService ?? GeolocatorUbicacionService(),
        _promocionesService = promocionesService ?? PromocionPublicaService(),
        _notificaciones =
@@ -45,6 +48,8 @@ class MonitorProximidadController extends ChangeNotifier {
              usuarioId: usuarioId ?? _usuarioActual,
            ),
        _preferencias = preferencias ?? PreferenciasAlertasProximidadLocal(),
+       _pushEvaluator = pushEvaluator ?? FcmPushService.shared,
+       _pushPolicy = pushPolicy ?? const FcmEnvironmentPolicy.build(),
        _ahora = ahora ?? DateTime.now,
        _usuarioId = usuarioId ?? _usuarioActual;
 
@@ -62,9 +67,10 @@ class MonitorProximidadController extends ChangeNotifier {
   final ControlNotificacionesPromocion _control;
   final HistorialNotificacionesPromocion _historial;
   final PreferenciasAlertasProximidadRepository _preferencias;
+  final FreshLocationPushEvaluator _pushEvaluator;
+  final FcmEnvironmentPolicy _pushPolicy;
   final DateTime Function() _ahora;
   final String? Function() _usuarioId;
-  final bool stagingQaEnabled;
   final Duration intervalo;
   final Duration edadMaximaUbicacion;
   final double precisionMaximaMetros;
@@ -204,8 +210,16 @@ class MonitorProximidadController extends ChangeNotifier {
     try {
       final configuracion = await _preferencias.cargar();
       if (!_sesionSigueVigente(usuarioAlInicio)) return;
-      if (!configuracion.activadas && !mostrarEnRadar) {
+      if (!configuracion.activadas &&
+          !(configuracion.pushPromocionesActivadas && _pushPolicy.enabled) &&
+          !mostrarEnRadar) {
         _ultimoResultadoDiagnostico = 'alertas_desactivadas';
+        return;
+      }
+      if (configuracion.pushPromocionesActivadas &&
+          _pushPolicy.enabled &&
+          !mostrarEnRadar) {
+        _ultimoResultadoDiagnostico = 'push_requiere_radar_visible';
         return;
       }
       if (mostrarEnRadar &&
@@ -348,13 +362,34 @@ class MonitorProximidadController extends ChangeNotifier {
             });
         _publicarEstado();
       }
-      if (!configuracion.activadas) return;
       final politica = await _preferencias.cargar();
       if (!_sesionSigueVigente(usuarioAlInicio)) return;
-      if (!politica.activadas) {
+      if (!politica.activadas &&
+          !(politica.pushPromocionesActivadas && _pushPolicy.enabled)) {
         _ultimoResultadoDiagnostico = 'alertas_desactivadas_o_permiso_revocado';
         return;
       }
+      if (politica.pushPromocionesActivadas && _pushPolicy.enabled) {
+        if (!mostrarEnRadar ||
+            usuarioAlInicio == null ||
+            !_radarActivo ||
+            !_radarVisible ||
+            !_appEnPrimerPlano) {
+          return;
+        }
+        final capturadaEn = ubicacion.capturadaEn;
+        if (capturadaEn == null) return;
+        await _pushEvaluator.evaluateFreshLocation(
+          latitude: ubicacion.latitud,
+          longitude: ubicacion.longitud,
+          accuracyMeters: ubicacion.precisionMetros!,
+          observedAt: capturadaEn,
+        );
+        if (!_sesionSigueVigente(usuarioAlInicio)) return;
+        _ultimoResultadoDiagnostico = 'evaluacion_push_solicitada';
+        return;
+      }
+      if (!politica.activadas) return;
       if (mostrarEnRadar &&
           (usuarioAlInicio == null ||
               !_radarActivo ||
@@ -487,10 +522,6 @@ class MonitorProximidadController extends ChangeNotifier {
     if (historial is! BorradoHistorialLocalNotificaciones) {
       throw StateError('El historial no admite restablecimiento local.');
     }
-    if (stagingQaEnabled &&
-        !await GeofencingExperimentalService().resetQaCooldown()) {
-      throw StateError('No se reinició el cooldown nativo de Staging.');
-    }
     await (historial as BorradoHistorialLocalNotificaciones)
         .borrarDatosLocales();
     _control.cargarHistorial(const HistorialNotificacionesPromocionDatos());
@@ -498,105 +529,10 @@ class MonitorProximidadController extends ChangeNotifier {
     _ultimoResultadoDiagnostico = 'historial_local_reiniciado';
   }
 
-  Future<String> simularEntradaUpec() async {
-    if (!GeofencingExperimentalService.staging || !stagingQaEnabled) {
-      return 'simulacion_no_disponible';
-    }
-    if (_consultando) return 'evaluacion_en_curso';
-    _consultando = true;
-    try {
-      final configuracion = await _preferencias.cargar();
-      if (!configuracion.activadas) {
-        return _ultimoResultadoDiagnostico = 'simulacion_sin_consentimiento';
-      }
-      final permisoUbicacion = await _ubicacionService.consultarEstadoPermiso(
-        solicitarPermiso: false,
-      );
-      if (permisoUbicacion != EstadoUbicacion.disponible) {
-        return _ultimoResultadoDiagnostico =
-            'simulacion_permiso_ubicacion_denegado';
-      }
-
-      final notificaciones = _notificaciones;
-      if (notificaciones is DiagnosticoPermisoNotificaciones) {
-        final estado =
-            await (notificaciones as DiagnosticoPermisoNotificaciones)
-                .consultarEstadoDetallado();
-        if (estado != EstadoPermisoNotificaciones.concedido) {
-          return _ultimoResultadoDiagnostico =
-              'simulacion_permiso_notificaciones_denegado';
-        }
-      } else if (!await notificaciones.tienePermisoParaNotificar()) {
-        return _ultimoResultadoDiagnostico =
-            'simulacion_permiso_notificaciones_denegado';
-      }
-      if (notificaciones is DiagnosticoCanalNotificaciones &&
-          await (notificaciones as DiagnosticoCanalNotificaciones)
-                  .canalPromocionesDisponible() ==
-              false) {
-        return _ultimoResultadoDiagnostico =
-            'simulacion_canal_notificaciones_bloqueado';
-      }
-
-      if (!await _asegurarHistorialCargado(_usuarioId())) {
-        return _ultimoResultadoDiagnostico = 'cambio_de_cuenta';
-      }
-      final candidatas = await _promocionesService.listarCercanas(
-        latitudUsuario: 0.80525,
-        longitudUsuario: -77.73434,
-        radioUsuarioMetros: configuracion.radioMetros,
-      );
-      final ahora = _ahora();
-      final elegibles = candidatas
-          .where(
-            (item) =>
-                item.id == GeofencingExperimentalService.promotionId &&
-                item.establecimientoId ==
-                    GeofencingExperimentalService.establishmentId &&
-                item.activa &&
-                item.estaVigenteEn(ahora),
-          )
-          .toList(growable: false);
-      if (elegibles.isEmpty) {
-        return _ultimoResultadoDiagnostico = 'simulacion_sin_promocion_vigente';
-      }
-      final promocion = elegibles.first;
-
-      final notificables = _control.evaluar(
-        [promocion],
-        ahora: ahora,
-        radioUsuarioMetros: configuracion.radioMetros,
-        conservarPromocionesDentro: true,
-        maximoPorDia: configuracion.frecuencia.maximoPorDia,
-        horarioDescanso: configuracion.horarioDescanso,
-      );
-      if (notificables.isEmpty) {
-        return _ultimoResultadoDiagnostico =
-            'simulacion_bloqueada_cooldown_o_radio';
-      }
-      if (notificaciones is! NotificacionPromocionSimulable) {
-        return _ultimoResultadoDiagnostico =
-            'simulacion_notificacion_no_disponible';
-      }
-      final mostrada = await (notificaciones as NotificacionPromocionSimulable)
-          .mostrarPromocionSimulada(promocion);
-      if (!mostrada) {
-        return _ultimoResultadoDiagnostico =
-            'simulacion_notificacion_bloqueada';
-      }
-      _control.registrarNotificacion(
-        promocion.id,
-        establecimientoId: promocion.establecimientoId,
-        ahora: _ahora(),
-      );
-      await _guardarHistorial(_usuarioId());
-      return _ultimoResultadoDiagnostico = 'simulacion_notificacion_enviada';
-    } catch (_) {
-      return _ultimoResultadoDiagnostico = 'simulacion_error_evaluacion';
-    } finally {
-      _consultando = false;
-    }
-  }
+  @Deprecated(
+    'La simulación UPEC fue retirada; valide solo transiciones GMS reales.',
+  )
+  Future<String> simularEntradaUpec() async => 'simulacion_no_disponible';
 
   bool _ubicacionEsSuficientementePrecisa(UbicacionUsuario ubicacion) {
     final precision = ubicacion.precisionMetros;

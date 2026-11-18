@@ -3,11 +3,13 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../../../sky/sky_theme.dart';
+import '../../establecimientos/models/establecimiento_publico_model.dart';
 import '../../notificaciones/controllers/monitor_proximidad_controller.dart';
 import '../../notificaciones/widgets/monitor_proximidad_app.dart';
 import '../../notificaciones/widgets/radar_cercly_panel.dart';
-
+import '../../promociones/screens/promociones_screen.dart';
 import '../controllers/explorar_controller.dart';
+import '../models/ubicacion_usuario.dart';
 import '../widgets/promociones_explorar.dart';
 import 'explorar_screen.dart';
 import 'mapa_establecimientos_screen.dart';
@@ -22,6 +24,7 @@ class NavegacionPrincipalScreen extends StatefulWidget {
     this.inicializarController = true,
     this.mostrarTilesMapa = true,
     this.cargarPromociones,
+    this.resolverEstablecimiento,
     this.crearDetalle,
     super.key,
   });
@@ -34,6 +37,8 @@ class NavegacionPrincipalScreen extends StatefulWidget {
   final bool inicializarController;
   final bool mostrarTilesMapa;
   final CargarPromocionesExplorar? cargarPromociones;
+  final Future<EstablecimientoPublicoModel?> Function(String id)?
+  resolverEstablecimiento;
   final CrearDetalleEstablecimiento? crearDetalle;
 
   @override
@@ -46,6 +51,7 @@ class _NavegacionPrincipalScreenState extends State<NavegacionPrincipalScreen>
   late final ExplorarController _controller;
   late final bool _esPropio;
   int _indice = 0;
+  bool _mostrarPromociones = false;
   MonitorProximidadController? _monitor;
 
   @override
@@ -66,6 +72,13 @@ class _NavegacionPrincipalScreenState extends State<NavegacionPrincipalScreen>
     }
   }
 
+  void _seleccionarPestana(int indice) {
+    setState(() {
+      _indice = indice;
+      if (indice == 1) _mostrarPromociones = true;
+    });
+  }
+
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
@@ -78,8 +91,9 @@ class _NavegacionPrincipalScreenState extends State<NavegacionPrincipalScreen>
   Widget build(BuildContext context) {
     final sky = SkyPalette.of(context);
     _monitor = MonitorProximidadScope.maybeOf(context);
+    // Explorar=0, Promociones=1, Mapa/Radar=2, Cuenta=3.
     final radarVisible =
-        _indice == 1 && (ModalRoute.of(context)?.isCurrent ?? true);
+        _indice == 2 && (ModalRoute.of(context)?.isCurrent ?? true);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _monitor?.setRadarVisible(radarVisible);
     });
@@ -90,10 +104,35 @@ class _NavegacionPrincipalScreenState extends State<NavegacionPrincipalScreen>
         children: [
           ExplorarScreen(
             controller: _controller,
-            onPerfil: () => setState(() => _indice = 2),
+            onPerfil: () => _seleccionarPestana(3),
+            onVerPromociones: () => _seleccionarPestana(1),
             cargarPromociones: widget.cargarPromociones,
+            resolverEstablecimiento: widget.resolverEstablecimiento,
             crearDetalle: widget.crearDetalle,
           ),
+          // Carga las promociones solo cuando se abre esta pestaña.
+          _mostrarPromociones
+              ? AnimatedBuilder(
+                  animation: _controller,
+                  builder: (context, _) {
+                    final posicion =
+                        _controller.estadoUbicacion ==
+                            EstadoUbicacion.disponible
+                        ? _controller.ubicacion
+                        : null;
+                    return PromocionesScreen(
+                      cargarPromociones: widget.cargarPromociones,
+                      latitudUsuario: posicion?.latitud,
+                      longitudUsuario: posicion?.longitud,
+                      radioMaximoMetros: posicion == null
+                          ? null
+                          : _controller.radioMetros.toDouble(),
+                      resolverEstablecimiento: widget.resolverEstablecimiento,
+                      crearDetalle: widget.crearDetalle,
+                    );
+                  },
+                )
+              : const SizedBox.shrink(),
           Stack(
             children: [
               MapaEstablecimientosScreen(
@@ -106,7 +145,7 @@ class _NavegacionPrincipalScreenState extends State<NavegacionPrincipalScreen>
                   key: const Key('radar-panel-position'),
                   left: 12,
                   right: 12,
-                  // La atribución de OpenStreetMap ocupa la franja inferior.
+                  // Respetar el espacio de atribucion de OpenStreetMap.
                   bottom: 42,
                   child: SafeArea(
                     top: false,
@@ -121,7 +160,7 @@ class _NavegacionPrincipalScreenState extends State<NavegacionPrincipalScreen>
       bottomNavigationBar: DecoratedBox(
         decoration: BoxDecoration(
           color: sky.surface,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(22)),
           boxShadow: const [
             BoxShadow(
               color: Color(0x1A1F4E8C),
@@ -156,13 +195,18 @@ class _NavegacionPrincipalScreenState extends State<NavegacionPrincipalScreen>
             child: NavigationBar(
               selectedIndex: _indice,
               labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
-              onDestinationSelected: (indice) =>
-                  setState(() => _indice = indice),
+              onDestinationSelected: _seleccionarPestana,
               destinations: [
                 const NavigationDestination(
                   icon: Icon(Icons.explore_outlined),
                   selectedIcon: Icon(Icons.explore_rounded),
                   label: 'Explorar',
+                ),
+                const NavigationDestination(
+                  key: Key('tab-promociones'),
+                  icon: Icon(Icons.local_offer_outlined),
+                  selectedIcon: Icon(Icons.local_offer_rounded),
+                  label: 'Promociones',
                 ),
                 const NavigationDestination(
                   icon: Icon(Icons.map_outlined),

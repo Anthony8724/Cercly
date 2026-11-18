@@ -1,11 +1,25 @@
 import 'dart:async';
 
+import 'dart:io';
+
+import 'package:http/http.dart' as http;
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../usuarios/models/usuario_model.dart';
 import 'account_capabilities.dart';
 
 enum ProfileFailure { missing, inconsistent, expired }
+
+enum ProfileDiagnosticCategory {
+  timeout,
+  http,
+  rpc,
+  sessionExpired,
+  decoding,
+  authorization,
+  network,
+  unexpected,
+}
 
 class ProfileException implements Exception {
   const ProfileException(this.failure);
@@ -18,6 +32,50 @@ class ProfileService {
   ProfileService({SupabaseClient? supabase}) : _client = supabase;
   final SupabaseClient? _client;
   SupabaseClient get _supabase => _client ?? Supabase.instance.client;
+
+  /// Categoría segura para diagnóstico: nunca incluye mensajes ni datos del error.
+  static ProfileDiagnosticCategory diagnosticCategory(Object error) {
+    if (error is TimeoutException) return ProfileDiagnosticCategory.timeout;
+    if (error is ProfileException) {
+      return switch (error.failure) {
+        ProfileFailure.expired => ProfileDiagnosticCategory.sessionExpired,
+        ProfileFailure.inconsistent => ProfileDiagnosticCategory.decoding,
+        ProfileFailure.missing => ProfileDiagnosticCategory.authorization,
+      };
+    }
+    if (error is AuthException) {
+      if (error is AuthSessionMissingException ||
+          error.statusCode == '401' ||
+          error.code == 'session_not_found' ||
+          error.code == 'refresh_token_not_found' ||
+          error.code == 'invalid_jwt') {
+        return ProfileDiagnosticCategory.sessionExpired;
+      }
+      if (error.statusCode == '403') {
+        return ProfileDiagnosticCategory.authorization;
+      }
+      return ProfileDiagnosticCategory.http;
+    }
+    if (error is PostgrestException) {
+      if (error.code == '28000' || error.code == 'PGRST301') {
+        return ProfileDiagnosticCategory.sessionExpired;
+      }
+      if (error.code == '42501') {
+        return ProfileDiagnosticCategory.authorization;
+      }
+      if (error.code?.startsWith('PGRST') ?? false) {
+        return ProfileDiagnosticCategory.rpc;
+      }
+      return ProfileDiagnosticCategory.http;
+    }
+    if (error is FormatException) return ProfileDiagnosticCategory.decoding;
+    if (error is SocketException ||
+        error is HttpException ||
+        error is http.ClientException) {
+      return ProfileDiagnosticCategory.network;
+    }
+    return ProfileDiagnosticCategory.unexpected;
+  }
 
   Future<String> loadRole(String userId) => _loadRole(
     userId,

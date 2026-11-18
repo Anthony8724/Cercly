@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:cercly/features/notificaciones/services/production_geofencing_service.dart';
 import 'package:cercly/features/notificaciones/services/historial_notificaciones_promocion.dart';
+import 'package:cercly/features/notificaciones/models/configuracion_alertas_proximidad.dart';
 import 'package:cercly/features/promociones/models/promocion_destacada_model.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -68,7 +69,7 @@ void main() {
               'gms': true,
               'zoneCount': 1,
             },
-            'setConsent' || 'importHistory' => true,
+            'setConsent' || 'importHistory' || 'accountChanged' => true,
             'register' => 'accepted_by_gms',
             _ => null,
           };
@@ -88,10 +89,24 @@ void main() {
     expect(await service.registerZones([]), 'unavailable');
     expect(calls, isEmpty);
   });
+  test(
+    'production candidate forwards account changes to the native side',
+    () async {
+      final service = ProductionGeofencingService(
+        channel: channel,
+        enabled: true,
+        staging: false,
+      );
+      expect(await service.accountChanged('user-a'), true);
+      expect(await service.accountChanged(null), true);
+      expect(calls.map((call) => call.arguments['userId']), ['user-a', null]);
+    },
+  );
   test('explicit consent travels independently and can be revoked', () async {
     final service = ProductionGeofencingService(
       channel: channel,
       enabled: true,
+      staging: true,
     );
     await service.setConsent(true);
     await service.setConsent(false);
@@ -127,17 +142,26 @@ void main() {
       await ProductionGeofencingService(
         channel: channel,
         enabled: true,
+        staging: true,
+        currentUserId: () => '12345678-abcd-abcd-abcd-123456789abc',
+        configuration: () async => const ConfiguracionAlertasProximidad(),
       ).prepareHistory(history: _History()),
       true,
     );
     expect(calls.single.arguments['recent'], [100]);
     expect((calls.single.arguments['last'] as Map).values.single, 100);
+    expect(
+      calls.single.arguments['userId'],
+      '12345678-abcd-abcd-abcd-123456789abc',
+    );
+    expect(calls.single.arguments['dailyLimit'], 6);
   });
   test('dynamic business payload radius and finite expiry preserved', () async {
     final zones = ProductionGeofencingService.selectZones(
       [promotion()],
       500,
       now,
+      '12345678-abcd-abcd-abcd-123456789abc',
     );
     await ProductionGeofencingService(
       channel: channel,
@@ -147,6 +171,7 @@ void main() {
         (jsonDecode(calls.single.arguments['zones'] as String) as List).single
             as Map;
     expect(zone['business'], promotion().establecimientoId);
+    expect(zone['userId'], '12345678-abcd-abcd-abcd-123456789abc');
     expect(zone['radius'], 500);
     expect(
       zone['expires'],
@@ -159,6 +184,7 @@ void main() {
         [promotion(end: now), promotion(active: false), promotion(lat: 91)],
         500,
         now,
+        '12345678-abcd-abcd-abcd-123456789abc',
       ),
       isEmpty,
     );
@@ -169,6 +195,7 @@ void main() {
         [promotion(radius: 50), promotion(distance: 25001)],
         500,
         now,
+        '12345678-abcd-abcd-abcd-123456789abc',
       ),
       isEmpty,
     );
@@ -182,6 +209,7 @@ void main() {
       [...list, list.last],
       5000,
       now,
+      '12345678-abcd-abcd-abcd-123456789abc',
     );
     expect(zones.length, 20);
     expect(zones.first['id'], list.last.id);

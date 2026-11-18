@@ -1,11 +1,13 @@
+import 'package:cercly/features/notificaciones/push/fcm_environment_policy.dart';
+
 import 'dart:async';
 
 import 'package:cercly/features/explorar/models/ubicacion_usuario.dart';
 import 'package:cercly/features/explorar/services/ubicacion_service.dart';
 import 'package:cercly/features/notificaciones/controllers/monitor_proximidad_controller.dart';
 import 'package:cercly/features/notificaciones/models/configuracion_alertas_proximidad.dart';
+import 'package:cercly/features/notificaciones/push/push_promotions_repository.dart';
 import 'package:cercly/features/notificaciones/services/control_notificaciones_promocion.dart';
-import 'package:cercly/features/notificaciones/services/geofencing_experimental_service.dart';
 import 'package:cercly/features/notificaciones/services/historial_notificaciones_promocion.dart';
 import 'package:cercly/features/notificaciones/services/notificacion_local_service.dart';
 import 'package:cercly/features/notificaciones/services/preferencias_alertas_proximidad.dart';
@@ -226,6 +228,32 @@ class _PreferenciasFalsas implements PreferenciasAlertasProximidadRepository {
     configuracion = nueva;
     _cambios.add(nueva);
   }
+}
+
+class _PushEvaluatorFalso implements FreshLocationPushEvaluator {
+  final locations =
+      <({double lat, double lon, double accuracy, DateTime at})>[];
+
+  @override
+  Future<void> evaluateFreshLocation({
+    required double latitude,
+    required double longitude,
+    required double accuracyMeters,
+    required DateTime observedAt,
+  }) async {
+    locations.add((
+      lat: latitude,
+      lon: longitude,
+      accuracy: accuracyMeters,
+      at: observedAt,
+    ));
+  }
+}
+
+class _EnabledTestPolicy extends FcmEnvironmentPolicy {
+  const _EnabledTestPolicy() : super(staging: true, optIn: true, url: 'test');
+  @override
+  bool get enabled => true;
 }
 
 void main() {
@@ -1024,190 +1052,24 @@ void main() {
     });
 
     test(
-      'simulación Staging reutiliza elegibilidad y notifica con marca QA',
+      'la antigua simulación de coordenadas no consulta ni notifica',
       () async {
-        if (!GeofencingExperimentalService.staging) return;
-        final promociones = _PromocionesFalsas([
-          promocion(
-            id: 'f14a1f14-14b0-4b14-8a14-140000000002',
-            establecimientoId: 'f14a1f14-14b0-4b14-8a14-140000000001',
-            distancia: 0,
-          ),
-        ]);
+        final promociones = _PromocionesFalsas([]);
         final notificaciones = _NotificacionesFalsas();
-        final historial = _HistorialFalso();
-        final ubicacion = _UbicacionFalsa(
-          const ResultadoUbicacion(estado: EstadoUbicacion.disponible),
-        );
         final controller = MonitorProximidadController(
-          ubicacionService: ubicacion,
           promocionesService: promociones,
           notificaciones: notificaciones,
-          historial: historial,
-          preferencias: _PreferenciasFalsas(),
-          stagingQaEnabled: true,
-          ahora: () => instanteBase,
-        );
-
-        final result = await controller.simularEntradaUpec();
-
-        expect(result, 'simulacion_notificacion_enviada');
-        expect(promociones.ultimaLatitud, 0.80525);
-        expect(promociones.ultimaLongitud, -77.73434);
-        expect(
-          ubicacion.solicitudes,
-          0,
-          reason: 'No lee ni falsifica la ubicación del dispositivo.',
-        );
-        expect(notificaciones.simuladas, hasLength(1));
-        expect(notificaciones.mostradas, isEmpty);
-        expect(
-          notificaciones.simuladas.single.establecimientoId,
-          'f14a1f14-14b0-4b14-8a14-140000000001',
-        );
-        expect(historial.guardados, 1);
-        expect(
-          controller.ultimoResultadoDiagnostico,
-          'simulacion_notificacion_enviada',
-        );
-      },
-    );
-
-    test('simulación no limpia ni ignora un cooldown existente', () async {
-      if (!GeofencingExperimentalService.staging) return;
-      final id = 'f14a1f14-14b0-4b14-8a14-140000000002';
-      final notificaciones = _NotificacionesFalsas();
-      final controller = MonitorProximidadController(
-        ubicacionService: _UbicacionFalsa(
-          const ResultadoUbicacion(estado: EstadoUbicacion.disponible),
-        ),
-        promocionesService: _PromocionesFalsas([
-          promocion(
-            id: id,
-            establecimientoId: 'f14a1f14-14b0-4b14-8a14-140000000001',
-            distancia: 0,
-          ),
-        ]),
-        notificaciones: notificaciones,
-        historial: _HistorialFalso({id: instanteBase}),
-        preferencias: _PreferenciasFalsas(),
-        stagingQaEnabled: true,
-        ahora: () => instanteBase.add(const Duration(minutes: 20)),
-      );
-
-      expect(
-        await controller.simularEntradaUpec(),
-        'simulacion_bloqueada_cooldown_o_radio',
-      );
-      expect(notificaciones.simuladas, isEmpty);
-    });
-
-    test('simulación rechaza promoción vencida', () async {
-      if (!GeofencingExperimentalService.staging) return;
-      final controller = MonitorProximidadController(
-        ubicacionService: _UbicacionFalsa(
-          const ResultadoUbicacion(estado: EstadoUbicacion.disponible),
-        ),
-        promocionesService: _PromocionesFalsas([
-          promocion(
-            id: 'f14a1f14-14b0-4b14-8a14-140000000002',
-            establecimientoId: 'f14a1f14-14b0-4b14-8a14-140000000001',
-            distancia: 0,
-            fin: instanteBase.subtract(const Duration(seconds: 1)),
-          ),
-        ]),
-        notificaciones: _NotificacionesFalsas(),
-        historial: _HistorialFalso(),
-        preferencias: _PreferenciasFalsas(),
-        stagingQaEnabled: true,
-        ahora: () => instanteBase,
-      );
-
-      expect(
-        await controller.simularEntradaUpec(),
-        'simulacion_sin_promocion_vigente',
-      );
-    });
-
-    test(
-      'simulación respeta permisos denegados y consentimiento apagado',
-      () async {
-        if (!GeofencingExperimentalService.staging) return;
-        final promociones = _PromocionesFalsas([]);
-        final notifications = _NotificacionesFalsas();
-        final sinConsentimiento = MonitorProximidadController(
-          ubicacionService: _UbicacionFalsa(
-            const ResultadoUbicacion(estado: EstadoUbicacion.disponible),
-          ),
-          promocionesService: promociones,
-          notificaciones: notifications,
-          historial: _HistorialFalso(),
-          preferencias: _PreferenciasFalsas(
-            configuracion: const ConfiguracionAlertasProximidad(
-              activadas: false,
-            ),
-          ),
-          stagingQaEnabled: true,
-          ahora: () => instanteBase,
-        );
-        expect(
-          await sinConsentimiento.simularEntradaUpec(),
-          'simulacion_sin_consentimiento',
-        );
-        expect(promociones.consultas, 0);
-
-        final sinPermiso = MonitorProximidadController(
-          ubicacionService: _UbicacionFalsa(
-            const ResultadoUbicacion(estado: EstadoUbicacion.permisoDenegado),
-          ),
-          promocionesService: promociones,
-          notificaciones: notifications,
           historial: _HistorialFalso(),
           preferencias: _PreferenciasFalsas(),
-          stagingQaEnabled: true,
-          ahora: () => instanteBase,
         );
-        expect(
-          await sinPermiso.simularEntradaUpec(),
-          'simulacion_permiso_ubicacion_denegado',
-        );
-        expect(promociones.consultas, 0);
 
-        final sinNotificaciones = MonitorProximidadController(
-          ubicacionService: _UbicacionFalsa(
-            const ResultadoUbicacion(estado: EstadoUbicacion.disponible),
-          ),
-          promocionesService: promociones,
-          notificaciones: _NotificacionesFalsas(permitir: false),
-          historial: _HistorialFalso(),
-          preferencias: _PreferenciasFalsas(),
-          stagingQaEnabled: true,
-          ahora: () => instanteBase,
-        );
-        expect(
-          await sinNotificaciones.simularEntradaUpec(),
-          'simulacion_permiso_notificaciones_denegado',
-        );
-        expect(promociones.consultas, 0);
-      },
-    );
-
-    test(
-      'el motor de simulación retorna no disponible fuera de Staging',
-      () async {
-        final promociones = _PromocionesFalsas([]);
-        final controller = MonitorProximidadController(
-          promocionesService: promociones,
-          notificaciones: _NotificacionesFalsas(),
-          historial: _HistorialFalso(),
-          preferencias: _PreferenciasFalsas(),
-          stagingQaEnabled: false,
-        );
         expect(
           await controller.simularEntradaUpec(),
           'simulacion_no_disponible',
         );
         expect(promociones.consultas, 0);
+        expect(notificaciones.mostradas, isEmpty);
+        expect(notificaciones.simuladas, isEmpty);
       },
     );
 
@@ -1224,7 +1086,6 @@ void main() {
         historial: historial,
         promocionesService: _PromocionesFalsas([]),
         preferencias: preferencias,
-        stagingQaEnabled: false,
       );
 
       await controller.reiniciarHistorialLocalDiagnostico();
@@ -1282,6 +1143,62 @@ void main() {
         expect(ubicacion.solicitudes, durantePausa);
         await controller.reanudar();
         expect(ubicacion.solicitudes, greaterThan(durantePausa));
+        controller.dispose();
+      },
+    );
+
+    test(
+      'push evalúa solo con Radar visible y omite alerta local del ciclo',
+      () async {
+        final push = _PushEvaluatorFalso();
+        final local = _NotificacionesFalsas();
+        final location = UbicacionUsuario(
+          latitud: 0.8116,
+          longitud: -77.7172,
+          precisionMetros: 35,
+          capturadaEn: instanteBase,
+        );
+        final preferences = _PreferenciasFalsas(
+          configuracion: const ConfiguracionAlertasProximidad(
+            activadas: true,
+            pushPromocionesActivadas: true,
+          ),
+        );
+        final ubicacionService = _UbicacionFalsa(
+          ResultadoUbicacion(
+            estado: EstadoUbicacion.disponible,
+            ubicacion: location,
+          ),
+        );
+        final controller = MonitorProximidadController(
+          ubicacionService: ubicacionService,
+          promocionesService: _PromocionesFalsas([promocion()]),
+          notificaciones: local,
+          historial: _HistorialFalso(),
+          preferencias: preferences,
+          pushEvaluator: push,
+          pushPolicy: const _EnabledTestPolicy(),
+          usuarioId: () => 'usuario-1',
+          ahora: () => instanteBase,
+        );
+        controller.setRadarVisible(true);
+        controller.setRadarActivo(true);
+        await controller.iniciar();
+
+        expect(push.locations, hasLength(1));
+        expect(push.locations.single.accuracy, 35);
+        expect(local.mostradas, isEmpty);
+        controller.setRadarVisible(false);
+        final evaluationsWhenHidden = push.locations.length;
+        await controller.iniciar();
+        expect(push.locations.length, evaluationsWhenHidden);
+        final locationRequestsWhenHidden = ubicacionService.solicitudes;
+        await controller.verificarAhora();
+        expect(
+          ubicacionService.solicitudes,
+          locationRequestsWhenHidden,
+          reason: 'una verificación manual sin Radar no debe consultar GPS',
+        );
         controller.dispose();
       },
     );

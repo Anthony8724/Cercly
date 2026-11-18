@@ -84,6 +84,7 @@ class PreferenciasAlertasProximidadLocal
         }
         return ConfiguracionAlertasProximidad(
           activadas: datos['activadas'] == true,
+          pushPromocionesActivadas: datos['push_promociones_activadas'] == true,
           radioMetros: radio,
           frecuencia: frecuencia,
           horarioDescanso: horario,
@@ -120,14 +121,9 @@ class PreferenciasAlertasProximidadLocal
     final preferencias = await SharedPreferences.getInstance();
     final usuario = _usuarioId();
     if (!configuracion.activadas) {
-      if (const bool.fromEnvironment('CERCLY_STAGING') ||
-          ProductionGeofencingService.enabledBuild) {
+      if (ProductionGeofencingService.enabledBuild) {
         try {
-          const canal = MethodChannel(
-            ProductionGeofencingService.enabledBuild
-                ? ProductionGeofencingService.channelName
-                : 'cercly/geofence_experiment',
-          );
+          const canal = MethodChannel(ProductionGeofencingService.channelName);
           await canal.invokeMethod<void>('setConsent', {'enabled': false});
           await canal.invokeMethod<void>('remove');
         } on MissingPluginException {
@@ -140,6 +136,7 @@ class PreferenciasAlertasProximidadLocal
     final datos = <String, Object?>{
       'version': 2,
       'activadas': configuracion.activadas,
+      'push_promociones_activadas': configuracion.pushPromocionesActivadas,
       'radio_metros': configuracion.radioMetros,
       'frecuencia': configuracion.frecuencia.name,
       'descanso': configuracion.horarioDescanso == null
@@ -159,6 +156,11 @@ class PreferenciasAlertasProximidadLocal
       await preferencias.setBool(_claveActivas, configuracion.activadas);
     }
     _cambios.add(configuracion);
+    if (ProductionGeofencingService.stagingBuild && usuario != null) {
+      // Push the latest frequency and quiet-hours preferences to Android's
+      // durable geofence ledger immediately; no app restart is required.
+      await ProductionGeofencingService().prepareHistory();
+    }
   }
 
   Future<void> borrarDatosLocales() async {

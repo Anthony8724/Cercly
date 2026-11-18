@@ -146,7 +146,7 @@ select is((select count(*)::int from cercly_account_private.planes_supresion),0,
 select is((select count(*)::int from cercly_account_private.solicitudes_eliminacion where usuario_id='bd130000-0000-0000-0000-000000000002'),0,'caso identificable cerrado sin huérfano');
 select is((select count(*)::int from cercly_account_private.resultados_supresion),1,'recibo mínimo sin sujeto');
 select is((select nombre from public.establecimientos where id='bd130000-0000-0000-0000-000000000010')::text,'Nombre corregido compartido','ficha del otro propietario intacta');
-select ok(not exists(select 1 from pg_constraint where not convalidated and connamespace='public'::regnamespace),'sin FK inválidas');
+select ok(not exists(select 1 from pg_constraint where contype='f' and not convalidated and connamespace='public'::regnamespace),'sin FK inválidas');
 set local role authenticated;
 select set_config('request.jwt.claim.sub','bd130000-0000-0000-0000-000000000002',true);
 select ok(not public.identidad_cercly_existente(),'JWT anterior no equivale a identidad activa');

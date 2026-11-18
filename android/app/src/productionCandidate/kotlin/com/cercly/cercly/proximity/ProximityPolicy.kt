@@ -6,6 +6,11 @@ import kotlin.math.*
 object ProximityPolicy {
     const val DAY = 86_400_000L
     const val MAX_ZONES = 20
+    fun mayRetireExpectedSession(expectedUser: String?, expectedSession: String?, currentUser: String?, currentSession: String?): Boolean =
+        expectedUser == null || (expectedUser == currentUser && (currentSession == null || currentSession == expectedSession))
+    fun authorizedSession(gate: String?, userId: String?, sessionId: String?): Boolean =
+        userId != null && sessionId != null && uuid(userId) && uuid(sessionId) && gate == "$userId|$sessionId"
+    fun allowLegacyForeground(geofenceConsent: Boolean) = !geofenceConsent
     fun uuid(value: String) = value.matches(Regex("[0-9a-fA-F]{8}(-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}"))
     fun distance(a: Double, b: Double, c: Double, d: Double): Double {
         val x = sin(Math.toRadians(c - a) / 2).pow(2) + cos(Math.toRadians(a)) *

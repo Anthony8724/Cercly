@@ -50,7 +50,7 @@ def main():
         for path in sorted((ROOT/'supabase/migrations').glob('*.sql')):
             sql(path)
         results=[]
-        for filename in ['privacidad_revision_focal_test.sql','supresion_revisada_test.sql','guarda_sujetos_qa_test.sql','aislamiento_eliminacion_normal_qa_test.sql']:
+        for filename in ['privacidad_revision_focal_test.sql','fcm_account_deletion_test.sql','supresion_revisada_test.sql','guarda_sujetos_qa_test.sql','aislamiento_eliminacion_normal_qa_test.sql']:
             out=sql(ROOT/'supabase/tests'/filename)
             plans=re.findall(r'^1\.\.(\d+)$',out,re.M)
             passes=re.findall(r'^ok \d+',out,re.M)
@@ -111,6 +111,39 @@ def main():
         if accepted.returncode or not rejected.returncode or b'42501' not in rejected.stderr or state.returncode or state.stdout.strip()!=b'1:1':
             raise RuntimeError('QA_REVOCATION_RACE_FAILED; evidence='+str(evidence))
         races.append({'first':'qa_registration_revocation','passed':True,'rejection_sqlstate':'42501','identity_preserved':True})
+        # FCM installation registration racing with account deletion must either
+        # cascade atomically or fail its auth.users FK; it may never orphan a FID.
+        for number, registration_first in enumerate((True, False), 1):
+            subject=f'bd170000-0000-0000-0000-{number:012d}'
+            installation=f'bd180000-0000-0000-0000-{number:012d}'
+            seed=execute(f"insert into auth.users(id,email,raw_user_meta_data,last_sign_in_at) values('{subject}','fcm-delete-race-{number}@cercly.test','{{}}',now()); insert into cercly_account_private.solicitudes_eliminacion(usuario_id,estado) values('{subject}','pendiente');")
+            if seed.returncode: raise RuntimeError('FCM_DELETE_RACE_FIXTURE_FAILED')
+            register=f"insert into public.fcm_installations(installation_id,user_id,fcm_installation_id,platform) values('{installation}','{subject}','fcm-delete-race-token-{number}-long','android');"
+            delete=f"delete from auth.users where id='{subject}';"
+            first,second=(register,delete) if registration_first else (delete,register)
+            app=f'cercly-fcm-delete-race-{number}'
+            with ThreadPoolExecutor(max_workers=1) as pool:
+                future=pool.submit(execute,"set application_name='"+app+"';begin;"+first+'select pg_sleep(2);commit;')
+                for _ in range(80):
+                    ready=execute("select count(*) from pg_stat_activity where application_name='"+app+"' and wait_event='PgSleep';")
+                    if ready.stdout.strip()==b'1': break
+                    if future.done(): raise RuntimeError('FCM_DELETE_RACE_FIRST_FAILED')
+                    time.sleep(.05)
+                else: raise RuntimeError('FCM_DELETE_RACE_BARRIER_FAILED')
+                competing=execute('begin;'+second+'commit;')
+                accepted=future.result(timeout=10)
+            (evidence/f'fcm-delete-race-{number}-first.log').write_bytes(accepted.stdout+accepted.stderr)
+            (evidence/f'fcm-delete-race-{number}-competing.log').write_bytes(competing.stdout+competing.stderr)
+            state=execute(f"select (select count(*) from auth.users where id='{subject}')||':'||(select count(*) from public.fcm_installations where installation_id='{installation}');")
+            if accepted.returncode or state.returncode or state.stdout.strip()!=b'0:0':
+                raise RuntimeError('FCM_DELETE_RACE_ORPHAN_OR_ABORT')
+            if registration_first:
+                if competing.returncode: raise RuntimeError('FCM_INSERT_FIRST_DELETE_FAILED')
+                races.append({'first':'fcm_installation_registration','passed':True,'final_state':'no_identity_or_installation'})
+            else:
+                if competing.returncode==0 or b'23503' not in competing.stderr:
+                    raise RuntimeError('FCM_DELETE_FIRST_REGISTRATION_NOT_REJECTED')
+                races.append({'first':'auth_delete','passed':True,'registration_sqlstate':'23503','final_state':'no_identity_or_installation'})
         report={'network':'none','ports':False,'remote_connections':False,'migration':MIGRATION,
                 'concurrency':races,'migration_sha256':hashlib.sha256((ROOT/'supabase/migrations'/MIGRATION).read_bytes()).hexdigest(),
                 'qa_guard_default':'QA-specific route denies unenrolled subjects; normal route rejects classified QA subjects',

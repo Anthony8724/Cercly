@@ -1,5 +1,8 @@
+import 'features/auth/services/secure_session_storage.dart';
+
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -48,6 +51,11 @@ Future<void> main() async {
   await Supabase.initialize(
     url: SupabaseOptions.url,
     publishableKey: SupabaseOptions.publishableKey,
+    authOptions: !kIsWeb && defaultTargetPlatform == TargetPlatform.android
+        ? FlutterAuthClientOptions(
+            localStorage: SecureSessionStorage(url: SupabaseOptions.url),
+          )
+        : const FlutterAuthClientOptions(),
   );
 
   runApp(const CerclyApp());

@@ -2,24 +2,31 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../establecimientos/models/establecimiento_publico_model.dart';
 import '../../establecimientos/services/establecimiento_publico_service.dart';
 import '../../explorar/screens/detalle_establecimiento_screen.dart';
+import '../../promociones/services/promocion_publica_service.dart';
 import '../controllers/monitor_proximidad_controller.dart';
-import '../services/geofencing_experimental_service.dart';
 import '../services/production_geofencing_service.dart';
+import '../services/session_notification_barrier.dart';
+import '../services/geofence_authorization_gate.dart';
+import '../push/fcm_promotion_message.dart';
+import '../push/fcm_push_service.dart';
 
 class MonitorProximidadApp extends StatefulWidget {
   const MonitorProximidadApp({
     required this.child,
     this.controller,
+    this.pushService,
     this.cargarEstablecimiento,
     super.key,
   });
 
   final Widget child;
   final MonitorProximidadController? controller;
+  final FcmPushService? pushService;
   final Future<EstablecimientoPublicoModel?> Function(String establecimientoId)?
   cargarEstablecimiento;
 
@@ -30,10 +37,11 @@ class MonitorProximidadApp extends StatefulWidget {
 class _MonitorProximidadAppState extends State<MonitorProximidadApp>
     with WidgetsBindingObserver {
   late final MonitorProximidadController _controller;
+  late final FcmPushService _pushService =
+      widget.pushService ?? FcmPushService.shared;
+  StreamSubscription<AuthState>? _authSubscription;
   static const _geofenceChannel = MethodChannel(
-    ProductionGeofencingService.enabledBuild
-        ? ProductionGeofencingService.channelName
-        : 'cercly/geofence_experiment',
+    ProductionGeofencingService.channelName,
   );
 
   @override
@@ -45,9 +53,27 @@ class _MonitorProximidadAppState extends State<MonitorProximidadApp>
           alAbrirEstablecimiento: _abrirEstablecimiento,
         );
     WidgetsBinding.instance.addObserver(this);
+    _authSubscription = Supabase.instance.client.auth.onAuthStateChange.listen((
+      state,
+    ) {
+      if (state.event == AuthChangeEvent.signedIn) {
+        SessionNotificationBarrier.signedIn(state.session);
+      }
+      if (ProductionGeofencingService.enabledBuild) {
+        unawaited(_synchronizeGeofenceAccount(state.session));
+      }
+    });
+    try {
+      _pushService.observeAuthentication(
+        openPromotion: _abrirPromocionPush,
+        showForegroundMessage: _mostrarPushEnPrimerPlano,
+      );
+    } catch (_) {
+      // The push service remains dormant until Supabase has an authenticated
+      // client and the user explicitly enables promotional push.
+    }
     unawaited(_start());
-    if (GeofencingExperimentalService.staging ||
-        ProductionGeofencingService.enabledBuild) {
+    if (ProductionGeofencingService.enabledBuild) {
       _geofenceChannel.setMethodCallHandler(_onNativeMethod);
       WidgetsBinding.instance.addPostFrameCallback((_) {
         unawaited(_consumeNativeNotification());
@@ -55,10 +81,41 @@ class _MonitorProximidadAppState extends State<MonitorProximidadApp>
     }
   }
 
+  Future<void> _synchronizeGeofenceAccount(Session? session) async {
+    final service = ProductionGeofencingService();
+    // Ignore an outdated queued authentication event.
+    if (Supabase.instance.client.auth.currentSession?.accessToken !=
+        session?.accessToken) {
+      return;
+    }
+    if (!ProductionGeofencingService.stagingBuild) {
+      try {
+        await GeofenceAuthorizationGate.block().timeout(
+          const Duration(seconds: 2),
+        );
+      } catch (_) {
+        // Still attempt native cleanup when the separate persistence channel fails.
+      }
+    }
+    if (Supabase.instance.client.auth.currentSession?.accessToken !=
+        session?.accessToken) {
+      return;
+    }
+    await service.accountChanged(session?.user.id);
+    if (session != null &&
+        Supabase.instance.client.auth.currentSession?.accessToken ==
+            session.accessToken) {
+      await service.updateSession(session);
+      await service.prepareHistory();
+    }
+  }
+
   Future<void> _start() async {
     if (ProductionGeofencingService.enabledBuild) {
       try {
-        await ProductionGeofencingService().prepareHistory();
+        await _synchronizeGeofenceAccount(
+          Supabase.instance.client.auth.currentSession,
+        );
       } catch (_) {
         /* Native delivery fails closed until imported. */
       }
@@ -71,18 +128,35 @@ class _MonitorProximidadAppState extends State<MonitorProximidadApp>
   }
 
   Future<void> _onNativeMethod(MethodCall call) async {
-    if (call.method != 'notificationOpened' || call.arguments is! String) {
-      return;
+    if (call.method != 'notificationOpened') return;
+    final args = call.arguments;
+    if (args is Map) {
+      final promotionId = args['promotionId'];
+      final establishmentId = args['establishmentId'];
+      if (promotionId is String && establishmentId is String) {
+        await _abrirPromocionPush(
+          FcmPromotionMessage(
+            eventId: promotionId,
+            promotionId: promotionId,
+            establishmentId: establishmentId,
+            title: 'Promoción cercana',
+            body: '',
+          ),
+        );
+      }
+    } else if (args is String) {
+      await _abrirEstablecimiento(args);
     }
-    await _abrirEstablecimiento(call.arguments as String);
   }
 
   Future<void> _consumeNativeNotification() async {
     try {
-      final id = await _geofenceChannel.invokeMethod<String>(
+      final payload = await _geofenceChannel.invokeMethod<Object?>(
         'consumePendingNotification',
       );
-      if (id != null && id.isNotEmpty) await _abrirEstablecimiento(id);
+      if (payload is Map) {
+        await _onNativeMethod(MethodCall('notificationOpened', payload));
+      }
     } on PlatformException {
       // El canal solo existe en Android y el build experimental de Staging.
     } on MissingPluginException {
@@ -125,13 +199,51 @@ class _MonitorProximidadAppState extends State<MonitorProximidadApp>
     }
   }
 
+  Future<void> _abrirPromocionPush(FcmPromotionMessage message) async {
+    try {
+      final promocion = await PromocionPublicaService().obtenerPorId(
+        message.promotionId,
+      );
+      if (!mounted) return;
+      final ahora = DateTime.now();
+      if (promocion == null ||
+          promocion.establecimientoId != message.establishmentId ||
+          !promocion.activa ||
+          promocion.fechaInicio.isAfter(ahora) ||
+          !promocion.fechaFin.isAfter(ahora)) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Esta promoción ya no está disponible.'),
+          ),
+        );
+        return;
+      }
+      await _abrirEstablecimiento(promocion.establecimientoId);
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No pudimos validar esta promoción.')),
+      );
+    }
+  }
+
+  void _mostrarPushEnPrimerPlano(FcmPromotionMessage message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          message.body.isEmpty
+              ? message.title
+              : '${message.title}: ${message.body}',
+        ),
+      ),
+    );
+  }
+
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
-      unawaited(_controller.reanudar());
-      if (ProductionGeofencingService.enabledBuild) {
-        unawaited(ProductionGeofencingService().synchronize(automatic: true));
-      }
+      unawaited(_reanudarServicios());
     } else if (state == AppLifecycleState.paused ||
         state == AppLifecycleState.inactive ||
         state == AppLifecycleState.detached) {
@@ -139,9 +251,23 @@ class _MonitorProximidadAppState extends State<MonitorProximidadApp>
     }
   }
 
+  Future<void> _reanudarServicios() async {
+    try {
+      await _pushService.reconcileAfterResume();
+    } catch (_) {
+      // Push registration must not keep the foreground Radar paused.
+    }
+    if (!mounted) return;
+    await _controller.reanudar();
+    if (ProductionGeofencingService.enabledBuild) {
+      await ProductionGeofencingService().synchronize(automatic: true);
+    }
+  }
+
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    unawaited(_authSubscription?.cancel());
     _controller.dispose();
     super.dispose();
   }

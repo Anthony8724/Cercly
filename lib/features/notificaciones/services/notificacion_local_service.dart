@@ -4,9 +4,10 @@ import 'dart:developer' as developer;
 import 'package:flutter/services.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../promociones/models/promocion_destacada_model.dart';
-import 'geofencing_experimental_service.dart';
+import 'session_notification_barrier.dart';
 import 'production_geofencing_service.dart';
 
 abstract interface class NotificacionPromocionGateway {
@@ -100,6 +101,28 @@ class NotificacionLocalService
       settings: ajustes,
       onDidReceiveNotificationResponse: _procesarRespuesta,
     );
+
+    // Crear el canal antes de recibir notificaciones FCM.
+    try {
+      final android = _plugin
+          .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin
+          >();
+
+      await android?.createNotificationChannel(
+        const AndroidNotificationChannel(
+          _canalId,
+          _canalNombre,
+          description: 'Avisos cuando hay una promoción cerca de ti',
+          importance: Importance.high,
+          enableVibration: true,
+          playSound: true,
+        ),
+      );
+    } catch (error, stackTrace) {
+      _registrarFalloSeguro('notification_channel_startup', error, stackTrace);
+    }
+
     _inicializado = true;
 
     if (!_detalleInicioProcesado) {
@@ -303,22 +326,27 @@ class NotificacionLocalService
     required bool simulada,
     bool Function()? sesionVigente,
   }) async {
+    if (SessionNotificationBarrier.blocked) return false;
     await inicializar();
-    if (sesionVigente != null && !sesionVigente()) return false;
+    if (SessionNotificationBarrier.blocked ||
+        (sesionVigente != null && !sesionVigente())) {
+      return false;
+    }
     if (!await tienePermisoParaNotificar()) return false;
-    if (sesionVigente != null && !sesionVigente()) return false;
+    if (SessionNotificationBarrier.blocked ||
+        (sesionVigente != null && !sesionVigente())) {
+      return false;
+    }
 
-    if (GeofencingExperimentalService.staging ||
-        ProductionGeofencingService.enabledBuild) {
+    if (ProductionGeofencingService.enabledBuild) {
       try {
         final reserva =
-            await const MethodChannel(
-              ProductionGeofencingService.enabledBuild
-                  ? ProductionGeofencingService.channelName
-                  : 'cercly/geofence_experiment',
-            ).invokeMethod<String>('reserveForegroundSlot', {
-              'promotionId': promocion.id,
-            });
+            await const MethodChannel(ProductionGeofencingService.channelName)
+                .invokeMethod<String>('reserveForegroundSlot', {
+                  'promotionId': promocion.id,
+                  'businessId': promocion.establecimientoId,
+                  'userId': Supabase.instance.client.auth.currentUser?.id ?? '',
+                });
         if (ProductionGeofencingService.enabledBuild && reserva != 'reserved') {
           return false;
         }
@@ -331,7 +359,10 @@ class NotificacionLocalService
         return false;
       }
     }
-    if (sesionVigente != null && !sesionVigente()) return false;
+    if (SessionNotificationBarrier.blocked ||
+        (sesionVigente != null && !sesionVigente())) {
+      return false;
+    }
 
     final descripcion = promocion.descripcion.trim();
     final cuerpo = descripcion.isEmpty

@@ -27,6 +27,8 @@ import java.net.HttpURLConnection
 import java.net.URL
 import java.time.Instant
 import java.util.concurrent.Executors
+import java.util.UUID
+import java.util.TimeZone
 
 /** Private Production candidate. No QA entry points, coordinates in logs or continuous GPS. */
 object ProductionGeofencing {
@@ -46,6 +48,10 @@ object ProductionGeofencing {
         prefs(c).edit().putString("result", value).putLong("checkedAt", now()).apply()
     }
     private fun allowed(c: Context): Boolean {
+        val session = GeofenceSessionStore.load(c) ?: return false
+        val gate = foreground(c).getString("flutter.cercly.geofence.authorized_session.v1", null)
+        if (!ProximityPolicy.authorizedSession(gate, prefs(c).getString("userId", null), session.sessionId) ||
+            session.userId != prefs(c).getString("userId", null)) return false
         val s = status(c)
         return listOf("consent", "foregroundAlerts", "precise", "background", "notifications", "location", "gms")
             .all { s[it] == true }
@@ -77,8 +83,64 @@ object ProductionGeofencing {
     }
     @Synchronized fun consent(c: Context, enabled: Boolean): Boolean {
         val saved = prefs(c).edit().putBoolean("consent", enabled).commit()
-        if (!enabled || !saved) remove(c)
-        return saved
+        if (!enabled || !saved) {
+            val cleared = GeofenceSessionStore.clear(c)
+            remove(c)
+            return saved && cleared
+        }
+        return true
+    }
+    // Do not carry zones, consent or the local ledger over to another account.
+    @Synchronized fun accountChanged(c: Context, userId: String?, expectedUserId: String? = null, expectedSessionId: String? = null): Boolean {
+        val p = prefs(c)
+        val previous = p.getString("userId", null)
+        if (userId == null && expectedUserId != null) {
+            val current = GeofenceSessionStore.load(c)
+            if (!ProximityPolicy.mayRetireExpectedSession(expectedUserId, expectedSessionId, previous, current?.sessionId)) return false
+        }
+        if (previous == userId && userId != null) return true
+        val cleared = GeofenceSessionStore.clear(c)
+        remove(c)
+        val saved = p.edit().clear().putString("userId", userId).commit()
+        return cleared && saved
+    }
+    /**
+     * Native retirement is serialized with publishIfAuthorized (which also
+     * synchronizes on this object). After this method acknowledges retirement,
+     * an in-flight event cannot post a new notification for the old session.
+     *
+     * The Flutter preferences gate is written before clearing tokens. A crash
+     * halfway through retirement therefore leaves native delivery disabled.
+     */
+    @Synchronized fun retireLocalSession(
+        c: Context,
+        expectedUserId: String?,
+        expectedSessionId: String?,
+    ): Boolean {
+        val p = prefs(c)
+        val previousUser = p.getString("userId", null)
+        val currentSession = GeofenceSessionStore.load(c)
+        if (!ProximityPolicy.mayRetireExpectedSession(
+                expectedUserId, expectedSessionId, previousUser, currentSession?.sessionId)) return false
+        // Same SharedPreferences namespace as GeofenceAuthorizationGate in Dart.
+        // Commit synchronously while holding the native notification lock.
+        val gateSaved = foreground(c).edit()
+            .putString("flutter.cercly.geofence.authorized_session.v1", "")
+            .commit()
+        if (!gateSaved) return false
+        generation++
+        val tokenCleared = GeofenceSessionStore.clear(c)
+        val consentDisabled = p.edit().putBoolean("consent", false).commit()
+        remove(c)
+        // Remove an alert which was published just before retirement began.
+        NotificationManagerCompat.from(c).cancel(4819)
+        return tokenCleared && consentDisabled
+    }
+
+    @Synchronized fun setAccessToken(c: Context, userId: String, token: String): Boolean {
+        if (prefs(c).getString("userId", null) != userId || !prefs(c).getBoolean("consent", false)) return false
+        generation++
+        return GeofenceSessionStore.save(c, userId, token)
     }
     @Synchronized fun importHistory(c: Context, last: Map<String, Number>, recent: List<Number>): Boolean {
         val p = prefs(c)
@@ -90,6 +152,9 @@ object ProductionGeofencing {
         return e.putBoolean("historyImported", true).commit()
     }
     @Synchronized fun reserveForeground(c: Context, id: String): String {
+        // The foreground ledger cannot coordinate with the server reservation.
+        // Suppress this legacy delivery path while geofencing is consented.
+        if (!ProximityPolicy.allowLegacyForeground(prefs(c).getBoolean("consent", false))) return "blocked"
         if (!ProximityPolicy.uuid(id) || !prefs(c).getBoolean("historyImported", false) ||
             status(c)["foregroundAlerts"] != true || status(c)["notifications"] != true) return "blocked"
         return reserve(c, id) ?: "reserved"
@@ -130,12 +195,13 @@ object ProductionGeofencing {
     }
     @Synchronized fun register(c: Context, json: String, done: (String) -> Unit) {
         if (registrationBusy) { done("registration_busy"); return }
-        if (!allowed(c) || !prefs(c).getBoolean("historyImported", false)) { done("authorization_required"); return }
+        if (!allowed(c) || prefs(c).getString("userId", null) == null || !prefs(c).getBoolean("historyImported", false)) { done("authorization_required"); return }
         val items = try {
             val array = JSONArray(json)
             require(array.length() <= ProximityPolicy.MAX_ZONES)
             (0 until array.length()).map { array.getJSONObject(it) }.onEach { z ->
                 require(ProximityPolicy.uuid(z.getString("id")) && ProximityPolicy.uuid(z.getString("business")))
+                require(z.getString("userId") == prefs(c).getString("userId", null))
                 require(ProximityPolicy.positionValid(z.getDouble("lat"), z.getDouble("lon")))
                 require(z.getDouble("radius") in 100.0..5000.0)
                 require(z.getLong("expires") > now())
@@ -143,6 +209,36 @@ object ProductionGeofencing {
             }.also { require(it.map { z -> z.getString("id") }.distinct().size == it.size) }
         } catch (_: Exception) { done("invalid_zones"); return }
         if (items.isEmpty()) { remove(c); done("no_eligible_zones"); return }
+
+        // Preserve active GMS registrations when the authorized zones
+        // have not changed. Renew at least once per day.
+        val unchanged = runCatching {
+            val stored = zones(c)
+            val p = prefs(c)
+            val acceptedAt = p.getLong("acceptedAt", 0L)
+            val timestamp = now()
+            p.getString("registration", "") == "accepted_by_gms" &&
+                acceptedAt > timestamp - ProximityPolicy.DAY &&
+                acceptedAt <= timestamp &&
+                stored.size == items.size &&
+                items.all { item ->
+                    stored.any { old ->
+                        old.getString("id") == item.getString("id") &&
+                        old.getString("business") == item.getString("business") &&
+                        old.getString("userId") == item.getString("userId") &&
+                        old.getDouble("lat") == item.getDouble("lat") &&
+                        old.getDouble("lon") == item.getDouble("lon") &&
+                        old.getDouble("radius") == item.getDouble("radius") &&
+                        old.getLong("expires") > timestamp + ProximityPolicy.DAY &&
+                        item.getLong("expires") >= old.getLong("expires")
+                    }
+                }
+        }.getOrDefault(false)
+
+        if (unchanged) {
+            done("accepted_by_gms")
+            return
+        }
         registrationBusy = true
         val revision = ++generation
         val p = prefs(c)
@@ -180,6 +276,12 @@ object ProductionGeofencing {
     fun restore(c: Context, done: () -> Unit) {
         if (!allowed(c)) { remove(c); done(); return }
         val fresh = zones(c).filter { it.getLong("expires") > now() }
+        // A reboot or package replacement requires real GMS registration.
+        if (!prefs(c).edit()
+                .putString("registration", "restore_pending").commit()) {
+            done()
+            return
+        }
         register(c, JSONArray(fresh).toString()) { done() }
     }
     fun reconcile(c: Context) {
@@ -202,16 +304,21 @@ object ProductionGeofencing {
         // Drop overlapping work rather than queue receivers beyond their execution window.
         if (!processing.compareAndSet(false, true)) { result(c, "event_busy"); finish(); return }
         executor.execute {
+            var phase = "fetch"
             try {
                 val rows = fetch(ids)
+                phase = "validate"
                 var outcome = "promotion_unavailable"
                 for (row in rows) {
                     val zone = zones(c).firstOrNull { it.getString("id") == row.getString("id") } ?: continue
-                    outcome = validateAndNotify(c, zone, row, location)
+                    outcome = validateAndNotify(c, zone, row, location) { phase = it }
                     if (outcome == "native_notification_posted") break
                 }
                 result(c, outcome)
-            } catch (_: Exception) { result(c, "query_or_delivery_error") }
+            } catch (error: Exception) {
+                val type = error.javaClass.simpleName.take(32)
+                result(c, "error_${phase}_$type")
+            }
             finally { processing.set(false); finish() }
         }
     }
@@ -242,24 +349,85 @@ object ProductionGeofencing {
             return (0 until a.length()).map { a.getJSONObject(it) }
         } finally { connection.disconnect() }
     }
-    @Synchronized private fun validateAndNotify(c: Context, z: JSONObject, row: JSONObject, location: Location): String {
-        if (!allowed(c) || !prefs(c).getBoolean("historyImported", false)) return "authorization_required"
+    private fun validateAndNotify(c: Context, z: JSONObject, row: JSONObject, location: Location, reportPhase: (String) -> Unit): String {
+        val revision = synchronized(this) { generation }
+        val session = GeofenceSessionStore.load(c) ?: return "authentication_required"
+        if (!allowed(c) || !prefs(c).getBoolean("historyImported", false) ||
+            z.optString("userId") != prefs(c).getString("userId", null)) return "authorization_required"
         // Recheck persisted generation/zone after the network request and before reserving a slot.
         if (zones(c).none { it.toString() == z.toString() }) return "zone_removed"
+        reportPhase("business")
         val time = now(); val business = row.getJSONObject("establecimientos")
-        if (z.getLong("expires") <= time || !ProximityPolicy.eligible(row.getBoolean("activa"),
-                business.getString("estado") == "aprobado", business.getBoolean("publicable"),
-                Instant.parse(row.getString("fecha_inicio")).toEpochMilli(),
-                Instant.parse(row.getString("fecha_fin")).toEpochMilli(), time)) return "promotion_not_eligible"
+        reportPhase("eligibility_expiry")
+        if (z.getLong("expires") <= time)
+            return "promotion_not_eligible"
+
+        reportPhase("eligibility_active")
+        val active = row.getBoolean("activa")
+
+        reportPhase("eligibility_approved")
+        val approved = business.getString("estado") == "aprobado"
+
+        reportPhase("eligibility_published")
+        val published = business.getBoolean("publicable")
+
+        reportPhase("eligibility_start_date")
+        val startsAt = java.time.OffsetDateTime.parse(
+            row.getString("fecha_inicio").trim()
+        ).toInstant().toEpochMilli()
+
+        reportPhase("eligibility_end_date")
+        val endsAt = java.time.OffsetDateTime.parse(
+            row.getString("fecha_fin").trim()
+        ).toInstant().toEpochMilli()
+
+        if (!ProximityPolicy.eligible(
+                active,
+                approved,
+                published,
+                startsAt,
+                endsAt,
+                time
+            ))
+            return "promotion_not_eligible"
+        reportPhase("coordinates")
         if (business.getString("id") != z.getString("business") ||
             business.getDouble("latitud") != z.getDouble("lat") || business.getDouble("longitud") != z.getDouble("lon")) return "zone_changed"
+        reportPhase("preferences")
         val userRadius = foreground(c).getLong("flutter.cercly.alertas_proximidad.radio_metros.v1", 5000L).toDouble()
+        reportPhase("radius")
         val radius = minOf(z.getDouble("radius"), row.getDouble("radio_alerta_metros"), userRadius)
         val distance = ProximityPolicy.distance(location.latitude, location.longitude, z.getDouble("lat"), z.getDouble("lon"))
+        reportPhase("location")
         val age = (SystemClock.elapsedRealtimeNanos() - location.elapsedRealtimeNanos) / 1_000_000
         if (!location.hasAccuracy() || !ProximityPolicy.inRange(distance, location.accuracy.toDouble(), age, radius)) return "location_outside_or_uncertain"
-        reserve(c, row.getString("id"))?.let { return it }
-        return try {
+        if (session.userId != z.optString("userId")) return "authentication_required"
+        val payload = JSONObject().put("p_promotion_id", row.getString("id"))
+            .put("p_event_id", UUID.randomUUID().toString())
+            .put("p_latitude", location.latitude).put("p_longitude", location.longitude)
+            .put("p_accuracy_meters", location.accuracy.toDouble())
+            .put("p_observed_at", Instant.ofEpochMilli(location.time).toString())
+            .put("p_utc_offset_minutes", TimeZone.getDefault().getOffset(time) / 60000)
+        return GeofenceDelivery.deliver(
+            reserve = {
+                val response = JSONArray(rpc("reservar_promocion_geofencing", payload, session.token))
+                if (response.length() != 1) null else response.getJSONObject(0).optString("reservation_id")
+            },
+            publishIfAuthorized = {
+                synchronized(this) {
+            val current = GeofenceSessionStore.load(c)
+            when {
+                  generation != revision ->
+                      "authorization_changed_generation"
+                  current != session ->
+                      "authorization_changed_session"
+                  !allowed(c) ->
+                      "authorization_changed_permissions"
+                  prefs(c).getString("userId", null) != session.userId ->
+                      "authorization_changed_user"
+                  zones(c).none { it.toString() == z.toString() } ->
+                      "authorization_changed_zone"
+                  else -> try {
             val manager = c.getSystemService(NotificationManager::class.java)
             if (Build.VERSION.SDK_INT >= 26) manager.createNotificationChannel(NotificationChannel(CHANNEL, "Promociones cercanas", NotificationManager.IMPORTANCE_HIGH))
             val intent = Intent(c, MainActivity::class.java).putExtra(EXTRA_ID, business.getString("id"))
@@ -273,8 +441,21 @@ object ProductionGeofencing {
             manager.notify(4819, notification)
             prefs(c).edit().putLong("notificationAt", time).apply()
             "native_notification_posted"
-        } catch (_: Exception) { "delivery_error" } // Reservation remains: fail closed rather than flood retries.
+            } catch (_: Exception) { "delivery_error" }
+              }
+        }
+            },
+            finish = { reservation, status ->
+                rpc("finalizar_reserva_geofencing", JSONObject().put("p_reservation_id", reservation)
+                    .put("p_status", status), session.token)
+            },
+        )
     }
+
+    private fun rpc(name: String, payload: JSONObject, token: String): String =
+        GeofenceRpcClient(BuildConfig.PROXIMITY_URL, BuildConfig.PROXIMITY_KEY, BuildConfig.CERCLY_STAGING)
+            .post(name, payload.toString(), token)
+
 }
 
 class ProductionGeofenceReceiver : BroadcastReceiver() {
