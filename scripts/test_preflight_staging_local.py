@@ -37,6 +37,14 @@ class RuntimeFilesTest(unittest.TestCase):
         self.assertEqual(files['supabase/templates/alias.html'], template)
         self.assertNotIn('supabase/templates/source.html', files)
 
+    def test_parent_traversal_cannot_escape_the_copy_destination(self):
+        # The source resolves inside templates, but this spelling would copy
+        # outside a different --dest if it were retained as the output name.
+        (self.root / 'supabase/templates/escape.html').write_text('{{ .Token }}')
+        self.config('../' + self.root.name + '/supabase/templates/escape.html')
+        with self.assertRaises(ValueError):
+            runtime_files(self.root)
+
     def test_external_paths_are_rejected(self):
         for path in ('/tmp/private.html', '../private.html', './.env'):
             with self.subTest(path=path):

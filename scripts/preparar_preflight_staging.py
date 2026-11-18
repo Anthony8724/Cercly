@@ -34,7 +34,9 @@ def runtime_files(root):
                 relative = Path(item)
                 candidate = (root / relative).resolve()
                 templates = root / 'supabase/templates'
-                if relative.is_absolute() or templates not in candidate.parents or candidate.suffix != '.html':
+                if (relative.is_absolute() or '..' in relative.parts
+                        or Path('supabase/templates') not in relative.parents
+                        or templates not in candidate.parents or candidate.suffix != '.html'):
                     raise ValueError('Solo se permiten plantillas HTML dentro de supabase/templates')
                 if not candidate.is_file():
                     raise ValueError('Falta una plantilla referenciada por config.toml: ' + str(relative))
