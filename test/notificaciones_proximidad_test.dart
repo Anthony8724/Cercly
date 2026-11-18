@@ -1,4 +1,5 @@
 import 'package:cercly/features/notificaciones/push/fcm_environment_policy.dart';
+
 import 'dart:async';
 
 import 'package:cercly/features/explorar/models/ubicacion_usuario.dart';
@@ -247,6 +248,12 @@ class _PushEvaluatorFalso implements FreshLocationPushEvaluator {
       at: observedAt,
     ));
   }
+}
+
+class _EnabledTestPolicy extends FcmEnvironmentPolicy {
+  const _EnabledTestPolicy() : super(staging: true, optIn: true, url: 'test');
+  @override
+  bool get enabled => true;
 }
 
 void main() {
@@ -1170,7 +1177,7 @@ void main() {
           historial: _HistorialFalso(),
           preferencias: preferences,
           pushEvaluator: push,
-          pushPolicy: const FcmEnvironmentPolicy(staging: true, optIn: true, url: 'https://dlajxviqhkdcqnmczhvr.supabase.co'),
+          pushPolicy: const _EnabledTestPolicy(),
           usuarioId: () => 'usuario-1',
           ahora: () => instanteBase,
         );

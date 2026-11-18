@@ -26,9 +26,16 @@ void main() {
         InMemorySharedPreferencesAsync.empty();
   });
 
-  test('política exige Staging, opt-in y URL exacta', () {
+  test('política deshabilita FCM incluso con opt-in de Staging', () {
     expect(const FcmEnvironmentPolicy.build().enabled, isFalse);
-    expect(stagingPolicy.enabled, isTrue);
+    expect(
+      const FcmEnvironmentPolicy(
+        staging: true,
+        optIn: true,
+        url: 'https://dlajxviqhkdcqnmczhvr.supabase.co',
+      ).enabled,
+      isFalse,
+    );
     expect(
       const FcmEnvironmentPolicy(
         staging: true,
@@ -471,11 +478,14 @@ void main() {
   );
 }
 
-const stagingPolicy = FcmEnvironmentPolicy(
-  staging: true,
-  optIn: true,
-  url: 'https://dlajxviqhkdcqnmczhvr.supabase.co',
-);
+// Service logic is exercised with a test-only policy; the real policy is off.
+class _EnabledTestPolicy extends FcmEnvironmentPolicy {
+  const _EnabledTestPolicy() : super(staging: true, optIn: true, url: 'test');
+  @override
+  bool get enabled => true;
+}
+
+const stagingPolicy = _EnabledTestPolicy();
 
 FcmPushService _service({
   required String? Function() userId,

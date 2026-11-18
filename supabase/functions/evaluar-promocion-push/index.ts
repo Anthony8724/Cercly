@@ -13,12 +13,16 @@ const corsHeaders = {
 };
 
 let cachedAccessToken: { value: string; expiresAt: number } | undefined;
+const senderEnabled: boolean = false;
 
 Deno.serve(async (request) => {
   if (request.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
   if (request.method !== 'POST') return response(405, { error: 'method_not_allowed' });
+
+  // Kept fail-closed until the sender and account isolation are reviewed.
+  if (!senderEnabled) return response(503, { error: 'push_sender_disabled' });
 
   const supabaseUrl = Deno.env.get('SUPABASE_URL');
   const publishableKey = Deno.env.get('SUPABASE_ANON_KEY') ??

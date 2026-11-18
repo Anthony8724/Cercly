@@ -1,7 +1,6 @@
 import '../../../config/supabase_options.dart';
 
-/// Habilita FCM únicamente en el entorno autorizado por la compilación.
-/// El consentimiento del usuario se valida aparte en FcmPushService.
+/// Promotional push remains disabled in all builds until a separate review.
 class FcmEnvironmentPolicy {
   const FcmEnvironmentPolicy({
     required this.staging,
@@ -27,11 +26,5 @@ class FcmEnvironmentPolicy {
   final bool productionOptIn;
   final String url;
 
-  bool get enabled {
-    if (staging) {
-      return optIn && url == stagingUrl;
-    }
-
-    return productionOptIn && url == productionUrl;
-  }
+  bool get enabled => false;
 }

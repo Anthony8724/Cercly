@@ -281,6 +281,14 @@ void main() {
       );
     },
   );
+  test('logout termina aunque falle la retirada de push', () async {
+    final client = await clientFor((_) async => http.Response('', 204));
+    await AuthService(
+      supabase: client,
+      retirePromotionalPush: () async => throw TimeoutException('revocación'),
+    ).signOut();
+    expect(client.auth.currentSession, isNull);
+  });
   test('reintento de sesión renueva realmente el token una vez', () async {
     final requests = <http.Request>[];
     final client = await clientFor((request) async {

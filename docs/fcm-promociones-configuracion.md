@@ -1,11 +1,12 @@
 # Configuración Android de FCM para promociones
 
-El cliente solo habilita push cuando coinciden `CERCLY_STAGING=true`,
-`CERCLY_FCM_STAGING_ENABLED=true` y la URL exacta del proyecto Staging.
-La compilación pública queda desactivada aunque conserve una preferencia
-anterior. Al iniciar sesión se intenta apagar la preferencia y retirar una
-instalación previa; si falla la retirada se conserva un marcador de reintento.
-Las alertas locales y el radar conservan su propia configuración.
+Push promocional está desactivado en todas las variantes, incluido Staging,
+sin opción de activarlo mediante parámetros de compilación. El emisor incluido
+en el código también responde que está desactivado. Se conserva la lógica para
+una revisión y activación posteriores. La limpieza de asociaciones antiguas
+es independiente de la activación: si falla la retirada remota, puede persistir
+el riesgo de entrega hasta confirmarla en el servidor. Las alertas locales y el
+radar conservan su configuración.
 
 El proyecto `cercly-sky` ya tiene registradas las apps Android de Producción y
 Staging. La configuración cliente se encuentra en

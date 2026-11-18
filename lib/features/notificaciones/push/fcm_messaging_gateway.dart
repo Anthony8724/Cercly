@@ -4,6 +4,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 
 import 'fcm_promotion_message.dart';
+import 'fcm_environment_policy.dart';
 
 abstract interface class FcmMessagingGateway {
   Future<bool> initialize();
@@ -20,6 +21,7 @@ abstract interface class FcmMessagingGateway {
 
 @pragma('vm:entry-point')
 Future<void> firebasePushBackgroundHandler(RemoteMessage message) async {
+  if (!const FcmEnvironmentPolicy.build().enabled) return;
   try {
     if (Firebase.apps.isEmpty) await Firebase.initializeApp();
   } catch (_) {

@@ -15,7 +15,7 @@ void main() {
     expect(policy.enabled, isFalse);
   });
 
-  test('Produccion requiere activacion explicita', () {
+  test('Produccion permanece deshabilitada con activacion explicita', () {
     const policy = FcmEnvironmentPolicy(
       staging: false,
       optIn: false,
@@ -23,7 +23,7 @@ void main() {
       url: productionUrl,
     );
 
-    expect(policy.enabled, isTrue);
+    expect(policy.enabled, isFalse);
   });
 
   test('Produccion rechaza URL de Staging', () {
@@ -37,14 +37,14 @@ void main() {
     expect(policy.enabled, isFalse);
   });
 
-  test('Staging requiere su propia bandera', () {
+  test('Staging permanece deshabilitado pendiente de revision', () {
     const policy = FcmEnvironmentPolicy(
       staging: true,
       optIn: true,
       url: stagingUrl,
     );
 
-    expect(policy.enabled, isTrue);
+    expect(policy.enabled, isFalse);
   });
 
   test('Bandera de Produccion no habilita Staging', () {

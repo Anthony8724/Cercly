@@ -195,7 +195,8 @@ class AuthService {
     final sessionBeforeLogout = _supabase.auth.currentSession;
     SessionNotificationBarrier.beginLogout(sessionBeforeLogout);
     var persistentBarrierConfirmed = false;
-    final needsNativeRetirement = _client == null &&
+    final needsNativeRetirement =
+        _client == null &&
         ProductionGeofencingService.enabledBuild &&
         !ProductionGeofencingService.stagingBuild;
     if (needsNativeRetirement) {
@@ -221,23 +222,29 @@ class AuthService {
       } else if (_client == null && ProductionGeofencingService.enabledBuild) {
         final service = ProductionGeofencingService();
         if (needsNativeRetirement) {
-          nativeRetirementConfirmed = await service.retireLocalSession(
-            expectedUserId: sessionBeforeLogout?.user.id,
-            expectedSessionId: SessionNotificationBarrier.sessionId(
-              sessionBeforeLogout,
-            ),
-          ).timeout(const Duration(seconds: 3));
+          nativeRetirementConfirmed = await service
+              .retireLocalSession(
+                expectedUserId: sessionBeforeLogout?.user.id,
+                expectedSessionId: SessionNotificationBarrier.sessionId(
+                  sessionBeforeLogout,
+                ),
+              )
+              .timeout(const Duration(seconds: 3));
         }
         if (nativeRetirementConfirmed || !needsNativeRetirement) {
-          final removed = await service.accountChanged(
-            null,
-            expectedUserId: sessionBeforeLogout?.user.id,
-            expectedSessionId: SessionNotificationBarrier.sessionId(
-              sessionBeforeLogout,
-            ),
-          ).timeout(const Duration(seconds: 3));
+          final removed = await service
+              .accountChanged(
+                null,
+                expectedUserId: sessionBeforeLogout?.user.id,
+                expectedSessionId: SessionNotificationBarrier.sessionId(
+                  sessionBeforeLogout,
+                ),
+              )
+              .timeout(const Duration(seconds: 3));
           if (!removed) {
-            debugPrint('No se confirmó la eliminación de la credencial nativa.');
+            debugPrint(
+              'No se confirmó la eliminación de la credencial nativa.',
+            );
           }
         }
       }
@@ -247,7 +254,8 @@ class AuthService {
     // Do not sign out when both independent fail-closed protections failed.
     // A pending native request might otherwise publish using the old token.
     if (needsNativeRetirement &&
-        !persistentBarrierConfirmed && !nativeRetirementConfirmed) {
+        !persistentBarrierConfirmed &&
+        !nativeRetirementConfirmed) {
       throw StateError(
         'No se pudo confirmar el bloqueo local de notificaciones. '
         'Vuelve a intentar cerrar sesión.',
