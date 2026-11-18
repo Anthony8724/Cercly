@@ -1,5 +1,5 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.75.0';
-import { parseSolicitud, parseORS } from './routing_logic.ts';
+import { parseSolicitud, parseORS, orsDirectionsUrl } from './routing_logic.ts';
 
 const cors = {
   'Access-Control-Allow-Origin': '*',
@@ -14,6 +14,25 @@ function json(code: number, data: Record<string, unknown>): Response {
   });
 }
 
+// En Supabase hospedado pueden inyectarse claves nombradas como JSON.
+// Nunca se lee ni transmite una clave secret/service_role al cliente.
+function resolvePublicKey(): string | undefined {
+  const direct = Deno.env.get('SUPABASE_PUBLISHABLE_KEY') ??
+    Deno.env.get('SUPABASE_ANON_KEY');
+  if (direct) return direct;
+  const named = Deno.env.get('SUPABASE_PUBLISHABLE_KEYS');
+  if (!named) return undefined;
+  try {
+    const parsed: unknown = JSON.parse(named);
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return undefined;
+    const key = (parsed as Record<string, unknown>).default;
+    return typeof key === 'string' && key.startsWith('sb_publishable_')
+      ? key : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response('ok', {headers: cors});
   if (req.method !== 'POST') return json(405, {error:'method_not_allowed'});
@@ -24,7 +43,7 @@ Deno.serve(async (req: Request) => {
   if (!token || token.length > 10000) return json(401, {error:'invalid_session'});
 
   const baseUrl = Deno.env.get('SUPABASE_URL');
-  const publicKey = Deno.env.get('SUPABASE_PUBLISHABLE_KEY') ?? Deno.env.get('SUPABASE_ANON_KEY');
+  const publicKey = resolvePublicKey();
   const orsKey = Deno.env.get('ORS_API_KEY');
   if (!baseUrl || !publicKey || !orsKey) return json(503, {error:'routing_not_configured'});
 
@@ -60,7 +79,7 @@ Deno.serve(async (req: Request) => {
   // Posición usada solo para responder esta solicitud; no se registra.
   try {
     const response = await fetch(
-      `https://api.openrouteservice.org/v2/directions/${r.perfil}/geojson`,
+      orsDirectionsUrl(r.perfil),
       {
         method: 'POST',
         headers: {
@@ -78,6 +97,9 @@ Deno.serve(async (req: Request) => {
       },
     );
     if (response.status === 429) return json(429, {error:'provider_limit'});
+    if (response.status === 401 || response.status === 403) {
+      return json(503, {error:'routing_provider_not_authorized'});
+    }
     if ([400,404,422].includes(response.status)) return json(422, {error:'route_not_found'});
     if (!response.ok) return json(502, {error:'provider_unavailable'});
     const raw = await response.text();

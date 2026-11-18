@@ -1,5 +1,5 @@
 import { assertEquals, assert } from 'jsr:@std/assert@1.0.14';
-import { parseORS, parseSolicitud } from './routing_logic.ts';
+import { orsDirectionsUrl, parseORS, parseSolicitud } from './routing_logic.ts';
 
 Deno.test('acepta solicitud cercana de Tulcán', () => {
   const r = parseSolicitud({
@@ -21,4 +21,11 @@ Deno.test('extrae ruta ORS en orden latitud, longitud', () => {
 Deno.test('rechaza respuesta ORS malformada', () => {
   assertEquals(parseORS({features:[]}), null);
   assertEquals(parseORS({features:[{geometry:{coordinates:[[-77,0]]},properties:{summary:{distance:0,duration:0}}}]}), null);
+});
+
+Deno.test('usa el dominio y la ruta API HeiGIT vigentes para ambos perfiles', () => {
+  assertEquals(orsDirectionsUrl('foot-walking'),
+    'https://api.heigit.org/openrouteservice/v2/directions/foot-walking/geojson');
+  assertEquals(orsDirectionsUrl('driving-car'),
+    'https://api.heigit.org/openrouteservice/v2/directions/driving-car/geojson');
 });

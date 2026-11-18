@@ -1,5 +1,11 @@
 // Lógica pura y comprobable sin tocar red, credenciales ni Supabase.
 export type PerfilRuta = 'foot-walking' | 'driving-car';
+
+// URL pública vigente: el dominio api.openrouteservice.org fue retirado en 2026.
+// Solo un perfil validado por parseSolicitud llega a esta función.
+export function orsDirectionsUrl(perfil: PerfilRuta): string {
+  return `https://api.heigit.org/openrouteservice/v2/directions/${perfil}/geojson`;
+}
 export type Coordenada = [number, number]; // [latitud, longitud]
 export interface SolicitudRuta {
   origen: Coordenada;

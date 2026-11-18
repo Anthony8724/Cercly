@@ -11,7 +11,7 @@ import 'ruta_service.dart';
 ///
 /// La clave y la dirección base se reciben por `--dart-define`:
 ///   ORS_API_KEY   clave de OpenRouteService (obligatoria)
-///   ORS_BASE_URL  dirección base (por defecto https://api.openrouteservice.org)
+///   ORS_BASE_URL  dirección base (por defecto https://api.heigit.org/openrouteservice)
 ///
 /// POR VERIFICAR: la dirección base y el formato de la cabecera Authorization
 /// contra la documentación oficial vigente antes de publicar. Para una versión
@@ -32,7 +32,7 @@ class OpenRouteServiceRutaService implements RutaService {
   static const String _claveDefecto = String.fromEnvironment('ORS_API_KEY');
   static const String _urlDefecto = String.fromEnvironment(
     'ORS_BASE_URL',
-    defaultValue: 'https://api.openrouteservice.org',
+    defaultValue: 'https://api.heigit.org/openrouteservice',
   );
 
   final http.Client _cliente;

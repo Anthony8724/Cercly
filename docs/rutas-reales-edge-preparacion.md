@@ -34,3 +34,12 @@ command -v deno && deno test supabase/functions/calcular-ruta/routing_logic_test
 ## Estado actual
 
 Ni `SUPABASE_URL` ni la clave pública de tu app son la clave privada `ORS_API_KEY`. El servicio ORS no se encuentra desplegado todavía. **No considerarlo funcional con rutas reales hasta que pase las pruebas de Staging.**
+
+## Corrección de proveedor (noviembre de 2026)
+
+- `api.openrouteservice.org` está deprecado/cerrado; usar `https://api.heigit.org/openrouteservice/v2/directions/{profile}/geojson`.
+- Se conservó la pantalla original y el diseño interno de rutas.
+- La Edge Function acepta únicamente sesiones Supabase válidas; una cuenta sin sesión recibe la opción de mapa externo.
+- Este cambio NO configura `ORS_API_KEY` en Staging ni demuestra una respuesta real del proveedor.
+- Antes de habilitar usuarios externos: limitador distribuido/persistente (el Map en memoria actual NO sirve como control global), presupuesto/cuotas, privacidad y pruebas reales del proveedor en Staging.
+- La función no tiene permiso para publicar sola: no ejecutar despliegue a Producción.
