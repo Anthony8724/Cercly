@@ -72,9 +72,15 @@ class _ProductionProximitySectionState extends State<ProductionProximitySection>
         await _service.requestForegroundPermissions();
         return 'Acepta los permisos de ubicación precisa y notificaciones. Al volver, continúa con el permiso de segundo plano.';
       }
-      return s['background'] == true
-          ? 'Consentimiento guardado. Pulsa Actualizar zonas cercanas.'
-          : 'Consentimiento guardado. Ahora concede por separado el permiso de ubicación en segundo plano.';
+      if (s['background'] == true) {
+        final resultado = await _service.synchronize(automatic: true);
+
+        return resultado == 'accepted_by_gms' || resultado == 'sync_recent'
+            ? 'Alertas automáticas activadas.'
+            : 'Consentimiento guardado. Sincronización: $resultado';
+      }
+
+      return 'Consentimiento guardado. Ahora concede por separado el permiso de ubicación en segundo plano.';
     });
   }
 

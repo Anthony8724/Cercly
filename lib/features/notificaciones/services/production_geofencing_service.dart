@@ -281,11 +281,6 @@ class ProductionGeofencingService {
   Future<String> synchronize({bool automatic = false}) async {
     if (!_enabled) return 'unavailable';
     if (_syncing) return 'sync_busy';
-    if (automatic &&
-        _lastSync != null &&
-        DateTime.now().difference(_lastSync!) < const Duration(minutes: 15)) {
-      return 'sync_recent';
-    }
     _syncing = true;
     try {
       final s = await status();
@@ -301,6 +296,14 @@ class ProductionGeofencingService {
         if ((s['zoneCount'] as num? ?? 0) > 0) await remove();
         return 'authorization_required';
       }
+      if (automatic &&
+          s['registration'] == 'accepted_by_gms' &&
+          (s['zoneCount'] as num? ?? 0) > 0 &&
+          _lastSync != null &&
+          DateTime.now().difference(_lastSync!) < const Duration(minutes: 15)) {
+        return 'sync_recent';
+      }
+
       if (!await prepareHistory()) return 'storage_error';
       final position =
           (await GeolocatorUbicacionService().obtenerUbicacion()).ubicacion;

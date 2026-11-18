@@ -101,6 +101,28 @@ class NotificacionLocalService
       settings: ajustes,
       onDidReceiveNotificationResponse: _procesarRespuesta,
     );
+
+    // Crear el canal antes de recibir notificaciones FCM.
+    try {
+      final android = _plugin
+          .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin
+          >();
+
+      await android?.createNotificationChannel(
+        const AndroidNotificationChannel(
+          _canalId,
+          _canalNombre,
+          description: 'Avisos cuando hay una promoción cerca de ti',
+          importance: Importance.high,
+          enableVibration: true,
+          playSound: true,
+        ),
+      );
+    } catch (error, stackTrace) {
+      _registrarFalloSeguro('notification_channel_startup', error, stackTrace);
+    }
+
     _inicializado = true;
 
     if (!_detalleInicioProcesado) {
