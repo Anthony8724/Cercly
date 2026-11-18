@@ -26,8 +26,8 @@ class ProductionGeofencingService {
        _staging = staging ?? stagingBuild,
        _currentUserId = currentUserId ?? _authenticatedUserId;
   static const stagingBuild = bool.fromEnvironment('CERCLY_STAGING');
-  static const enabledBuild =
-      stagingBuild || bool.fromEnvironment('CERCLY_PRIVATE_PROXIMITY');
+  // Production remains disabled until a separate native/device validation.
+  static const enabledBuild = stagingBuild;
   static const channelName = stagingBuild
       ? 'cercly/staging_promotional_geofencing'
       : 'cercly/production_proximity';

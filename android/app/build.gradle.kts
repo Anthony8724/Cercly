@@ -81,17 +81,9 @@ android {
         )
     }
 
-    // Private candidate is opt-in at build time. The public build stays foreground-only.
+    // No build-time flag may activate the unvalidated Production candidate.
     if (isPrivateProximity) {
-        if (isCerclyStaging || isUiEvaluation || isDemoRelease ||
-            configuredSupabaseUrl != "https://aimubazregckmjchnszf.supabase.co" ||
-            configuredPublishableKey?.startsWith("sb_publishable_") != true ||
-            dartDefineEntries.any { it.substringBefore("=") in setOf(
-                "SUPABASE_SERVICE_ROLE_KEY", "SUPABASE_SECRET_KEY", "DATABASE_URL",
-                "DB_PASSWORD", "POSTGRES_PASSWORD") }) {
-            throw GradleException("Private proximity requires Production and a publishable key only.")
-        }
-        sourceSets.getByName("main").manifest.srcFile("src/productionCandidate/AndroidManifest.xml")
+        throw GradleException("Production proximity remains disabled pending separate validation.")
     }
     if (isCerclyStaging) {
         sourceSets.getByName("test").kotlin.srcDir("src/stagingTest/kotlin")

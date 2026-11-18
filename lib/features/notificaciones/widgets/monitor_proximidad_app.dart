@@ -154,7 +154,7 @@ class _MonitorProximidadAppState extends State<MonitorProximidadApp>
       final payload = await _geofenceChannel.invokeMethod<Object?>(
         'consumePendingNotification',
       );
-      if (payload is Map) {
+      if (payload is Map || payload is String) {
         await _onNativeMethod(MethodCall('notificationOpened', payload));
       }
     } on PlatformException {
