@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:latlong2/latlong.dart';
 
 import '../../../sky/sky_backdrop.dart';
 import '../../../sky/sky_theme.dart';
@@ -12,7 +13,12 @@ import '../../establecimientos/services/estado_horario_service.dart';
 import '../../establecimientos/services/horario_establecimiento_service.dart';
 import '../../solicitudes_establecimientos/models/solicitud_establecimiento_model.dart';
 import '../../solicitudes_establecimientos/screens/nueva_solicitud_screen.dart';
+import '../models/ubicacion_usuario.dart';
+import '../services/consentimiento_ubicacion.dart';
 import '../services/mapas_externos_service.dart';
+import '../services/ruta_service.dart';
+import '../services/ubicacion_service.dart';
+import 'ruta_establecimiento_screen.dart';
 
 typedef CargarHorarioEstablecimiento =
     Future<Map<String, List<TurnoHorario>>> Function(String establecimientoId);
@@ -24,6 +30,9 @@ class DetalleEstablecimientoScreen extends StatefulWidget {
   const DetalleEstablecimientoScreen({
     required this.establecimiento,
     this.mapasService,
+    this.ubicacionService,
+    this.rutaService,
+    this.mostrarTilesRuta = true,
     this.cargarHorario,
     this.ahora,
     this.estaAutenticado,
@@ -34,6 +43,9 @@ class DetalleEstablecimientoScreen extends StatefulWidget {
 
   final EstablecimientoPublicoModel establecimiento;
   final MapasExternosService? mapasService;
+  final UbicacionService? ubicacionService;
+  final RutaService? rutaService;
+  final bool mostrarTilesRuta;
   final CargarHorarioEstablecimiento? cargarHorario;
   final DateTime Function()? ahora;
   final EstaAutenticado? estaAutenticado;
@@ -52,6 +64,7 @@ class _DetalleEstablecimientoScreenState
 
   EstadoHorario? _estadoHorario;
   bool _cargandoHorario = true;
+  bool _abriendoRuta = false;
 
   EstablecimientoPublicoModel get establecimiento => widget.establecimiento;
 
@@ -87,14 +100,61 @@ class _DetalleEstablecimientoScreenState
     }
   }
 
-  Future<void> _comoLlegar(BuildContext context) async {
+  /// Si el usuario ya autorizó Cercly para usar su ubicación, muestra la
+  /// pantalla de rutas interna. Nunca solicita permisos nuevos desde este botón.
+  /// Si falta consentimiento, permiso o GPS, conserva la salida a Google Maps.
+  Future<void> _comoLlegar() async {
+    if (_abriendoRuta) return;
+    setState(() => _abriendoRuta = true);
+    try {
+      if (!await ConsentimientoUbicacion.estaAceptado()) {
+        if (mounted) await _abrirMapasExternos();
+        return;
+      }
+
+      final resultado =
+          await (widget.ubicacionService ?? GeolocatorUbicacionService())
+              .obtenerUbicacion(solicitarPermiso: false);
+      if (!mounted) return;
+
+      if (resultado.estado != EstadoUbicacion.disponible ||
+          resultado.ubicacion == null) {
+        await _abrirMapasExternos();
+        return;
+      }
+
+      final origen = resultado.ubicacion!;
+      await Navigator.of(context).push<void>(
+        MaterialPageRoute<void>(
+          builder: (_) => RutaEstablecimientoScreen(
+            nombreDestino: establecimiento.nombre,
+            origen: LatLng(origen.latitud, origen.longitud),
+            destino: LatLng(establecimiento.latitud, establecimiento.longitud),
+            rutaService: widget.rutaService,
+            mostrarTiles: widget.mostrarTilesRuta,
+            abrirExterno: () =>
+                (widget.mapasService ?? MapasExternosService()).comoLlegar(
+                  latitud: establecimiento.latitud,
+                  longitud: establecimiento.longitud,
+                ),
+          ),
+        ),
+      );
+    } catch (_) {
+      if (mounted) await _abrirMapasExternos();
+    } finally {
+      if (mounted) setState(() => _abriendoRuta = false);
+    }
+  }
+
+  Future<void> _abrirMapasExternos() async {
     final abierto = await (widget.mapasService ?? MapasExternosService())
         .comoLlegar(
           latitud: establecimiento.latitud,
           longitud: establecimiento.longitud,
         );
 
-    if (!abierto && context.mounted) {
+    if (!abierto && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('No encontramos una aplicación de mapas disponible.'),
@@ -174,7 +234,7 @@ class _DetalleEstablecimientoScreenState
             height: 52,
             child: FilledButton.icon(
               key: const Key('boton-como-llegar'),
-              onPressed: () => _comoLlegar(context),
+              onPressed: _abriendoRuta ? null : _comoLlegar,
               style: FilledButton.styleFrom(
                 backgroundColor: SkyPalette.of(context).primary,
                 foregroundColor: Colors.white,
