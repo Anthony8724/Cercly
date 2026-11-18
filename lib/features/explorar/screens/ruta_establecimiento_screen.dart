@@ -4,7 +4,7 @@ import 'package:latlong2/latlong.dart';
 
 import '../../../sky/sky_theme.dart';
 import '../models/ruta_model.dart';
-import '../services/openrouteservice_ruta_service.dart';
+import '../services/supabase_ruta_service.dart';
 import '../services/ruta_service.dart';
 import '../services/ruta_service_linea_recta.dart';
 
@@ -68,7 +68,7 @@ class _RutaEstablecimientoScreenState extends State<RutaEstablecimientoScreen> {
         widget.rutaService ??
         (_rutasSimuladas
             ? const RutaServiceLineaRecta()
-            : OpenRouteServiceRutaService());
+            : SupabaseRutaService());
     _calcular();
   }
 
@@ -271,7 +271,9 @@ class _RutaEstablecimientoScreenState extends State<RutaEstablecimientoScreen> {
               children: [
                 for (final perfil in PerfilRuta.values)
                   ChoiceChip(
-                    label: Text(perfil == PerfilRuta.aPie ? 'A pie' : 'En auto'),
+                    label: Text(
+                      perfil == PerfilRuta.aPie ? 'A pie' : 'En auto',
+                    ),
                     selected: _perfil == perfil,
                     selectedColor: sky.selectedSurface,
                     backgroundColor: sky.surface,
