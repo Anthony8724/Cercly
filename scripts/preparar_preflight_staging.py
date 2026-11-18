@@ -6,9 +6,44 @@ import json
 from pathlib import Path
 import shutil
 import subprocess
+import tomllib
 
 ROOT = Path(__file__).resolve().parents[1]
 REF = 'dlajxviqhkdcqnmczhvr'
+
+
+def runtime_files(root):
+    """Contrato mínimo del CLI: config y plantillas declaradas, nunca secretos.
+
+    No copia .env, .temp, certificados ni rutas externas. Fallar antes de crear
+    la copia si una plantilla falta evita descubrirlo durante el despliegue.
+    """
+    root = root.resolve()
+    config = root / 'supabase/config.toml'
+    if config.is_symlink() or config.resolve().parent != root / 'supabase':
+        raise ValueError('config.toml debe permanecer dentro de supabase sin enlaces externos')
+    files = {'supabase/config.toml': config}
+
+    def visit(value):
+        if not isinstance(value, dict):
+            return
+        for key, item in value.items():
+            if key == 'content_path':
+                if not isinstance(item, str):
+                    raise ValueError('content_path debe ser una ruta de plantilla')
+                relative = Path(item)
+                candidate = (root / relative).resolve()
+                templates = root / 'supabase/templates'
+                if relative.is_absolute() or templates not in candidate.parents or candidate.suffix != '.html':
+                    raise ValueError('Solo se permiten plantillas HTML dentro de supabase/templates')
+                if not candidate.is_file():
+                    raise ValueError('Falta una plantilla referenciada por config.toml: ' + str(relative))
+                files[str(relative)] = candidate
+            elif isinstance(item, dict):
+                visit(item)
+
+    visit(tomllib.loads(config.read_text()).get('auth', {}))
+    return files
 
 
 def main():
@@ -38,14 +73,22 @@ def main():
         copies.append((source, name))
     if len({x[1] for x in copies}) != 26:
         raise SystemExit('Colisión de nombres en la reconciliación')
+    runtime = runtime_files(ROOT)
     # Crear solo tras validar todos los archivos; sin sobrescribir un destino.
     dest.mkdir(mode=0o700, parents=True)
     (dest / 'supabase/migrations').mkdir(parents=True)
-    shutil.copy2(ROOT / 'supabase/config.toml', dest / 'supabase/config.toml')
+    for relative, source in runtime.items():
+        target = dest / relative
+        target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(source, target)
     for source, name in copies:
         shutil.copy2(source, dest / 'supabase/migrations' / name)
     manifest['source_commit'] = subprocess.check_output(
         ['git', 'rev-parse', 'HEAD'], cwd=ROOT, text=True).strip()
+    manifest['preflight_runtime_files'] = {
+        relative: hashlib.sha256(source.read_bytes()).hexdigest()
+        for relative, source in runtime.items()
+    }
     (dest / 'manifest.json').write_text(json.dumps(manifest, indent=2) + '\n')
     print(f'Preflight local: {dest}')
     print('24 históricas conciliadas; 2 pendientes; sin enlace ni datos remotos')
