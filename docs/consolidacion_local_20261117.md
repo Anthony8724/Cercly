@@ -7,7 +7,7 @@ ya están integrados; no se vuelven a fusionar.
 ## Cambios preparados
 
 - Preflight: incluir config y plantillas Auth declaradas; rechazar archivos
-  ausentes, rutas externas y config enlazada; preservar alias internos.
+  ausentes, rutas externas, recorridos con `..` y config enlazada; preservar alias internos.
   Este script conserva su manifiesto histórico de 26 migraciones: debe denegar
   el árbol actual ampliado. No es una autorización ni una preparación vigente
   para desplegar Staging. Actualizar su manifiesto exige revisión independiente.
@@ -21,10 +21,15 @@ ya están integrados; no se vuelven a fusionar.
 
 ## Validación y límites
 
-Flutter analyze sin incidencias. Suite general: 444 aprobadas y 12 omitidas.
-Staging: 18 aprobadas, incluida navegación fría/caliente con Supabase/FCM
-simulados. Producción: 6 pruebas de cierre de banderas aprobadas.
-Preflight: 6 pruebas; manifiesto histórico denegado antes de crear destino.
+Flutter analyze sin incidencias, repetido en la revisión final. La suite general
+anterior (444 aprobadas, 12 omitidas) conserva valor para el código de aplicación,
+que no volvió a cambiar. No se repite toda la batería.
+Revisión final: Staging 27 aprobadas, incluidas aperturas frías/calientes con ID
+de texto y mapa de promoción; rechazo de promociones ausentes, inactivas, vencidas
+o de otro negocio y de payloads malformados. Supabase/FCM son simulados.
+Producción: 6 pruebas de cierre de banderas aprobadas.
+Preflight: 7 pruebas; regresión de recorrido `..` reproducida antes de corregirla;
+manifiesto histórico denegado antes de crear destino.
 SQL aislado, sin red: 251 aserciones focales y 787 de seguridad, además de
 concurrencia y reaplicación. No se modificó la base remota.
 Gradle rechazó la antigua activación privada; no se construyó APK.
