@@ -17,6 +17,7 @@ Revisión: 19 de noviembre de 2026. **Recomendación: NO-GO para subir como vers
 | Fusión PR #40 y RIIOTE en develop | APROBADO | Merge y ascendencia comprobados |
 | CI del HEAD integrado | APROBADO | [44581296984](https://github.com/Anthony8724/Cercly/actions/runs/44581296984), success |
 | CI del merge en develop | APROBADO | [44582709183](https://github.com/Anthony8724/Cercly/actions/runs/44582709183), success para 3ef19a8 |
+| CI del release | APROBADO | [44632085504](https://github.com/Anthony8724/Cercly/actions/runs/44632085504), success para a77c3a6; mismo código que los binarios c14e42d |
 | Regresión release | APROBADO | Suite: 461 Flutter, 21 omitidas, 0 fallidas; además 9/9 lecturas remotas; 21 Deno; analyze sin incidencias |
 | VersionName / package / SDK | APROBADO | APK y manifiesto AAB: 0.1.9, com.cercly.cercly, compile/target 36, min 24 |
 | Firma local de carga | APROBADO | RSA 4096, huella histórica coincidente; APK y AAB verificados |
@@ -42,8 +43,13 @@ Revisión: 19 de noviembre de 2026. **Recomendación: NO-GO para subir como vers
 | Release Android/rutas | Código y pruebas, sin cambio de backend | c14e42d |
 | Política web | Flujo real y límites de conservación; en borrador | 2ac03dd |
 | Sincronización web | Conserva borrador concurrente de retención | a903288 |
+| Cierre de inventario web | Incluye referencias económicas sin publicar | f21b059 |
 | Documentación | Ocho documentos, evidencias y fuentes gráficas | Consultar git log de esta rama; no modifica código del AAB |
 
 No se ejecutaron migraciones ni despliegues Supabase, no se borraron cuentas reales y los artefactos +25 se conservaron. Los otros worktrees conservan sus ramas y cambios. La carpeta original test/failures/ queda intacta y fuera de Git.
 
 Los criterios de salida son resolver todos los controles obligatorios pendientes/bloqueados, revisar el resultado con el titular y obtener su autorización de envío. El cumplimiento técnico de SDK o firma no acredita aprobación legal ni de Google.
+
+## Revisión para el titular
+
+[PR #41 de release](https://github.com/Anthony8724/Cercly/pull/41) y [PR #15 web](https://github.com/Anthony8724/cercly-web/pull/15): abiertos, fusionables y en borrador al cierre. El PR #40 permanece fusionado. El código del AAB se conserva sin cambios después de c14e42d; las actualizaciones posteriores contienen documentación y evidencias. La copia en Descargas incluye el inventario y SHA256SUMS verificados.

@@ -1,0 +1,8 @@
+{
+  "status": "completed",
+  "conclusion": "success",
+  "headSha": "a77c3a6c725097696e9c7ff79db6e6ddf93ffec0",
+  "url": "https://github.com/Anthony8724/Cercly/actions/runs/44632085504",
+  "code_commit": "c14e42d6441b09779e76d7f99404bc7dd1100f74",
+  "note": "Comprobado mediante gh run view. El commit posterior solo actualiza documentaci\u00f3n; los binarios no cambian."
+}

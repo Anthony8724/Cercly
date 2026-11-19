@@ -57,6 +57,6 @@ Exportados: MainActivity para launcher/OAuth; dos receptores FCM protegidos por 
 
 ## Pruebas y límites
 
-Flutter suite: 461 aprobadas/21 omitidas/0 fallidas; adicionalmente 9 integraciones de lectura aprobadas en Production; analyze sin incidencias; Deno 21/0; Node cinco archivos aprobados. RIIOTE y golden verificados. Escaneo de secretos sin hallazgos dentro del alcance registrado. No hay CI publicado para el commit de release al redactar esta evidencia salvo que el estado final lo documente expresamente; el CI aprobado citado pertenece al HEAD integrado del PR #40.
+Flutter suite: 461 aprobadas/21 omitidas/0 fallidas; adicionalmente 9 integraciones de lectura aprobadas en Production; analyze sin incidencias; Deno 21/0; Node cinco archivos aprobados. RIIOTE y golden verificados. Escaneo de secretos sin hallazgos dentro del alcance registrado. CI de la candidata aprobado: [https://github.com/Anthony8724/Cercly/actions/runs/44632085504](https://github.com/Anthony8724/Cercly/actions/runs/44632085504), HEAD a77c3a6c725097696e9c7ff79db6e6ddf93ffec0. Ese commit contiene el mismo código c14e42d de los binarios y agrega documentación; el cierre posterior solo documenta la evidencia. También aprobaron los CI previo y posterior al merge #40.
 
 Advertencias de compilación y firma descritas en PRUEBAS_Y_RIESGOS. Faltan prueba nativa de APK 26, capturas, contraste Console y controles legales/operativos. **Estos artefactos no se distribuyen como versión aprobada.**

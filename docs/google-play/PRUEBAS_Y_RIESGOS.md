@@ -17,6 +17,7 @@ Fecha: 19/11/2026. Código release: c14e42d6441b09779e76d7f99404bc7dd1100f74.
 | Node seguridad | APROBADO | 5 archivos de pruebas; eliminación, sesión FCM y promoción |
 | git diff --check | APROBADO | Sin errores de espacios |
 | CI HEAD PR40 | APROBADO | [run 44581296984](https://github.com/Anthony8724/Cercly/actions/runs/44581296984), éxito y APK debug Staging |
+| CI del release | APROBADO | [run 44632085504](https://github.com/Anthony8724/Cercly/actions/runs/44632085504), success en a77c3a6, análisis/pruebas y APK Staging |
 | Build APK/AAB | APROBADO | Release real, firma existente, package Production, SDK 36 |
 | Política web local | APROBADO | ESLint, TypeScript; 16 pruebas tras sincronización. Next compiló con Webpack y Chrome mostró política completa |
 | Prueba manual Android completa | PENDIENTE | Sin dispositivo; dos arranques del AVD fallaron con salida 139 |

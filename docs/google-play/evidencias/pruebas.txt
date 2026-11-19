@@ -10,3 +10,5 @@ Integraciones públicas Production de solo lectura: 9 aprobadas, 0 omitidas, 0 f
 Cobertura agregada Flutter sin duplicar: 470 casos ejecutados, 12 aún condicionados a proximidad deshabilitada.
 CI merge develop: https://github.com/Anthony8724/Cercly/actions/runs/44582709183 success para 3ef19a8.
 Web después de sincronización: npm test 16 aprobadas, 0 omitidas, 0 fallidas.
+CI release: https://github.com/Anthony8724/Cercly/actions/runs/44632085504 success para a77c3a6c725097696e9c7ff79db6e6ddf93ffec0.
+Web final: f21b05940a9475a45611492b4748ffb765c7f8fb; 16 pruebas aprobadas, lint y TypeScript aprobados.
