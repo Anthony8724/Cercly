@@ -1,0 +1,27 @@
+{
+  "function": "eliminar-cuenta",
+  "production_version": 3,
+  "verify_jwt": true,
+  "files": [
+    {
+      "file": "functions/eliminar-cuenta/index.ts",
+      "matches_local": true,
+      "sha256": "5944e200823b07bef87f63bac8612b7ae0731b6660ee7cf9c8d614fe465b2bc1"
+    },
+    {
+      "file": "functions/_shared/account_deletion_handler.mjs",
+      "matches_local": true,
+      "sha256": "d8b28a304ee7b01dcf1da086610e24dfa29bfbe9541fdca895df75e77e3570e0"
+    },
+    {
+      "file": "functions/_shared/account_deletion_flow.mjs",
+      "matches_local": true,
+      "sha256": "f588f9d1695a88384a4a774133faeeb28231838a6ae02986ad73a0be16ad3980"
+    },
+    {
+      "file": "functions/_shared/account_deletion_cors.mjs",
+      "matches_local": true,
+      "sha256": "54389b5ea531d48324ae0277fdef3224869b2e19bb985b1e43e760060bf8cd08"
+    }
+  ]
+}
