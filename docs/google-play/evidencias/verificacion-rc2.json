@@ -19,12 +19,13 @@
   "sql_suites": 30,
   "new_deletion_sql_asserts": 15,
   "web_tests_passed": 32,
-  "web_views_axe_clean": 9,
+  "web_views_axe_clean": 15,
   "web_https_routes_200": 5,
   "gradle_expected_rejections": 3,
   "honor_executed": false,
   "production_deployed": false,
   "real_accounts_deleted": false,
   "play_console_submitted": false,
-  "go": "NO-GO"
+  "go": "NO-GO",
+  "web_interactions_viewports": 3
 }

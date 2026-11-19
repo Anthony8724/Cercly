@@ -21,7 +21,7 @@ Revisión: 19/11/2026. **NO-GO para envío de revisión o publicación en Google
 | SQL de eliminación y seguridad | APROBADO | 802 aserciones, 30 suites, contenedor nuevo sin red y fixtures sintéticos; no prueba GoTrue/Storage HTTP |
 | Guarda de eliminación desplegada | BLOQUEADO | FK de cuota no reconocida fuerza revisión incluso sin dependencias personales; migración corregida solo local |
 | End-to-end de eliminación | PENDIENTE | Auth HTTP, Storage de bytes, sesiones y canal externo con fixture autorizado |
-| Web preparada | APROBADO | 32 pruebas, cinco rutas HTTPS locales 200, nueve vistas sin infracciones axe/errores JS y sin recorte del selector |
+| Web preparada | APROBADO | 32 pruebas, cinco rutas HTTPS locales 200, 15 vistas de cinco páginas sin infracciones axe/errores JS y sin recorte del selector |
 | Web publicada | BLOQUEADO | No se despliega sin autorización; /privacidad público redirigía a portada y requiere verificación posterior |
 | SDK/firma/estructura y secretos RC2 | APROBADO | Package com.cercly.cercly, versión 26, compile/target 36, min 24, misma firma; escaneo definido sin hallazgos; bundletool/zipalign/ELF64 |
 | CI de cambios RC2 | PENDIENTE | Los éxitos previos corresponden a commits anteriores; registrar ejecución nueva con SHA exacto |

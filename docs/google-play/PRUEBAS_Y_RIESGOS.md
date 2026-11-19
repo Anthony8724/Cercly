@@ -11,7 +11,7 @@ Código compilado `40c1f2fd5af3027ccd896e03ef1a17e848068069`, web `a1f721bc8ba6f
 | Node | 37/37 | Eliminación, sesiones FCM y promociones con dobles |
 | SQL | 802/802, 30 suites | Contenedor nuevo sin red, fixtures/rollback; 15 regresiones nuevas de cuota/eliminación |
 | Gradle negativo | 3/3 rechazos esperados | ORS_API_KEY, service_role y rutas simuladas públicas; no es fallo de la build candidata |
-| Web | 32/32, lint/TypeScript/build Webpack aprobados | Cinco rutas HTTPS 200; nueve vistas con axe/teclado/sin recorte del selector |
+| Web | 32/32, lint/TypeScript/build Webpack aprobados | Cinco rutas HTTPS 200; 15 vistas con axe/teclado/sin recorte del selector |
 | APK/AAB | Compilados y verificados | Firma histórica, SDK 36, bundletool/zipalign/ELF64 y escaneo definido |
 | HONOR/Android nativo | PENDIENTE | No hay dispositivo conectado; no presentar la prueba histórica +25 como RC2 |
 | Eliminación GoTrue/Storage HTTP | PENDIENTE | SQL y dobles no acreditan bytes de Storage, correo ni JWT real tras eliminación |
