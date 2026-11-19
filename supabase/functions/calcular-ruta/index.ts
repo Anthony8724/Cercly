@@ -6,7 +6,6 @@ const cors = {
   'Access-Control-Allow-Headers': 'authorization, apikey, content-type',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
-const limits = new Map<string, { starts: number; count: number }>();
 
 function json(code: number, data: Record<string, unknown>): Response {
   return new Response(JSON.stringify(data), {
@@ -55,16 +54,6 @@ Deno.serve(async (req: Request) => {
   const {data: {user}, error} = await client.auth.getUser(token);
   if (error || !user) return json(401, {error:'invalid_session'});
 
-  // Límite local por instancia. No sustituye un limitador persistente antes de producción.
-  const now = Date.now();
-  if (limits.size > 2000) limits.clear();
-  const previous = limits.get(user.id);
-  const state = !previous || now - previous.starts >= 60000
-    ? {starts: now, count: 0} : previous;
-  state.count += 1;
-  limits.set(user.id, state);
-  if (state.count > 10) return json(429, {error:'too_many_requests'});
-
   let requestData: unknown;
   try {
     const raw = await req.text();
@@ -75,6 +64,14 @@ Deno.serve(async (req: Request) => {
   }
   const r = parseSolicitud(requestData);
   if (!r) return json(400, {error:'invalid_coordinates_or_profile'});
+
+  // La cuota es compartida entre instancias; falla en modo cerrado si Postgres no responde.
+  // Esta RPC no acepta usuario_id: aplica exclusivamente a auth.uid().
+  const {data: permitido, error: cuotaError} = await client.rpc('consumir_cuota_rutas');
+  if (cuotaError || typeof permitido !== 'boolean') {
+    return json(503, {error:'rate_limiter_unavailable'});
+  }
+  if (!permitido) return json(429, {error:'too_many_requests'});
 
   // Posición usada solo para responder esta solicitud; no se registra.
   try {
