@@ -1,0 +1,12 @@
+Integración PR #40: 453 aprobadas, 21 omitidas, 0 fallidas.
+Release c14e42d6441b09779e76d7f99404bc7dd1100f74: 461 aprobadas, 21 omitidas, 0 fallidas.
+Flutter analyze: No issues found.
+Deno: 21 passed, 0 failed; deno check aprobado.
+Node: 5 archivos de seguridad aprobados, 0 fallos (tests internos usan asserts sin total agregado).
+CI PR #40: https://github.com/Anthony8724/Cercly/actions/runs/44581296984 success para 7a6f919.
+Flutter local 3.47.5, Dart 3.13.4; CI Flutter 3.47.3.
+No constituye una prueba manual completa ni una prueba remota autenticada de este release.
+Integraciones públicas Production de solo lectura: 9 aprobadas, 0 omitidas, 0 fallidas.
+Cobertura agregada Flutter sin duplicar: 470 casos ejecutados, 12 aún condicionados a proximidad deshabilitada.
+CI merge develop: https://github.com/Anthony8724/Cercly/actions/runs/44582709183 success para 3ef19a8.
+Web después de sincronización: npm test 16 aprobadas, 0 omitidas, 0 fallidas.

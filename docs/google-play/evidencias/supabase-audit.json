@@ -1,0 +1,234 @@
+{
+  "date": "2026-11-19",
+  "project": "aimubazregckmjchnszf",
+  "mode": "read-only",
+  "tables": [
+    {
+      "rls": true,
+      "schema": "public",
+      "relname": "correcciones_aplicadas"
+    },
+    {
+      "rls": true,
+      "schema": "public",
+      "relname": "auditoria_moderacion_establecimientos"
+    },
+    {
+      "rls": true,
+      "schema": "public",
+      "relname": "fcm_installations"
+    },
+    {
+      "rls": true,
+      "schema": "public",
+      "relname": "push_preferences"
+    },
+    {
+      "rls": true,
+      "schema": "public",
+      "relname": "categorias"
+    },
+    {
+      "rls": true,
+      "schema": "public",
+      "relname": "usuarios"
+    },
+    {
+      "rls": true,
+      "schema": "public",
+      "relname": "horarios_establecimiento"
+    },
+    {
+      "rls": true,
+      "schema": "public",
+      "relname": "fotos_establecimiento"
+    },
+    {
+      "rls": true,
+      "schema": "public",
+      "relname": "miembros_establecimiento"
+    },
+    {
+      "rls": true,
+      "schema": "public",
+      "relname": "promociones"
+    },
+    {
+      "rls": true,
+      "schema": "public",
+      "relname": "promotion_push_reservations"
+    },
+    {
+      "rls": true,
+      "schema": "public",
+      "relname": "solicitudes_establecimientos"
+    },
+    {
+      "rls": true,
+      "schema": "public",
+      "relname": "auditoria_pagos_destacadas"
+    },
+    {
+      "rls": true,
+      "schema": "public",
+      "relname": "promociones_destacadas"
+    },
+    {
+      "rls": true,
+      "schema": "cercly_rutas_privado",
+      "relname": "rutas_limites_usuarios"
+    },
+    {
+      "rls": true,
+      "schema": "public",
+      "relname": "subcategorias"
+    },
+    {
+      "rls": true,
+      "schema": "public",
+      "relname": "establecimiento_categorias"
+    },
+    {
+      "rls": true,
+      "schema": "public",
+      "relname": "evidencias_solicitud"
+    },
+    {
+      "rls": true,
+      "schema": "public",
+      "relname": "establecimientos"
+    },
+    {
+      "rls": true,
+      "schema": "public",
+      "relname": "preferencias_usuario"
+    },
+    {
+      "rls": true,
+      "schema": "public",
+      "relname": "preferencias_usuario_categorias"
+    }
+  ],
+  "identity_guards": [
+    {
+      "tablename": "usuarios",
+      "permissive": "RESTRICTIVE"
+    },
+    {
+      "tablename": "categorias",
+      "permissive": "RESTRICTIVE"
+    },
+    {
+      "tablename": "establecimientos",
+      "permissive": "RESTRICTIVE"
+    },
+    {
+      "tablename": "horarios_establecimiento",
+      "permissive": "RESTRICTIVE"
+    },
+    {
+      "tablename": "fotos_establecimiento",
+      "permissive": "RESTRICTIVE"
+    },
+    {
+      "tablename": "promociones",
+      "permissive": "RESTRICTIVE"
+    },
+    {
+      "tablename": "solicitudes_establecimientos",
+      "permissive": "RESTRICTIVE"
+    },
+    {
+      "tablename": "miembros_establecimiento",
+      "permissive": "RESTRICTIVE"
+    },
+    {
+      "tablename": "subcategorias",
+      "permissive": "RESTRICTIVE"
+    },
+    {
+      "tablename": "establecimiento_categorias",
+      "permissive": "RESTRICTIVE"
+    },
+    {
+      "tablename": "evidencias_solicitud",
+      "permissive": "RESTRICTIVE"
+    },
+    {
+      "tablename": "preferencias_usuario",
+      "permissive": "RESTRICTIVE"
+    },
+    {
+      "tablename": "preferencias_usuario_categorias",
+      "permissive": "RESTRICTIVE"
+    },
+    {
+      "tablename": "correcciones_aplicadas",
+      "permissive": "RESTRICTIVE"
+    },
+    {
+      "tablename": "auditoria_moderacion_establecimientos",
+      "permissive": "RESTRICTIVE"
+    }
+  ],
+  "reviewed_functions": [
+    {
+      "name": "consumir_cuota_rutas",
+      "search_path_empty": true,
+      "uses_auth_uid": true
+    },
+    {
+      "name": "es_administrador",
+      "search_path_empty": true,
+      "uses_auth_uid": true
+    },
+    {
+      "name": "preparar_revision_privacidad",
+      "search_path_empty": true,
+      "uses_auth_uid": true
+    },
+    {
+      "name": "revisar_eliminacion_cuenta",
+      "search_path_empty": true,
+      "uses_auth_uid": true
+    }
+  ],
+  "route_private_permissions": {
+    "anon_schema_usage": false,
+    "authenticated_schema_usage": false,
+    "authenticated_table_select": false
+  },
+  "advisors": [
+    {
+      "name": "rls_enabled_no_policy",
+      "level": "INFO",
+      "count": 14
+    },
+    {
+      "name": "anon_security_definer_function_executable",
+      "level": "WARN",
+      "count": 1
+    },
+    {
+      "name": "authenticated_security_definer_function_executable",
+      "level": "WARN",
+      "count": 29
+    },
+    {
+      "name": "auth_leaked_password_protection",
+      "level": "WARN",
+      "count": 1
+    }
+  ],
+  "unauthenticated_http": {
+    "calcular_ruta": 401,
+    "eliminar_cuenta": 401
+  },
+  "destructive_checks_performed": false,
+  "extra_checks": {
+    "route_rpc_anon_execute": false,
+    "route_rpc_authenticated_execute": true,
+    "public_tables_without_rls": 0,
+    "current_public_promotions": 1
+  }
+}
