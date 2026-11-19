@@ -111,13 +111,52 @@ void main() {
 
     await tester.tap(find.byKey(const Key('boton-como-llegar')));
     await tester.pumpAndSettle();
+    expect(find.byKey(const Key('aviso-privacidad-ruta')), findsOneWidget);
+    expect(ubicacion.llamadas, 0);
+    expect(ruta.llamadas, 0);
 
+    await tester.tap(find.byKey(const Key('ruta-privacidad-confirmar')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('aviso-privacidad-ruta')), findsNothing);
     expect(find.byKey(const Key('pantalla-ruta')), findsOneWidget);
     expect(find.text('620 m'), findsOneWidget);
     expect(find.text('8 min'), findsOneWidget);
     expect(ubicacion.llamadas, 1);
     expect(ubicacion.solicitoPermiso, isFalse);
     expect(ruta.llamadas, 1);
+  });
+
+  testWidgets('Cancelar aviso no consulta GPS ni solicita ruta', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({
+      'cercly_uso_ubicacion_cercania_aceptado': true,
+    });
+    final ubicacion = _UbicacionFalsa(EstadoUbicacion.disponible);
+    final ruta = _RutaFalsa();
+    var externas = 0;
+    final mapas = MapasExternosService(
+      abrirUri: (_) async {
+        externas++;
+        return true;
+      },
+    );
+    await _montar(tester, ubicacion: ubicacion, ruta: ruta, mapas: mapas);
+
+    await tester.tap(find.byKey(const Key('boton-como-llegar')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('aviso-privacidad-ruta')), findsOneWidget);
+    expect(ubicacion.llamadas, 0);
+    expect(ruta.llamadas, 0);
+
+    await tester.tap(find.byKey(const Key('ruta-privacidad-cancelar')));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('aviso-privacidad-ruta')), findsNothing);
+    expect(find.byKey(const Key('pantalla-ruta')), findsNothing);
+    expect(ubicacion.llamadas, 0);
+    expect(ruta.llamadas, 0);
+    expect(externas, 0);
   });
 
   testWidgets('Sin consentimiento abre Google Maps y no consulta GPS', (
@@ -162,6 +201,10 @@ void main() {
     await _montar(tester, ubicacion: ubicacion, ruta: ruta, mapas: mapas);
 
     await tester.tap(find.byKey(const Key('boton-como-llegar')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('aviso-privacidad-ruta')), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('ruta-privacidad-confirmar')));
     await tester.pumpAndSettle();
 
     expect(find.byKey(const Key('pantalla-ruta')), findsNothing);

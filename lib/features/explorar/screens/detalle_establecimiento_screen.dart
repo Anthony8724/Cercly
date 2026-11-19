@@ -112,6 +112,40 @@ class _DetalleEstablecimientoScreenState
         return;
       }
 
+      // El consentimiento general de GPS no sustituye la información sobre
+      // el envío de coordenadas a un proveedor externo para calcular rutas.
+      if (!mounted) return;
+      final confirmado = await showDialog<bool>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          key: const Key('aviso-privacidad-ruta'),
+          title: const Text('Antes de calcular tu ruta'),
+          content: const SingleChildScrollView(
+            child: Text(
+              'Al elegir «Calcular ruta», Cercly enviará las coordenadas de '
+              'tu ubicación y del establecimiento a Supabase y al servicio '
+              'HeiGIT/OpenRouteService para obtener un recorrido por calles. '
+              'El proveedor externo procesará esos datos según sus condiciones. '
+              'Esta pantalla no hace seguimiento de tus movimientos en tiempo real. '
+              'Puedes cancelar sin consultar tu posición ni solicitar la ruta.',
+            ),
+          ),
+          actions: [
+            TextButton(
+              key: const Key('ruta-privacidad-cancelar'),
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('Cancelar'),
+            ),
+            FilledButton(
+              key: const Key('ruta-privacidad-confirmar'),
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: const Text('Calcular ruta'),
+            ),
+          ],
+        ),
+      );
+      if (!mounted || confirmado != true) return;
+
       final resultado =
           await (widget.ubicacionService ?? GeolocatorUbicacionService())
               .obtenerUbicacion(solicitarPermiso: false);
