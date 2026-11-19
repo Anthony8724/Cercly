@@ -1,0 +1,168 @@
+{
+  "apk": {
+    "source_commit": "40c1f2fd5af3027ccd896e03ef1a17e848068069",
+    "bytes": 63679643,
+    "sha256": "812e72ead744d8144e029154be5cabe990c9c030e74d3805fef82a86c5b22f49",
+    "secret_findings": [],
+    "embedded_hosts": [
+      "aimubazregckmjchnszf.supabase.co",
+      "riiote.org"
+    ],
+    "elf64": [
+      {
+        "entry": "lib/arm64-v8a/libapp.so",
+        "load_alignments": [
+          65536,
+          65536,
+          65536
+        ],
+        "supports_16k": true
+      },
+      {
+        "entry": "lib/arm64-v8a/libdartjni.so",
+        "load_alignments": [
+          16384,
+          16384,
+          16384
+        ],
+        "supports_16k": true
+      },
+      {
+        "entry": "lib/arm64-v8a/libdatastore_shared_counter.so",
+        "load_alignments": [
+          16384,
+          16384,
+          16384
+        ],
+        "supports_16k": true
+      },
+      {
+        "entry": "lib/arm64-v8a/libflutter.so",
+        "load_alignments": [
+          65536,
+          65536,
+          65536
+        ],
+        "supports_16k": true
+      },
+      {
+        "entry": "lib/x86_64/libapp.so",
+        "load_alignments": [
+          65536,
+          65536,
+          65536
+        ],
+        "supports_16k": true
+      },
+      {
+        "entry": "lib/x86_64/libdartjni.so",
+        "load_alignments": [
+          16384,
+          16384,
+          16384
+        ],
+        "supports_16k": true
+      },
+      {
+        "entry": "lib/x86_64/libdatastore_shared_counter.so",
+        "load_alignments": [
+          16384,
+          16384
+        ],
+        "supports_16k": true
+      },
+      {
+        "entry": "lib/x86_64/libflutter.so",
+        "load_alignments": [
+          65536,
+          65536,
+          65536
+        ],
+        "supports_16k": true
+      }
+    ]
+  },
+  "aab": {
+    "source_commit": "40c1f2fd5af3027ccd896e03ef1a17e848068069",
+    "bytes": 61465363,
+    "sha256": "36fb9c545aebda8e0ea254766b8b36407229b46b2054a9660eafd151234079f5",
+    "secret_findings": [],
+    "embedded_hosts": [
+      "aimubazregckmjchnszf.supabase.co",
+      "riiote.org"
+    ],
+    "elf64": [
+      {
+        "entry": "base/lib/arm64-v8a/libapp.so",
+        "load_alignments": [
+          65536,
+          65536,
+          65536
+        ],
+        "supports_16k": true
+      },
+      {
+        "entry": "base/lib/arm64-v8a/libdartjni.so",
+        "load_alignments": [
+          16384,
+          16384,
+          16384
+        ],
+        "supports_16k": true
+      },
+      {
+        "entry": "base/lib/arm64-v8a/libdatastore_shared_counter.so",
+        "load_alignments": [
+          16384,
+          16384,
+          16384
+        ],
+        "supports_16k": true
+      },
+      {
+        "entry": "base/lib/arm64-v8a/libflutter.so",
+        "load_alignments": [
+          65536,
+          65536,
+          65536
+        ],
+        "supports_16k": true
+      },
+      {
+        "entry": "base/lib/x86_64/libapp.so",
+        "load_alignments": [
+          65536,
+          65536,
+          65536
+        ],
+        "supports_16k": true
+      },
+      {
+        "entry": "base/lib/x86_64/libdartjni.so",
+        "load_alignments": [
+          16384,
+          16384,
+          16384
+        ],
+        "supports_16k": true
+      },
+      {
+        "entry": "base/lib/x86_64/libdatastore_shared_counter.so",
+        "load_alignments": [
+          16384,
+          16384
+        ],
+        "supports_16k": true
+      },
+      {
+        "entry": "base/lib/x86_64/libflutter.so",
+        "load_alignments": [
+          65536,
+          65536,
+          65536
+        ],
+        "supports_16k": true
+      }
+    ]
+  }
+}

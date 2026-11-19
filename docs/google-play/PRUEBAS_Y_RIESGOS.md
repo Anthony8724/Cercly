@@ -1,61 +1,44 @@
-# Pruebas, omisiones y riesgos
+# Pruebas y riesgos — RC2
 
-Fecha: 19/11/2026. Código release: c14e42d6441b09779e76d7f99404bc7dd1100f74.
+Código compilado `40c1f2fd5af3027ccd896e03ef1a17e848068069`, web `a1f721bc8ba6f02d489fe02cc3b45281872783c2`. Revisión del 19/11/2026.
 
-## Resultados finales
-
-| Prueba | Resultado | Alcance |
+| Control | Resultado | Alcance |
 |---|---|---|
-| flutter pub get | APROBADO | Lockfile sin cambios; no se actualizó Flutter ni dependencias mayores |
-| Formato Dart de cambios | APROBADO | Formateados y comprobados en la rama de release |
-| flutter analyze | APROBADO | Sin incidencias |
-| Flutter completo de integración | APROBADO | 453 aprobadas, 21 omitidas, 0 fallidas |
-| Flutter completo del código definitivo | APROBADO | 461 aprobadas, 21 omitidas, 0 fallidas |
-| Nueve integraciones de lectura ejecutadas aparte | APROBADO | 9 aprobadas, 0 omitidas, 0 fallidas en Production con clave publicable y coordenadas fijas |
-| Deno rutas | APROBADO | 21 aprobadas, 0 fallidas; 16 nuevas sobre entrypoint real con HTTP interceptado |
-| deno check | APROBADO | Entrypoint calcular-ruta sin cambiar su contenido desplegado |
-| Node seguridad | APROBADO | 5 archivos de pruebas; eliminación, sesión FCM y promoción |
-| git diff --check | APROBADO | Sin errores de espacios |
-| CI HEAD PR40 | APROBADO | [run 44581296984](https://github.com/Anthony8724/Cercly/actions/runs/44581296984), éxito y APK debug Staging |
-| CI del release | APROBADO | [run 44632085504](https://github.com/Anthony8724/Cercly/actions/runs/44632085504), success en a77c3a6, análisis/pruebas y APK Staging |
-| Build APK/AAB | APROBADO | Release real, firma existente, package Production, SDK 36 |
-| Política web local | APROBADO | ESLint, TypeScript; 16 pruebas tras sincronización. Next compiló con Webpack y Chrome mostró política completa |
-| Prueba manual Android completa | PENDIENTE | Sin dispositivo; dos arranques del AVD fallaron con salida 139 |
-| Prueba remota autenticada de eliminación | PENDIENTE | No se borraron cuentas reales ni se creó una prueba destructiva sin identificar fixture autorizado |
+| Flutter completo | 468 aprobadas, 21 omitidas, 0 fallidas | Incluye RIIOTE, goldens, Radar y barreras de rutas |
+| Lecturas remotas separadas | 9 aprobadas, 0 omitidas/fallidas | Catálogo/promociones Production, clave publicable, datos públicos fijos; sin escrituras |
+| Flujos enfocados de rutas | 59/59 y 11/11 con flags hostiles | Cero consultas GPS/servicio interno; cancelar/confirmar/error; `.test` solo para protocolo aislado |
+| Deno | 21/21, deno check aprobado | Endpoint real con HTTP interceptado; no se invoca HeiGIT |
+| Node | 37/37 | Eliminación, sesiones FCM y promociones con dobles |
+| SQL | 802/802, 30 suites | Contenedor nuevo sin red, fixtures/rollback; 15 regresiones nuevas de cuota/eliminación |
+| Gradle negativo | 3/3 rechazos esperados | ORS_API_KEY, service_role y rutas simuladas públicas; no es fallo de la build candidata |
+| Web | 32/32, lint/TypeScript/build Webpack aprobados | Cinco rutas HTTPS 200; nueve vistas con axe/teclado/sin recorte del selector |
+| APK/AAB | Compilados y verificados | Firma histórica, SDK 36, bundletool/zipalign/ELF64 y escaneo definido |
+| HONOR/Android nativo | PENDIENTE | No hay dispositivo conectado; no presentar la prueba histórica +25 como RC2 |
+| Eliminación GoTrue/Storage HTTP | PENDIENTE | SQL y dobles no acreditan bytes de Storage, correo ni JWT real tras eliminación |
+| CI RC2 | PENDIENTE de registrar | Los CI anteriores son históricos hasta verificar nueva ejecución |
 
-Las pruebas HTTP locales usan datos sintéticos y servicios/pantallas reales contra un servidor interceptado o de loopback. No prueban RLS remota ni disponibilidad del proveedor. No se sustituyó la implementación Production por una simulación.
+Los 21 omitidos de la suite sin defines son los mismos nueve de integración pública, ejecutados aparte, y doce de proximidad Production bloqueada. En conjunto: **477 casos Flutter distintos ejecutados, 12 condicionados a función deshabilitada**. Algunos tests públicos permiten datos vacíos; no confundir su aprobación con cobertura completa del catálogo.
 
-## Omisiones
+## Fallos detectados y corregidos
 
-Son las mismas 21 de la base. Nueve requieren Supabase configurado: cuatro del catálogo público, cuatro de promociones y una de destacadas. Las doce restantes dependen de la variante de proximidad Production que permanece bloqueada (`test/production_proximity_navigation_test.dart`, casos parametrizados). No se habilitaron flags para aparentar cobertura.
+- Cuota de rutas introdujo FK que la guarda global de eliminación no reconocía. Diagnóstico remoto de solo lectura confirmado; corrección exacta y 15 regresiones pasan localmente. Production sigue BLOQUEADA hasta autorización, despliegue y ensayo de fixture.
+- Cómo llegar enviaba coordenadas a un proveedor sin autorización acreditada. La nueva candidata abre Maps con solo destino tras confirmación; servicios reales fallan antes de red. No se sustituyó por una simulación.
+- Webpack compilaba sin utilidades Tailwind por configuración exclusiva de Turbopack. La inspección visual mostró recorte del selector que axe no detectó. Se añadió únicamente @tailwindcss/postcss 4.3.3 y configuración oficial para ambos motores; sin cambios mayores de framework. Se añadió una comprobación real de dimensiones y se repitió la auditoría.
 
-Las omisiones de una función deshabilitada son esperadas para esta variante. Las nueve de datos públicos se ejecutaron después, de forma separada, con configuración publicable Production: 9/9 aprobadas. La consulta remota adicional encontró una promoción pública vigente y ninguna tabla public sin RLS. Algunos tests permiten retornar si una búsqueda está vacía; no confundir aprobación con cobertura de todos los datos/ramas. En conjunto se ejecutaron 470 casos Flutter distintos; quedan 12 casos condicionados a proximidad deshabilitada. No ejecutar tests remotos de escritura o supresión contra usuarios reales.
+## Riesgos y límites restantes
 
-## RIIOTE y goldens
+1. Política pública aún requiere publicación autorizada; revalidar /privacidad tras integrar/desplegar, no confundir HTTP local 200 con web pública.
+2. Eliminación: backend desplegado conserva el fallo de FK, Storage bloquea casos con objetos; no hay retención general ni canal externo integral acreditados.
+3. Data safety: no se leyeron respuestas actuales de Console; SDK nativo Firebase permanece. Con estados previos, la retirada puede inicializarlo para revocar instalaciones. No afirmar ausencia total de tráfico automático.
+4. UGC/anuncios/pagos/público: controles y alcance por revisar; no se acredita aceptación versionada de términos, denuncia/bloqueo genéricos ni una exención automática.
+5. Cuenta Play, código 26 y upload certificate pendientes de contraste; prueba 12/14 solo si aplica y sin evidencia de cumplimiento.
+6. SDK/ELF estáticos correctos no sustituyen ejecutar Android 15/16, HONOR, OAuth/deep links, red/permisos ni 16 KB reales.
+7. Términos HeiGIT no se revalidaron exitosamente en esta nueva consulta (503). No se activa por una presunta excepción; versiones/backend anteriores siguen sin cambios.
+8. Avisos Supabase de RPC definer y protección de contraseñas filtradas siguen sujetos a revisión; no se activaron servicios pagados ni se modificaron privilegios reales.
+9. Warnings de firebase_core/KGP, opciones Java antiguas y certificado autofirmado/sin timestamp se documentan. Firma/bundletool verifican hoy; revisar compatibilidad futura por separado.
 
-El commit 7a6f919 contiene el footer, tests de apertura/error y adaptación a 260×480 y el golden Mi cuenta. Inspección visual del golden actualizado y evidencia anterior: patrocinio discreto, enlace correcto, sin recorte en la referencia. La suite definitiva conserva los goldens aprobados. El nuevo test de créditos comprueba 260 px y escala de texto 2; el test previo de Radar detectó solapamiento y se corrigió aumentando su margen inferior, sin retirar aserciones.
+## Evidencias e historia
 
-En el worktree original existen cuatro PNG no rastreados de fallos anteriores: masterImage, testImage, isolatedDiff y maskedDiff de Mi cuenta. Se inspeccionaron las imágenes relevantes y se conservaron intactas. No se añadieron ni se limpiaron automáticamente.
+Registros de esta ejecución: /tmp/cercly-play-close-20261119 y la carpeta RC2 de Descargas. JSON saneados en evidencias/. Las capturas web son de páginas locales reales, no de Android. Las capturas de Play siguen pendientes.
 
-## Riesgos que impiden GO
-
-1. **URL de política:** respuesta pública 307 a /#privacidad. El resumen de portada no reemplaza una política completa. El PR web está preparado, no publicado.
-2. **Proveedor de rutas:** [términos oficiales HeiGIT](https://account.heigit.org/info/tos) restringen transmisión de datos personales y licencian resultados bajo CC BY-SA 4.0. Las coordenadas de una persona pueden ser personales aunque no se envíe su UUID. Se necesita una solución contractual o técnica y validarla; consentimiento por sí solo no demuestra compatibilidad. No se autorizó un contacto al proveedor ni se desactivaron rutas silenciosamente.
-3. **Eliminación y retención:** endpoint real, no solo UI; exige getUser y RPC de sesión reciente, revoca sesiones y revalida antes de Auth.deleteUser. No hay prueba integral de esta revisión ni política general de retención aprobada. Casos con fotos/historial o negocios pueden quedar en revisión. El borrador web de 90 días para soporte es una propuesta no aprobada y no cubre la app.
-4. **Console:** no contrastados versionCode 26, certificado de carga, Play App Signing, datos de cuenta y acceso a Producción. Tampoco hay evidencia de testers 12/14 si aplica.
-5. **Datos y contenido:** promociones destacadas, referencias de pagos y aportes de negocios requieren cerrar clasificación de datos, anuncios, UGC, contenido y política de pagos. No hay SDK de billing ni cobro de tarjetas implementado; no inferir por ello una exención aplicable.
-6. **Prueba nativa:** pendiente Android 15/16, OAuth/deep link de release, aproximada/precisa, red, permiso denegado, eliminación y rendimiento con APK real. La prueba histórica HONOR fue +25.
-
-## Riesgos residuales
-
-- Avisos Supabase por RPC definer y protección de contraseñas filtradas deshabilitada: controles puntuales inspeccionados, sin auditoría total ni cambio Production.
-- Firebase no se activa para push promocional, pero conserva providers, receivers y permiso RECEIVE. Requiere revisar tráfico automático y restricciones de API. No se retiró un SDK sin validar el efecto en autenticación/notificaciones integradas.
-- Cuota por usuario no impide abuso por múltiples cuentas ni demuestra presupuesto global del proveedor. No se cambiaron límites o plan ni se aceptó gasto.
-- Caché de teselas OSM: URL y user agent identifican Cercly; la política exige caché y atribución. Verificar headers/cache efectivo del cliente antes de sostener cumplimiento integral. No hay descarga masiva implementada. [Política OSM](https://operations.osmfoundation.org/policies/tiles/).
-- Build advierte uso KGP por firebase_core, opciones Java 8 antiguas y APIs obsoletas de plugins. Compila hoy; futura migración requiere revisión separada, no actualización mayor indiscriminada.
-- Jarsigner valida el AAB y señala certificado autofirmado y ausencia de timestamp; no equivalen a fallo de firma Android. Persisten advertencias de entradas verificadas por JarFile/JarInputStream que deben contrastarse con validación de Play, sin borrar firmas.
-- ELF64/alineación 16 KB y AAB válidos no sustituyen ejecutar en Android con páginas de 16 KB.
-
-## Casos manuales de salida
-
-Inicio/registro/recuperación y Google OAuth; enlaces de autenticación; búsqueda con/sin permiso y ubicación aproximada; categorías, mapa/detalle/promociones; consentimiento de rutas cancelado/aceptado; 401/403/429/5xx y offline sin reintentos en bucle; enlace externo; RIIOTE; preferencias y sesión tras reiniciar; eliminación de fixture propio sin dependencias y caso en revisión; asegurar que push/geofencing bloqueados no se activan; TalkBack, texto 200 %, navegación por teclado donde aplique, contraste y barras del sistema. Registrar dispositivo, SO, SHA de APK y resultados concretos.
+La carpeta test/failures/ original (cuatro PNG previos de Mi cuenta) se conserva sin seguimiento. Los goldens actuales pasan; RIIOTE continúa visible y enlazado. La candidata anterior tuvo 461 pruebas, pero sus binarios/hashes son históricos y no corresponden a RC2.

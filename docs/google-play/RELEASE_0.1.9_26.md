@@ -1,5 +1,7 @@
 # Release candidata Cercly 0.1.9+26
 
+**REGISTRO HISTÓRICO de la candidata anterior c14e42d.** Sus hashes y binarios se conservan pero no corresponden a RC2. Consultar [RELEASE_0.1.9_26_RC2.md](RELEASE_0.1.9_26_RC2.md) para la variante actual con rutas internas bloqueadas.
+
 Fecha: 19/11/2026. **CANDIDATA NO APROBADA PARA PUBLICACIÓN.** VersionCode 26 pendiente de contrastar con Play Console. No sobrescribe +25.
 
 ## Fuente y configuración

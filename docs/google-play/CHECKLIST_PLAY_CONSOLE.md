@@ -1,4 +1,7 @@
-# Checklist de Google Play Console
+# Checklist Play Console — RC2
+
+La comprobación actual está en [ESTADO_PUBLICACION.md](ESTADO_PUBLICACION.md), con [respuestas recomendadas](DECLARACIONES_PLAY_RECOMENDADAS.md) y [pasos exactos](INSTRUCCIONES_PLAY_CONSOLE.md). El listado siguiente conserva fuentes y requisitos de preparación de la revisión anterior; ninguna aprobación histórica de eliminación o rutas internas debe trasladarse a RC2 sin esos documentos.
+
 
 Consulta oficial: 19/11/2026. La app móvil se prepara con target 36. No se enviaron formularios.
 
@@ -18,7 +21,7 @@ Consulta oficial: 19/11/2026. La app móvil se prepara con target 36. No se envi
 | Ruta externa de eliminación e información de retención | PENDIENTE | La página existe; validación operativa integral pendiente |
 | Seguridad de los datos | PENDIENTE | Matriz en SEGURIDAD_DATOS.md; contratos y SDK necesitan revisión |
 | Acceso de revisores | PENDIENTE | Credenciales dedicadas fuera de Git y pasos comprobados, incluidas áreas de negocio |
-| Anuncios, público e IARC | PENDIENTE | Evaluar destacadas patrocinadas, UGC y decisiones del titular |
+| Anuncios, público e IARC | PENDIENTE | Evaluar destacadas, aceptación/denuncia/bloqueo UGC y decisiones del titular |
 | Icono y gráfico promocional | APROBADO | PNG preparados; revisar en preview antes de guardar |
 | Capturas actuales | PENDIENTE | Capturar APK 26 real; no subir goldens o pantallas de evaluación como si fueran Producción |
 | Verificación de desarrollador y registro del package | PENDIENTE | Atender lo que Console exija para esta cuenta y región |

@@ -20,7 +20,7 @@ Estado: textos preparados, no enviados. No se promete navegación paso a paso, a
 
 ## Descripción corta
 
-Descubre establecimientos, promociones y rutas cerca de ti con Cercly.
+Descubre establecimientos y promociones cercanas y abre indicaciones en mapas.
 
 ## Descripción completa
 
@@ -33,7 +33,7 @@ CONOCE CADA LUGAR
 Consulta los datos disponibles de cada establecimiento: descripción, ubicación, horarios, contacto e imágenes. Revisa promociones vigentes y descubre propuestas de los negocios locales.
 
 PLANIFICA CÓMO LLEGAR
-Solicita un recorrido a pie o en auto desde Cercly o abre otra aplicación de mapas. Antes de calcular una ruta interna, Cercly te informa del envío de origen y destino a Supabase y HeiGIT/OpenRouteService. Las rutas muestran una distancia y un tiempo estimados; no ofrecen navegación paso a paso.
+Abre Google Maps desde la ficha del establecimiento después de confirmar. Cercly comparte solo el destino en el enlace. Google Maps utiliza sus propios permisos y condiciones; esta versión no calcula rutas internas ni ofrece navegación paso a paso dentro de Cercly.
 
 TU CUENTA Y TUS PREFERENCIAS
 Mantén tus categorías y preferencias vinculadas a tu cuenta. Gestiona los permisos y ajustes de privacidad y solicita la eliminación de tu cuenta desde Configuración.
@@ -45,12 +45,12 @@ Cercly utiliza mapas y datos de OpenStreetMap. La información de los lugares y 
 
 ## Novedades de 0.1.9
 
-• Consulta rutas internas a pie o en auto, con distancia y tiempo estimados.
-• Revisa el aviso sobre el uso de coordenadas antes de solicitar una ruta.
-• Encuentra un reconocimiento discreto a RIIOTE en Mi cuenta.
-• Mejoramos los mensajes de error y los créditos de mapas y rutas.
+• Abre Google Maps desde cada establecimiento con una confirmación clara.
+• El enlace de Cómo llegar comparte solo el destino.
+• Encuentra el reconocimiento discreto a RIIOTE en Mi cuenta.
+• Conservamos mejoras de estabilidad y atribución de mapas.
 
-No usar el texto de rutas como descripción de una versión publicable hasta resolver el bloqueo contractual del proveedor. Si el alcance cambia, actualizar la ficha y generar artefactos consistentes.
+Esta ficha es propuesta; no se envió a Console. Reemplazar capturas antiguas de rutas internas por pantallas reales de RC2 y su salida externa.
 
 ## Recursos gráficos
 
@@ -62,7 +62,7 @@ Fuentes reproducibles en recursos/. Archivos PNG fuera de Git, en la carpeta can
 
 ## Capturas pendientes
 
-Obtener al menos: Explorar/lista, mapa, detalle con promoción vigente, ruta real después del consentimiento y Mi cuenta con RIIOTE. Añadir Configuración/privacidad si aporta valor. Usar APK 26 real, no goldens ni evaluation. Preferir 1080×1920 o formato que cumpla la relación máxima 2:1 de Play. El AVD existente usa 1080×2400 y requeriría una configuración de pantalla de 1080×1920 antes de capturar; no estirar imágenes.
+Obtener al menos: Explorar/lista, mapa, detalle con promoción vigente, confirmación para abrir Google Maps y Mi cuenta con RIIOTE. Añadir Configuración/privacidad si aporta valor. Usar APK 26 real, no goldens ni evaluation. Preferir 1080×1920 o formato que cumpla la relación máxima 2:1 de Play. El AVD existente usa 1080×2400 y requeriría una configuración de pantalla de 1080×1920 antes de capturar; no estirar imágenes.
 
 1. Instalar la candidata en un dispositivo autorizado; no reemplazar versiones de terceros sin comprobar firma y sincronización.
 2. Usar una cuenta dedicada sin datos personales y establecimientos aptos para mostrar públicamente. No usar el GPS real para una captura compartida; elegir un área pública autorizada.

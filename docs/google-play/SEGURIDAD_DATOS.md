@@ -1,6 +1,6 @@
 # Flujo de datos y propuesta de Seguridad de los datos
 
-Revisión del código definitivo c14e42d y metadatos de Supabase Production, 19/11/2026. **Propuesta para revisión; no enviada.** Se distinguen datos que salen del dispositivo de datos que quedan solo locales. La clasificación de «compartido» de Play tiene excepciones para proveedores y acciones del usuario; no asumirlas sin comprobar condiciones reales.
+Revisión de RC2 40c1f2fd5af3027ccd896e03ef1a17e848068069 y metadatos de Supabase Production, 19/11/2026. **Propuesta para revisión; no enviada.** Se distinguen datos que salen del dispositivo de datos que quedan solo locales. La clasificación de «compartido» de Play tiene excepciones para proveedores y acciones del usuario; no asumirlas sin comprobar condiciones reales.
 
 ## Inventario
 
@@ -11,8 +11,8 @@ Revisión del código definitivo c14e42d y metadatos de Supabase Production, 19/
 | Google OAuth, si se elige | Google y Supabase; autenticar | Proveedor y sesión; perfil recibido depende de configuración | Datos de cuenta; verificar consentimiento y configuración OAuth real |
 | Teléfono de negocio y dirección | Supabase catálogo y ficha pública | Datos de establecimiento publicables; sin plazo general | Teléfono/dirección si identifican personas; gestionar publicación voluntaria |
 | Latitud, longitud y precisión; GPS consentido | Supabase: búsqueda y orden de establecimientos/promociones | RPC recibe coordenadas; no hay prueba de borrado de logs/backups | Ubicación aproximada y precisa recopilada para funcionalidad; revisar opcionalidad global |
-| Origen/destino y modo a pie/auto | App → Supabase autenticado → HeiGIT | Memoria de solicitud y respuesta; función no inserta coordenadas ni las imprime. Proveedores: retención no demostrada | Ubicación recopilada; transferencia externa real. Clasificación «compartida» pendiente de términos |
-| Usuario, ventana y contador de rutas | Tabla privada PostgreSQL; prevención de abuso | Fila persiste y se actualiza. Ventana 60 s NO es TTL; FK Auth ON DELETE CASCADE | ID y actividad vinculados para seguridad/funcionalidad |
+| Cómo llegar RC2 | Google Maps externo tras confirmación, solo destino del negocio | El botón no consulta GPS ni invoca Supabase/HeiGIT; Maps puede usar su propia ubicación | Evaluar el destino y acción iniciada por usuario, sin asumir una exención de compartición |
+| Usuario, ventana y contador de rutas existentes | Tabla privada PostgreSQL de versiones anteriores | RC2 no la consume desde Cómo llegar; fila persiste, 60 s NO es TTL; eliminación desplegada bloqueada por reconocimiento de FK pendiente | Datos existentes siguen sujetos a retención y eliminación; no afirmar que desaparecieron |
 | Área del mapa, IP y petición de teselas | tile.openstreetmap.org | Caché del cliente y registros del proveedor no auditados integralmente | Ubicación inferible/identificadores técnicos; revisar declaración de tercero |
 | Fotos seleccionadas del negocio/promoción | Supabase Storage, publicar fichas | Objetos remotos; retención y dependencias de borrado requieren revisión | Fotos recopiladas y publicadas por decisión del aportante |
 | Solicitudes de acceso, registro o corrección; mensajes/evidencias | Supabase y moderadores autorizados | Solicitudes e historiales; algunos casos bloquean supresión automática | Otro contenido generado por usuario, identificadores e interacción |
@@ -29,16 +29,16 @@ Código de referencia: `lib/features/auth/services/`, `lib/features/explorar/ser
 
 - La app transmite datos personales y ubicación para funciones reales. No procede marcar que no recopila datos.
 - Se utiliza HTTPS para Supabase, mapas, rutas, OAuth y enlaces predeterminados. Esto no demuestra cifrado extremo a extremo ni una auditoría independiente.
-- Cuenta eliminable desde Mi cuenta → Configuración → Eliminar cuenta; endpoint real activo. El resultado puede ser «en revisión», «pendiente» o «eliminada» y la interfaz distingue los estados.
-- El GPS requiere consentimiento y permiso. Calcular rutas tiene un aviso adicional antes de enviar coordenadas; cancelar evita la petición. Mapas externos reciben el destino al elegirlos.
+- La ruta Mi cuenta → Configuración → Eliminar cuenta y el endpoint real existen, pero se confirmó un bloqueo de FK en la guarda desplegada. La corrección local no acredita eliminación operativa en Production. Véase AUDITORIA_ELIMINACION_INTEGRAL.md.
+- El GPS para cercanía requiere consentimiento y permiso. En RC2 Cómo llegar confirma apertura externa, comparte solo destino y no consulta GPS ni solicita rutas internas. No eliminar por ello la declaración de ubicación usada en exploración.
 - No hay permisos de contactos, SMS, micrófono, acceso amplio a fotos o background location en el manifiesto final.
 - No hay SDK publicitario identificado en pubspec.lock. Esto no permite contestar automáticamente «sin anuncios»: hay promociones destacadas y patrocinio.
 
 ## Respuestas pendientes de comprobar
 
 - Si todos los usuarios pueden usar funcionalidades suficientes sin cada dato opcional; no marcar todo opcional por tener un diálogo.
-- Datos automáticos de Firebase y dependencias en una ejecución real antes/después de denegar permisos. `firebase_messaging_auto_init_enabled=false` y analítica deshabilitada no prueban ausencia total de tráfico.
-- Condiciones que permitirían aplicar excepciones de «compartido» a Supabase, HeiGIT, OSM y autenticación externa. Sin prueba no declarar que no se comparte.
+- Datos automáticos de Firebase y dependencias en una ejecución real antes/después de denegar permisos y al limpiar instalaciones previas. `firebase_messaging_auto_init_enabled=false` y analítica deshabilitada no prueban ausencia total de tráfico.
+- Condiciones que permitirían aplicar excepciones de «compartido» a Supabase, OSM y autenticación externa; HeiGIT está deshabilitado para RC2. Sin prueba no declarar que no se comparte.
 - Retención, regiones, subencargados, respaldos, borrado efectivo de imágenes y revisión de cuentas con dependencias.
 - Clasificación exacta de referencias económicas, búsquedas y mensajes en el formulario vigente de Play; no hay una base para prometer que son datos efímeros.
 - Eliminación integral autenticada, OAuth de release y alcance real de claves públicas Firebase (restricciones API/configuración).
@@ -58,3 +58,9 @@ Endpoint calcular-ruta: validación getUser, límite de payload 2.048 caracteres
 Escaneo de APK/AAB: todas las entradas descomprimidas para claves privadas PEM, sb_secret, JWT de service_role, JSON de service account, archivos jks/keystore/.env/key.properties y contraseñas de firma conocidas. Sin hallazgos. Configuración Supabase publicable y Firebase de cliente son identificadores públicos, no prueba de autorización. No se pudo comparar la clave ORS privada del servidor con el binario; su ausencia se sustenta en el flujo del código y la compilación sin ORS_API_KEY. Un escaneo por patrones no demuestra ausencia de todo secreto u ofuscación posible.
 
 Fuente de definiciones: [Google Data safety](https://support.google.com/googleplay/android-developer/answer/10787469), [privacidad de Firebase](https://firebase.google.com/support/privacy). Véanse evidencias JSON y PRUEBAS_Y_RIESGOS.md.
+
+## Cambio relevante de RC2
+
+No afirmar cero tráfico del SDK: la política bloquea push promocional, pero _cleanupUnavailable puede inicializar Firebase para retirar un registro previo. El Radar inicia _radarActivo=false y preferencias de avisos/push false; los tests de regresión pasan. El manifiesto aún contiene providers y receptores protegidos de Firebase. Falta evidencia de tráfico de un dispositivo real.
+
+La propuesta completa de respuestas, UGC/anuncios e incertidumbres está en DECLARACIONES_PLAY_RECOMENDADAS.md. No se leyeron las respuestas que el titular ya esté completando en Console.
