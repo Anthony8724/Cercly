@@ -5,6 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../models/ruta_model.dart';
 import 'ruta_service.dart';
+import 'politica_rutas.dart';
 
 /// Función inyectable para pruebas; jamás recibe la clave privada ORS.
 typedef InvocarRuta = Future<Map<String, dynamic>> Function(
@@ -20,6 +21,9 @@ class SupabaseRutaService implements RutaService {
   static Future<Map<String, dynamic>> _invocarReal(
     Map<String, dynamic> body,
   ) async {
+    // Antes de consultar sesión, cuota o red. El código de interpretación y el
+    // transporte inyectado permanecen verificables sin llamar al proveedor.
+    PoliticaRutas.exigirProveedorAutorizado();
     final client = Supabase.instance.client;
     if (client.auth.currentSession == null) {
       throw const RutaException(
