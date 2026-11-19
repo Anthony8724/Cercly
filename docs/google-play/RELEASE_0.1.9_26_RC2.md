@@ -24,7 +24,7 @@ Gradle rechazó en tres comprobaciones reales los secretos ORS/service_role y ru
 
 ## Artefactos nuevos
 
-Directorio previsto de entrega: `/home/Anthony/Descargas/Cercly-Produccion-0.1.9+26-RC2-CANDIDATA-20261119/`.
+Directorio de entrega creado y verificado: `/home/Anthony/Descargas/Cercly-Produccion-0.1.9+26-RC2-CANDIDATA-20261119/`.
 
 | Archivo | Bytes | SHA-256 |
 |---|---:|---|
@@ -44,3 +44,5 @@ Escaneo de todas las entradas descomprimidas para PEM privado, sb_secret, servic
 Permisos: Internet, coarse/fine location, notificaciones, vibración, wake lock, estado de red, recepción FCM y permiso propio de receptores; sin background location, SMS, contactos ni micrófono. Receivers de proximidad siguen deshabilitados/no exportados; receivers FCM exportados protegidos por permiso de sistema, servicios/providers internos no exportados y backup false.
 
 Pruebas y límites: [PRUEBAS_Y_RIESGOS.md](PRUEBAS_Y_RIESGOS.md). Falta dispositivo HONOR, prueba Auth/Storage HTTP integral, publicación aprobada de política, decisiones del titular y contraste Console. La migración de eliminación se incluye como código preparado, **no está desplegada por instalar el APK**.
+
+CI comprobado: [44639065759](https://github.com/Anthony8724/Cercly/actions/runs/44639065759), success, HEAD 48257b854ea14ef20b1dcf0afeb65fd1a3f8249b. Incluye análisis/pruebas y APK debug Staging; no genera estos artefactos release Production. Las diferencias con el código compilado 40c1f2f son documentales. Evidencia saneada en evidencias/ci-rc2.json.

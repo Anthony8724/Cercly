@@ -36,8 +36,11 @@ La matriz es una asignación por conseguir, no una afirmación de que haya dispo
 | D8–D9 | Cuenta/OAuth y preferencias con identidades QA; verificar que Radar/push no se activen solos |
 | D10–D11 | Accesibilidad y negocios autorizados. Eliminación se ensaya en entorno autorizado con fixture, no en cuentas reales de participantes |
 | D12–D13 | Corregir incidencias, distribuir nueva build con code superior si cambia código; regresión cruzada sin manipular continuidad de inscripción |
-| D14 y después de 14 días completos | Revisión de elegibles y tickets, QA final, evidencia de correcciones; esperar que Console confirme elegibilidad |
+| D14 | Revisar elegibles y tickets, QA final y correcciones; mantener inscripción y no dar por completados 14 días solo por contar fechas |
+| D15 o después, según hora real | Solo tras T0 + 14 días completos de continuidad de al menos 12 personas, comprobar confirmación de Console |
 | Solicitud posterior | Titular responde con lo efectivamente probado, feedback y cambios; solicita acceso a Producción solo si cumple y autoriza |
+
+T0 es la fecha y hora efectiva de alta de cada participante; si empieza el día 1 a las 10:00 UTC, catorce días completos no se alcanzan antes del día 15 a esa hora. La elegibilidad final la muestra Console.
 
 Las sesiones propuestas permiten observar uso real y obtener feedback; Google no se representa aquí como exigiendo abrir la app todos los días. No fabricar actividad, reseñas ni comentarios.
 

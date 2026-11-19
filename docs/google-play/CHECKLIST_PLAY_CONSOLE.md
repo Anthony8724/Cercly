@@ -18,7 +18,7 @@ Consulta oficial: 19/11/2026. La app móvil se prepara con target 36. No se envi
 | Certificado de carga correcto para Play | PENDIENTE | Comparar SHA-256 en Configuración → Integridad de la aplicación; no confundir certificado de firma de Play con carga |
 | Play App Signing | PENDIENTE | Verificar inscripción y propiedad; no generar ni cambiar claves |
 | Política pública completa y accesible desde app | BLOQUEADO | Enlace de la app correcto; destino público redirige a resumen |
-| Ruta externa de eliminación e información de retención | PENDIENTE | La página existe; validación operativa integral pendiente |
+| Ruta externa y eliminación operativa | BLOQUEADO | La página existe; la guarda de cuota desplegada bloquea el borrado. Corrección solo local y retención pendiente |
 | Seguridad de los datos | PENDIENTE | Matriz en SEGURIDAD_DATOS.md; contratos y SDK necesitan revisión |
 | Acceso de revisores | PENDIENTE | Credenciales dedicadas fuera de Git y pasos comprobados, incluidas áreas de negocio |
 | Anuncios, público e IARC | PENDIENTE | Evaluar destacadas, aceptación/denuncia/bloqueo UGC y decisiones del titular |

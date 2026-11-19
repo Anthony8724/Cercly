@@ -15,7 +15,7 @@ Código compilado `40c1f2fd5af3027ccd896e03ef1a17e848068069`, web `a1f721bc8ba6f
 | APK/AAB | Compilados y verificados | Firma histórica, SDK 36, bundletool/zipalign/ELF64 y escaneo definido |
 | HONOR/Android nativo | PENDIENTE | No hay dispositivo conectado; no presentar la prueba histórica +25 como RC2 |
 | Eliminación GoTrue/Storage HTTP | PENDIENTE | SQL y dobles no acreditan bytes de Storage, correo ni JWT real tras eliminación |
-| CI RC2 | PENDIENTE de registrar | Los CI anteriores son históricos hasta verificar nueva ejecución |
+| CI RC2 | APROBADO | Android 44639065759 en 48257b8; web quality 44638985403 en a1f721b. Posteriores documentos y prueba de retención revalidados localmente |
 
 Los 21 omitidos de la suite sin defines son los mismos nueve de integración pública, ejecutados aparte, y doce de proximidad Production bloqueada. En conjunto: **477 casos Flutter distintos ejecutados, 12 condicionados a función deshabilitada**. Algunos tests públicos permiten datos vacíos; no confundir su aprobación con cobertura completa del catálogo.
 
@@ -42,3 +42,5 @@ Los 21 omitidos de la suite sin defines son los mismos nueve de integración pú
 Registros de esta ejecución: /tmp/cercly-play-close-20261119 y la carpeta RC2 de Descargas. JSON saneados en evidencias/. Las capturas web son de páginas locales reales, no de Android. Las capturas de Play siguen pendientes.
 
 La carpeta test/failures/ original (cuatro PNG previos de Mi cuenta) se conserva sin seguimiento. Los goldens actuales pasan; RIIOTE continúa visible y enlazado. La candidata anterior tuvo 461 pruebas, pero sus binarios/hashes son históricos y no corresponden a RC2.
+
+La base web recibió concurrentemente PR #16 (deeb4d6), aprobación parcial de retención. Se integró sin conflictos y se repitió verify completo: 32/32 y 15 vistas sin infracciones/errores. No cambió código de páginas, configuración ni lockfile respecto de a1f721b; no requiere nuevos binarios Android. El primer intento de verificación fue impedido por permisos locales de sockets; la ejecución autorizada posterior terminó correctamente.

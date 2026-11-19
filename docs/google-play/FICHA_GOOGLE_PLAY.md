@@ -62,7 +62,7 @@ Fuentes reproducibles en recursos/. Archivos PNG fuera de Git, en la carpeta can
 
 ## Capturas pendientes
 
-Obtener al menos: Explorar/lista, mapa, detalle con promoción vigente, confirmación para abrir Google Maps y Mi cuenta con RIIOTE. Añadir Configuración/privacidad si aporta valor. Usar APK 26 real, no goldens ni evaluation. Preferir 1080×1920 o formato que cumpla la relación máxima 2:1 de Play. El AVD existente usa 1080×2400 y requeriría una configuración de pantalla de 1080×1920 antes de capturar; no estirar imágenes.
+Obtener al menos: Explorar/lista, mapa, detalle con promoción vigente, confirmación para abrir Google Maps y Mi cuenta con RIIOTE. Añadir Configuración/privacidad si aporta valor. Usar APK 26 RC2 real, no goldens ni evaluation. Preferir 1080×1920 o formato que cumpla la relación máxima 2:1 de Play. El AVD existente usa 1080×2400 y requeriría una configuración de pantalla de 1080×1920 antes de capturar; no estirar imágenes.
 
 1. Instalar la candidata en un dispositivo autorizado; no reemplazar versiones de terceros sin comprobar firma y sincronización.
 2. Usar una cuenta dedicada sin datos personales y establecimientos aptos para mostrar públicamente. No usar el GPS real para una captura compartida; elegir un área pública autorizada.

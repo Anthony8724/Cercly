@@ -42,7 +42,7 @@ Las cuentas, preferencias, imágenes y solicitudes persisten según la funcional
 
 El control de abuso de rutas guarda un UUID, una fecha de ventana y contador. Su ventana de 60 segundos limita frecuencia; no elimina automáticamente el registro. Es un dato del backend existente; RC2 no consume esa cuota desde Cómo llegar. Su FK contempla cascada, pero se detectó un bloqueo en la guarda desplegada de eliminación; la corrección preparada todavía no se aplicó remotamente. Las rutas no generan por sí mismas un historial de coordenadas en el código inspeccionado. No se acredita una retención equivalente en registros o respaldos de los proveedores.
 
-No se adoptan como compromiso público los plazos de los borradores internos de atención. El responsable debe aprobar y verificar criterios de supresión y excepciones antes de publicar esta política como definitiva.
+No se adoptan como compromiso público plazos que todavía no se hayan implementado y verificado. El responsable debe completar y validar los criterios de supresión y excepciones antes de publicar esta política como definitiva.
 
 ## 6. Solicitudes y eliminación
 
