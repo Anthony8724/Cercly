@@ -89,6 +89,29 @@ class SupabaseRutaService implements RutaService {
       );
     } on RutaException {
       rethrow;
+    } on FunctionException catch (error) {
+      if (error.status == 401 || error.status == 403) {
+        throw const RutaException(
+          TipoErrorRuta.servicioNoConfigurado,
+          'Tu sesión no permite calcular rutas. Inicia sesión de nuevo o abre otra app de mapas.',
+        );
+      }
+      if (error.status == 429) {
+        throw const RutaException(
+          TipoErrorRuta.cuotaAgotada,
+          'Se alcanzó el límite de rutas. Espera antes de reintentar o abre otra app de mapas.',
+        );
+      }
+      if (error.status == 422) {
+        throw const RutaException(
+          TipoErrorRuta.sinRuta,
+          'No encontramos un recorrido entre estos puntos.',
+        );
+      }
+      throw const RutaException(
+        TipoErrorRuta.servicioNoDisponible,
+        'El servicio de rutas no está disponible. Puedes abrir otra app de mapas.',
+      );
     } on TimeoutException {
       throw const RutaException(
         TipoErrorRuta.tiempoAgotado,
