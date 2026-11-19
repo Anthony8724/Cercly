@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../sky/sky_theme.dart';
 import '../../../sky/sky_logo.dart';
 import '../../../sky/sky_backdrop.dart';
+import '../../../shared/widgets/patrocinio_riiote_footer.dart';
 
 import '../services/auth_service.dart';
 import 'account_mode_selector.dart';
@@ -308,6 +309,8 @@ class _MiCuentaScreenState extends State<MiCuentaScreen> {
                     ),
                   ),
                 ),
+                const SizedBox(height: 14),
+                const PatrocinioRiioteFooter(),
               ],
             ),
           ),
