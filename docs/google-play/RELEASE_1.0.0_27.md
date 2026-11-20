@@ -29,7 +29,7 @@ La copia lógica privada previa se guardó bajo `~/RespaldosPrivados/Cercly/Prod
 | Flutter | 479 aprobadas, 21 omitidas y 0 fallidas. Analizador limpio. |
 | SQL local con 17.6 | 802 comprobaciones de la base y 40 de UGC. También se ejecutaron las dos migraciones sobre el respaldo restaurado. |
 | Eliminación HTTP alojada | 8 aprobadas. Pasó el rechazo anónimo, HTTP 200 para la cuenta simple sintética, ausencia de Auth/perfil/sesiones/refresh y rechazo de las credenciales anteriores. |
-| UGC HTTP alojada | 26 aprobadas. Aceptación verificada, subida de foto, `RETURNING` para foto y promoción de prueba inactiva, RLS ajeno, bloqueo, retirada y trazabilidad. El denunciante pasó a revisión con HTTP 202. La limpieza posterior usó solo los fixtures con IDs generados. Cero fichas o archivos QA residuales. Una identidad sintética de moderación quedó en revisión por su historial de aprobación. |
+| UGC HTTP alojada | 27 aprobadas. Aceptación verificada, subida de foto, `RETURNING` para foto y promoción de prueba inactiva, RLS ajeno, bloqueo, retirada y trazabilidad. El denunciante pasó a revisión con HTTP 202. La limpieza posterior usó solo los fixtures con IDs generados. Cero fichas o archivos QA residuales. Una identidad sintética de moderación quedó en revisión por su historial de aprobación. |
 | Integridad | Huella del conjunto de cuentas preexistentes coincide con la del respaldo. Cero campañas destacadas en el catálogo consultado. |
 | Web | Privacidad del PR #17 responde 200. El agregado mínimo UGC `ace22ad` se preparó localmente sobre `54d4ad4`, con Next build y lint aprobados. Pendiente integración pública. |
 
