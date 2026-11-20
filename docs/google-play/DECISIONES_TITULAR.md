@@ -2,6 +2,8 @@
 
 No son acuerdos aceptados ni política ya vigente. No se publican ni se adoptan plazos nuevos por este documento.
 
+Texto concreto por categoría, alternativas y aprobación parcial ya registrada: [PROPUESTA_POLITICAS_TITULAR.md](PROPUESTA_POLITICAS_TITULAR.md). Secuencia exacta y efectos públicos: [PUBLICACION_WEB_LEGAL.md](PUBLICACION_WEB_LEGAL.md). No se sube la nueva rama web porque activaría una Preview; ese paso requiere autorización bajo la instrucción actual.
+
 | Tema | Alternativas preparadas | Lo que debe decidir/acreditar el titular |
 |---|---|---|
 | Rutas Play | Usar la alternativa externa ya implementada; o posponer hasta disponer de proveedor interno válido | Revisar la experiencia para la distribución. La reactivación interna requiere contrato/infraestructura y pruebas, no consentimiento aislado |

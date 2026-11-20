@@ -2,6 +2,8 @@
 
 **PENDIENTE DE EJECUCIÓN.** adb devices no encontró dispositivos; la prueba histórica +25 no acredita RC2. No se borró, instaló ni modificó nada en un teléfono.
 
+Para el ensayo del titular usar la [guía corta con APK exacto y tabla PASS/FAIL](HONOR_GUIA_CORTA_RC2.md). Mantiene el SHA-256 812e72ead744d8144e029154be5cabe990c9c030e74d3805fef82a86c5b22f49 y prohíbe confirmar eliminación en la candidata Production durante este QA.
+
 ## Preparación segura
 
 Usar teléfono autorizado, cable y depuración USB consentida. Registrar modelo, MagicOS/Android, versión instalada, estado de permisos y SHA del APK. No recopilar IMEI, correo personal ni coordenadas privadas en evidencias.

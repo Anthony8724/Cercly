@@ -61,6 +61,8 @@ Fuente de definiciones: [Google Data safety](https://support.google.com/googlepl
 
 ## Cambio relevante de RC2
 
-No afirmar cero tráfico del SDK: la política bloquea push promocional, pero _cleanupUnavailable puede inicializar Firebase para retirar un registro previo. El Radar inicia _radarActivo=false y preferencias de avisos/push false; los tests de regresión pasan. El manifiesto aún contiene providers y receptores protegidos de Firebase. Falta evidencia de tráfico de un dispositivo real.
+No afirmar cero tráfico del SDK: la política bloquea push promocional, pero _cleanupUnavailable puede inicializar Firebase para retirar un registro previo. El Radar inicia _radarActivo=false y preferencias de avisos/push false; los tests de regresión pasan. El manifiesto aún contiene providers y receptores protegidos de Firebase. Falta evidencia de tráfico de un dispositivo real. La propuesta web final ya explicita esta posibilidad.
+
+Eliminación: 43 comprobaciones HTTP locales con servicios reales acreditan casos simples y fotos retiradas explícitamente, sesiones y datos ajenos intactos. Production continúa con cuota no reconocida y corrección sin registrar; canal externo y respaldos pendientes. Ver ELIMINACION_HTTP_LOCAL.md y CONTRASTE_FORMULARIOS_RC2.md. Las fotos se leen/suben con imageQuality=85; no se acredita eliminar todo EXIF ni que cada aporte haya sido premoderado.
 
 La propuesta completa de respuestas, UGC/anuncios e incertidumbres está en DECLARACIONES_PLAY_RECOMENDADAS.md. No se leyeron las respuestas que el titular ya esté completando en Console.

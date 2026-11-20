@@ -2,6 +2,8 @@
 
 Propuesta del 19/11/2026 para RC2. No se obtuvo acceso a las respuestas reales de Console; se pidió su transcripción al titular. No se modificó ni envió ninguna declaración. Verificar el formulario vigente, el alcance de todas las versiones distribuidas y los SDK, no solo una pantalla.
 
+Contraste final por campos y decisiones: [CONTRASTE_FORMULARIOS_RC2.md](CONTRASTE_FORMULARIOS_RC2.md). El nuevo ensayo de eliminación HTTP es local, 43/43; la migración no está desplegada y no permite cambiar por sí solo una respuesta de Console a «operativo».
+
 | Pregunta / categoría | Respuesta recomendada o condición | Evidencia | Incertidumbre / estado |
 |---|---|---|---|
 | ¿Se recopilan datos? | Sí | Auth, perfil, preferencias, ubicación a Supabase, fotos y solicitudes | VERIFICADO |
