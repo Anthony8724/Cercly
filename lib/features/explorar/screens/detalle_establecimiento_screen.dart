@@ -16,6 +16,7 @@ import '../../solicitudes_establecimientos/screens/nueva_solicitud_screen.dart';
 import '../models/ubicacion_usuario.dart';
 import '../services/consentimiento_ubicacion.dart';
 import '../services/mapas_externos_service.dart';
+import '../services/politica_rutas.dart';
 import '../services/ruta_service.dart';
 import '../services/ubicacion_service.dart';
 import 'ruta_establecimiento_screen.dart';
@@ -100,10 +101,61 @@ class _DetalleEstablecimientoScreenState
     }
   }
 
-  /// Si el usuario ya autorizó Cercly para usar su ubicación, muestra la
+  /// La variante de Play no consulta GPS ni el endpoint de rutas. Solo comparte
+  /// el destino con Google Maps después de una acción y confirmación explícitas.
+  Future<void> _comoLlegar() async {
+    if (PoliticaRutas.internasHabilitadas) {
+      await _comoLlegarConRutaInterna();
+      return;
+    }
+    if (_abriendoRuta) return;
+    setState(() => _abriendoRuta = true);
+    try {
+      final confirmado = await showDialog<bool>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          key: const Key('aviso-mapas-externos'),
+          title: const Text('Abrir en Google Maps'),
+          content: const SingleChildScrollView(
+            child: Text(
+              'Se compartirá la ubicación del establecimiento con Google Maps. '
+              'Cercly no consultará ni añadirá tu ubicación actual a este enlace. '
+              'Google Maps puede utilizar tu ubicación según sus propios permisos y condiciones.',
+            ),
+          ),
+          actions: [
+            TextButton(
+              key: const Key('mapas-externos-cancelar'),
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('Cancelar'),
+            ),
+            FilledButton(
+              key: const Key('mapas-externos-confirmar'),
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: const Text('Abrir Google Maps'),
+            ),
+          ],
+        ),
+      );
+      if (mounted && confirmado == true) await _abrirMapasExternos();
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('No se pudo abrir Google Maps. Inténtalo de nuevo.'),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _abriendoRuta = false);
+    }
+  }
+
+  /// Código interno conservado para reactivación revisada. Si está autorizado,
+  /// y el usuario ya autorizó Cercly para usar su ubicación, muestra la
   /// pantalla de rutas interna. Nunca solicita permisos nuevos desde este botón.
   /// Si falta consentimiento, permiso o GPS, conserva la salida a Google Maps.
-  Future<void> _comoLlegar() async {
+  Future<void> _comoLlegarConRutaInterna() async {
     if (_abriendoRuta) return;
     setState(() => _abriendoRuta = true);
     try {

@@ -1,0 +1,31 @@
+{
+  "code_commit": "40c1f2fd5af3027ccd896e03ef1a17e848068069",
+  "web_commit": "a1f721bc8ba6f02d489fe02cc3b45281872783c2",
+  "flutter": {
+    "passed": 468,
+    "skipped": 21,
+    "failed": 0
+  },
+  "public_read_integration": {
+    "passed": 9,
+    "skipped": 0,
+    "failed": 0
+  },
+  "flutter_distinct_executed": 477,
+  "flutter_remaining_disabled": 12,
+  "deno_passed": 21,
+  "node_passed": 37,
+  "sql_asserts_passed": 802,
+  "sql_suites": 30,
+  "new_deletion_sql_asserts": 15,
+  "web_tests_passed": 32,
+  "web_views_axe_clean": 15,
+  "web_https_routes_200": 5,
+  "gradle_expected_rejections": 3,
+  "honor_executed": false,
+  "production_deployed": false,
+  "real_accounts_deleted": false,
+  "play_console_submitted": false,
+  "go": "NO-GO",
+  "web_interactions_viewports": 3
+}

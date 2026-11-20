@@ -57,6 +57,19 @@ android {
     val isDemoRelease = "CERCLY_DEMO_RELEASE=true" in dartDefineEntries
     val isPrivateProximity = "CERCLY_PRIVATE_PROXIMITY=true" in dartDefineEntries
     val isCerclyStaging = "CERCLY_STAGING=true" in dartDefineEntries
+    // Ninguna variante cliente puede empaquetar credenciales del servidor.
+    val privateDefinePrefixes = listOf(
+        "ORS_API_KEY=", "SUPABASE_SERVICE_ROLE_KEY=", "SUPABASE_SECRET_KEY=",
+        "DATABASE_URL=", "DB_PASSWORD=", "POSTGRES_PASSWORD=",
+    )
+    if (dartDefineEntries.any { entry ->
+        privateDefinePrefixes.any { entry.startsWith(it) } && entry.substringAfter("=").isNotBlank()
+    }) {
+        throw GradleException("La aplicación no admite secretos de servidor en dart-defines.")
+    }
+    if (!isUiEvaluation && "CERCLY_RUTAS_SIMULADAS=true" in dartDefineEntries) {
+        throw GradleException("Las rutas simuladas no se admiten en una variante pública.")
+    }
     val configuredSupabaseUrl = dartDefineEntries
         .firstOrNull { it.startsWith("SUPABASE_URL=") }
         ?.substringAfter("=")

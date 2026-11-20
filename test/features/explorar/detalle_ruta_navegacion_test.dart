@@ -98,7 +98,49 @@ Future<void> _montar(
 }
 
 void main() {
-  testWidgets('Cómo llegar abre la pantalla de rutas con consentimiento', (
+  for (final consentimiento in [false, true]) {
+    for (final estado in [
+      EstadoUbicacion.disponible,
+      EstadoUbicacion.permisoDenegado,
+    ]) {
+      testWidgets(
+        'Play comparte solo destino: consentimiento $consentimiento y $estado',
+        (tester) async {
+          SharedPreferences.setMockInitialValues({
+            'cercly_uso_ubicacion_cercania_aceptado': consentimiento,
+          });
+          final ubicacion = _UbicacionFalsa(estado);
+          final ruta = _RutaFalsa();
+          final enlaces = <Uri>[];
+          final mapas = MapasExternosService(
+            abrirUri: (uri) async {
+              enlaces.add(uri);
+              return true;
+            },
+          );
+          await _montar(tester, ubicacion: ubicacion, ruta: ruta, mapas: mapas);
+          await tester.tap(find.byKey(const Key('boton-como-llegar')));
+          await tester.pumpAndSettle();
+          expect(enlaces, isEmpty);
+          expect(ubicacion.llamadas, 0);
+          expect(ruta.llamadas, 0);
+          await tester.tap(find.byKey(const Key('mapas-externos-confirmar')));
+          await tester.pumpAndSettle();
+          expect(enlaces, hasLength(1));
+          expect(enlaces.single.host, 'www.google.com');
+          expect(enlaces.single.queryParameters, {
+            'api': '1',
+            'destination': '0.815,-77.72',
+          });
+          expect(enlaces.single.toString(), isNot(contains('0.8116')));
+          expect(find.byKey(const Key('pantalla-ruta')), findsNothing);
+          expect(ubicacion.llamadas, 0);
+          expect(ruta.llamadas, 0);
+        },
+      );
+    }
+  }
+  testWidgets('cancelar no abre mapas ni consulta ubicación o rutas', (
     tester,
   ) async {
     SharedPreferences.setMockInitialValues({
@@ -106,110 +148,52 @@ void main() {
     });
     final ubicacion = _UbicacionFalsa(EstadoUbicacion.disponible);
     final ruta = _RutaFalsa();
-    final mapas = MapasExternosService(abrirUri: (_) async => true);
-    await _montar(tester, ubicacion: ubicacion, ruta: ruta, mapas: mapas);
-
-    await tester.tap(find.byKey(const Key('boton-como-llegar')));
-    await tester.pumpAndSettle();
-    expect(find.byKey(const Key('aviso-privacidad-ruta')), findsOneWidget);
-    expect(ubicacion.llamadas, 0);
-    expect(ruta.llamadas, 0);
-
-    await tester.tap(find.byKey(const Key('ruta-privacidad-confirmar')));
-    await tester.pumpAndSettle();
-    expect(find.byKey(const Key('aviso-privacidad-ruta')), findsNothing);
-    expect(find.byKey(const Key('pantalla-ruta')), findsOneWidget);
-    expect(find.text('620 m'), findsOneWidget);
-    expect(find.text('8 min'), findsOneWidget);
-    expect(ubicacion.llamadas, 1);
-    expect(ubicacion.solicitoPermiso, isFalse);
-    expect(ruta.llamadas, 1);
-  });
-
-  testWidgets('Cancelar aviso no consulta GPS ni solicita ruta', (
-    tester,
-  ) async {
-    SharedPreferences.setMockInitialValues({
-      'cercly_uso_ubicacion_cercania_aceptado': true,
-    });
-    final ubicacion = _UbicacionFalsa(EstadoUbicacion.disponible);
-    final ruta = _RutaFalsa();
-    var externas = 0;
-    final mapas = MapasExternosService(
-      abrirUri: (_) async {
-        externas++;
-        return true;
-      },
+    var llamadas = 0;
+    await _montar(
+      tester,
+      ubicacion: ubicacion,
+      ruta: ruta,
+      mapas: MapasExternosService(
+        abrirUri: (_) async {
+          llamadas++;
+          return true;
+        },
+      ),
     );
-    await _montar(tester, ubicacion: ubicacion, ruta: ruta, mapas: mapas);
-
     await tester.tap(find.byKey(const Key('boton-como-llegar')));
     await tester.pumpAndSettle();
-    expect(find.byKey(const Key('aviso-privacidad-ruta')), findsOneWidget);
+    await tester.tap(find.byKey(const Key('mapas-externos-cancelar')));
+    await tester.pumpAndSettle();
+    expect(llamadas, 0);
     expect(ubicacion.llamadas, 0);
     expect(ruta.llamadas, 0);
-
-    await tester.tap(find.byKey(const Key('ruta-privacidad-cancelar')));
-    await tester.pumpAndSettle();
-
-    expect(find.byKey(const Key('aviso-privacidad-ruta')), findsNothing);
-    expect(find.byKey(const Key('pantalla-ruta')), findsNothing);
-    expect(ubicacion.llamadas, 0);
-    expect(ruta.llamadas, 0);
-    expect(externas, 0);
   });
-
-  testWidgets('Sin consentimiento abre Google Maps y no consulta GPS', (
-    tester,
-  ) async {
-    SharedPreferences.setMockInitialValues({});
-    final ubicacion = _UbicacionFalsa(EstadoUbicacion.disponible);
-    final ruta = _RutaFalsa();
-    Uri? enlace;
-    final mapas = MapasExternosService(
-      abrirUri: (uri) async {
-        enlace = uri;
-        return true;
-      },
-    );
-    await _montar(tester, ubicacion: ubicacion, ruta: ruta, mapas: mapas);
-
-    await tester.tap(find.byKey(const Key('boton-como-llegar')));
-    await tester.pumpAndSettle();
-
-    expect(find.byKey(const Key('pantalla-ruta')), findsNothing);
-    expect(ubicacion.llamadas, 0);
-    expect(ruta.llamadas, 0);
-    expect(enlace?.queryParameters['destination'], '0.815,-77.72');
-  });
-
-  testWidgets('Con permiso denegado no solicita GPS y ofrece mapa externo', (
-    tester,
-  ) async {
-    SharedPreferences.setMockInitialValues({
-      'cercly_uso_ubicacion_cercania_aceptado': true,
-    });
-    final ubicacion = _UbicacionFalsa(EstadoUbicacion.permisoDenegado);
-    final ruta = _RutaFalsa();
-    Uri? enlace;
-    final mapas = MapasExternosService(
-      abrirUri: (uri) async {
-        enlace = uri;
-        return true;
-      },
-    );
-    await _montar(tester, ubicacion: ubicacion, ruta: ruta, mapas: mapas);
-
-    await tester.tap(find.byKey(const Key('boton-como-llegar')));
-    await tester.pumpAndSettle();
-    expect(find.byKey(const Key('aviso-privacidad-ruta')), findsOneWidget);
-
-    await tester.tap(find.byKey(const Key('ruta-privacidad-confirmar')));
-    await tester.pumpAndSettle();
-
-    expect(find.byKey(const Key('pantalla-ruta')), findsNothing);
-    expect(ubicacion.solicitoPermiso, isFalse);
-    expect(ruta.llamadas, 0);
-    expect(enlace, isNotNull);
-  });
+  testWidgets(
+    'fallo de apertura no activa fallback interno y permite reintento',
+    (tester) async {
+      SharedPreferences.setMockInitialValues({});
+      final ubicacion = _UbicacionFalsa(EstadoUbicacion.disponible);
+      final ruta = _RutaFalsa();
+      await _montar(
+        tester,
+        ubicacion: ubicacion,
+        ruta: ruta,
+        mapas: MapasExternosService(
+          abrirUri: (_) async => throw StateError('sin handler'),
+        ),
+      );
+      for (var intento = 0; intento < 2; intento++) {
+        await tester.tap(find.byKey(const Key('boton-como-llegar')));
+        await tester.pumpAndSettle();
+        await tester.tap(find.byKey(const Key('mapas-externos-confirmar')));
+        await tester.pumpAndSettle();
+      }
+      expect(
+        find.text('No se pudo abrir Google Maps. Inténtalo de nuevo.'),
+        findsOneWidget,
+      );
+      expect(ubicacion.llamadas, 0);
+      expect(ruta.llamadas, 0);
+    },
+  );
 }

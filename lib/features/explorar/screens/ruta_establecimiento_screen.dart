@@ -1,3 +1,5 @@
+import '../widgets/atribucion_mapa.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
@@ -225,23 +227,7 @@ class _RutaEstablecimientoScreenState extends State<RutaEstablecimientoScreen> {
           alignment: Alignment.bottomLeft,
           child: Padding(
             padding: const EdgeInsets.all(8),
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: .9),
-                borderRadius: BorderRadius.circular(6),
-              ),
-              child: const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 7, vertical: 4),
-                child: Text(
-                  '© OpenStreetMap contributors',
-                  style: TextStyle(
-                    color: Color(0xFF253041),
-                    fontSize: 10,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-            ),
+            child: const AtribucionMapa(rutas: true),
           ),
         ),
       ],

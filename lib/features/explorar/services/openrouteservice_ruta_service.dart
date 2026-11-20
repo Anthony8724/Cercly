@@ -6,19 +6,13 @@ import 'package:latlong2/latlong.dart';
 
 import '../models/ruta_model.dart';
 import 'ruta_service.dart';
+import 'politica_rutas.dart';
 
-/// Calcula rutas con la API de OpenRouteService (formato GeoJSON).
-///
-/// La clave y la dirección base se reciben por `--dart-define`:
-///   ORS_API_KEY   clave de OpenRouteService (obligatoria)
-///   ORS_BASE_URL  dirección base (por defecto https://api.heigit.org/openrouteservice)
-///
-/// POR VERIFICAR: la dirección base y el formato de la cabecera Authorization
-/// contra la documentación oficial vigente antes de publicar. Para una versión
-/// publicada, la clave no debería viajar dentro de la app (ver diagnóstico).
-///
-/// Solo se llama cuando el usuario pide la ruta, nunca de forma continua, para
-/// mantenerse dentro de la cuota gratuita.
+/// Adaptador legado de protocolo ORS conservado para pruebas y migraciones.
+/// En esta candidata, todo endpoint real está bloqueado por PoliticaRutas.
+/// Los transportes inyectados a dominios reservados .test verifican el parser
+/// sin transmitir a un proveedor. Una futura integración real debe pasar por
+/// el servidor, mantener sus secretos allí y acreditar condiciones aplicables.
 class OpenRouteServiceRutaService implements RutaService {
   OpenRouteServiceRutaService({
     http.Client? cliente,
@@ -26,6 +20,7 @@ class OpenRouteServiceRutaService implements RutaService {
     String? baseUrl,
     this.tiempoMaximo = const Duration(seconds: 12),
   }) : _cliente = cliente ?? http.Client(),
+       _clienteInyectado = cliente != null,
        _apiKey = apiKey ?? _claveDefecto,
        _baseUrl = baseUrl ?? _urlDefecto;
 
@@ -36,6 +31,7 @@ class OpenRouteServiceRutaService implements RutaService {
   );
 
   final http.Client _cliente;
+  final bool _clienteInyectado;
   final String _apiKey;
   final String _baseUrl;
 
@@ -48,6 +44,13 @@ class OpenRouteServiceRutaService implements RutaService {
     required LatLng destino,
     PerfilRuta perfil = PerfilRuta.aPie,
   }) async {
+    // El adaptador legado no puede enviar coordenadas a un proveedor real.
+    // Solo los transportes inyectados a dominios reservados .test conservan
+    // el recorrido de pruebas del protocolo, sin habilitar un endpoint público.
+    final host = Uri.tryParse(_baseUrl)?.host ?? '';
+    if (!_clienteInyectado || !host.endsWith('.test')) {
+      PoliticaRutas.exigirProveedorAutorizado();
+    }
     if (_apiKey.isEmpty) {
       throw const RutaException(
         TipoErrorRuta.servicioNoConfigurado,

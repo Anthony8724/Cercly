@@ -156,6 +156,8 @@ def main():
             '20261117044632_geofencing_sesion_activa.sql',
             '20261117050715_fcm_invalid_token_rotation_guard.sql',
             '20261117050834_fcm_session_retirement.sql',
+            '20261119001108_rutas_limite_compartido.sql',
+            '20261119231916_reconocer_cuota_rutas_eliminacion.sql',
         )
         forward = [ROOT / 'supabase/migrations' / n for n in forward_names]
         if any(not p.is_file() for p in pending + forward):
