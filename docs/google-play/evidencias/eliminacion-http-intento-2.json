@@ -1,0 +1,112 @@
+{
+  "scope": "LOCAL_ONLY_REAL_HTTP",
+  "cases": [
+    {
+      "case": "migración sin DML, ALTER ni GRANT",
+      "status": "PASS"
+    },
+    {
+      "case": "sin excepción la cuota reproduce el bloqueo global",
+      "status": "PASS"
+    },
+    {
+      "case": "propietario ACL SECURITY DEFINER y search_path conservados",
+      "status": "PASS"
+    },
+    {
+      "case": "cuota corregida no bloquea identidad vacía",
+      "status": "PASS"
+    },
+    {
+      "case": "cuota HTTP propia simple",
+      "status": "PASS"
+    },
+    {
+      "case": "cuota HTTP propia vecino",
+      "status": "PASS"
+    },
+    {
+      "case": "cuota HTTP propia foto",
+      "status": "PASS"
+    },
+    {
+      "case": "subida Storage HTTP vecino",
+      "status": "PASS"
+    },
+    {
+      "case": "bytes Storage verificables vecino",
+      "status": "PASS"
+    },
+    {
+      "case": "subida Storage HTTP propia",
+      "status": "PASS"
+    },
+    {
+      "case": "bytes Storage verificables propia",
+      "status": "PASS"
+    },
+    {
+      "case": "caso simple contiene relaciones y sesión reales",
+      "status": "PASS"
+    },
+    {
+      "case": "handler rechaza elegir sujeto ajeno",
+      "status": "PASS"
+    },
+    {
+      "case": "handler eliminada",
+      "status": "PASS",
+      "detail": {
+        "http": 200
+      }
+    },
+    {
+      "case": "simple elimina auth",
+      "status": "PASS"
+    },
+    {
+      "case": "simple elimina push",
+      "status": "PASS"
+    },
+    {
+      "case": "simple elimina cuota",
+      "status": "PASS"
+    },
+    {
+      "case": "simple elimina perfil",
+      "status": "PASS"
+    },
+    {
+      "case": "simple elimina refresh",
+      "status": "PASS"
+    },
+    {
+      "case": "simple elimina sesiones",
+      "status": "PASS"
+    },
+    {
+      "case": "simple elimina solicitud",
+      "status": "PASS"
+    },
+    {
+      "case": "simple elimina categorias",
+      "status": "PASS"
+    },
+    {
+      "case": "simple elimina preferencias",
+      "status": "PASS"
+    },
+    {
+      "case": "simple elimina instalaciones",
+      "status": "PASS"
+    },
+    {
+      "case": "JWT viejo rechazado por Auth",
+      "status": "FAIL",
+      "detail": {
+        "http": 403,
+        "code": 403
+      }
+    }
+  ]
+}

@@ -2,6 +2,8 @@
 
 19/11/2026. Lecturas de metadatos en Production y pruebas locales sintéticas; ninguna eliminación remota ni modificación de datos reales.
 
+**Actualización de la continuación:** el ensayo de servicios HTTP locales reales ya aprobó 43/43, incluidas fotos por Storage API, JWT/refresh antiguos y conservación de datos ajenos. [Detalle y límites](ELIMINACION_HTTP_LOCAL.md). Las secciones SQL/Node de abajo registran la evidencia anterior, que no se repitió. Production se volvió a consultar en modo lectura y sigue bloqueada; no se aplicó la corrección remotamente. El canal externo, respaldos y ensayo alojado siguen pendientes.
+
 ## Hallazgo confirmado
 
 La migración de cuota introdujo cercly_rutas_privado.rutas_limites_usuarios → auth.users, CASCADE y validada. La función privada tiene_dependencias inspecciona también el catálogo completo de FK y cierra el proceso ante cualquier relación no reconocida. El helper desplegado no conoce esa FK: su existencia hace que la guarda devuelva true incluso para un UUID inexistente, sin depender de si el usuario pidió rutas.
