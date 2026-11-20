@@ -1,3 +1,6 @@
+import '../../ugc/ugc_service.dart';
+import '../../ugc/ugc_widgets.dart';
+
 import 'package:flutter/material.dart';
 import 'package:latlong2/latlong.dart';
 
@@ -303,6 +306,13 @@ class _DetalleEstablecimientoScreenState
           'Detalle del establecimiento',
           style: TextStyle(fontWeight: FontWeight.w900),
         ),
+        actions: [
+          AccionesContenido(
+            tipo: 'establecimiento',
+            id: establecimiento.id,
+            alBloquear: () => Navigator.of(context).pop(),
+          ),
+        ],
         centerTitle: false,
         elevation: 0,
         flexibleSpace: DecoratedBox(
@@ -408,6 +418,35 @@ class _DetalleEstablecimientoScreenState
                         ),
                       ),
                     ],
+                    Wrap(
+                      children: [
+                        TextButton.icon(
+                          onPressed: () => Navigator.of(context).push(
+                            MaterialPageRoute<void>(
+                              builder: (_) => DenunciarScreen(
+                                tipo: 'propietario',
+                                id: establecimiento.id,
+                                service: UgcService(),
+                              ),
+                            ),
+                          ),
+                          icon: const Icon(Icons.flag_outlined),
+                          label: const Text('Denunciar al responsable'),
+                        ),
+                        if (establecimiento.fotoPortadaId != null)
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Text('Fotografía'),
+                              AccionesContenido(
+                                tipo: 'fotografia',
+                                id: establecimiento.fotoPortadaId!,
+                                alBloquear: () => Navigator.of(context).pop(),
+                              ),
+                            ],
+                          ),
+                      ],
+                    ),
                     const SizedBox(height: 22),
                     Text(
                       'Información',
@@ -868,6 +907,14 @@ class _PromocionCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: AccionesContenido(
+                    tipo: 'promocion',
+                    id: promocion.id,
+                    alBloquear: () => Navigator.of(context).pop(),
+                  ),
+                ),
                 Text(
                   promocion.titulo,
                   style: TextStyle(

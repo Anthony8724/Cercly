@@ -1,3 +1,5 @@
+import '../../ugc/ugc_widgets.dart';
+
 import 'package:flutter/material.dart';
 
 import '../../../sky/sky_backdrop.dart';
@@ -54,6 +56,8 @@ class _FotosEstablecimientoScreenState
       return;
     }
 
+    if (!await asegurarNormasPublicacion(context)) return;
+    if (!mounted) return;
     final archivos = await _imagePicker.pickMultiImage(
       imageQuality: 85,
       maxWidth: 1920,
@@ -111,6 +115,8 @@ class _FotosEstablecimientoScreenState
     });
 
     try {
+      if (!await asegurarNormasPublicacion(context)) return;
+      if (!mounted) return;
       await _service.establecerComoPortada(
         establecimientoId: widget.establecimiento.id,
         fotoId: foto.id,

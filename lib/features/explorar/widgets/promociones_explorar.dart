@@ -1,3 +1,5 @@
+import '../../ugc/ugc_service.dart';
+
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -95,6 +97,7 @@ class _PromocionesExplorarState extends State<PromocionesExplorar> {
   @override
   void initState() {
     super.initState();
+    UgcService.cambios.addListener(_cambioUgc);
     _cargar();
   }
 
@@ -138,8 +141,16 @@ class _PromocionesExplorarState extends State<PromocionesExplorar> {
     }
   }
 
+  void _cambioUgc() {
+    if (mounted) {
+      setState(() => _promociones = const []);
+      _cargar();
+    }
+  }
+
   @override
   void dispose() {
+    UgcService.cambios.removeListener(_cambioUgc);
     _temporizadorGps?.cancel();
     ++_version;
     super.dispose();

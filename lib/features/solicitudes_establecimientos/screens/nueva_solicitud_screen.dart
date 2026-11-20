@@ -1,3 +1,6 @@
+import '../../ugc/ugc_widgets.dart';
+import '../../ugc/ugc_service.dart';
+
 import 'package:flutter/material.dart';
 
 import '../../../sky/sky_backdrop.dart';
@@ -20,12 +23,14 @@ class NuevaSolicitudScreen extends StatefulWidget {
     this.establecimientoIdInicial,
     this.bloquearTipo = false,
     this.service,
+    this.ugcService,
   });
 
   final String tipoInicial;
   final String? establecimientoIdInicial;
   final bool bloquearTipo;
   final SolicitudEstablecimientoRepository? service;
+  final UgcService? ugcService;
 
   @override
   State<NuevaSolicitudScreen> createState() => _NuevaSolicitudScreenState();
@@ -186,6 +191,13 @@ class _NuevaSolicitudScreenState extends State<NuevaSolicitudScreen> {
     });
 
     try {
+      if (!await asegurarNormasPublicacion(
+        context,
+        service: widget.ugcService,
+      )) {
+        return;
+      }
+      if (!mounted) return;
       await _service.crear(
         establecimientoId: _establecimientoId!,
         tipo: _tipo,

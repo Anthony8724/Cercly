@@ -59,7 +59,14 @@ void main() {
       Object? value;
       final single =
           request.headers.value('accept')?.contains('vnd.pgrst.object') == true;
-      if (path == '/auth/v1/token') {
+      if (path == '/rest/v1/rpc/ugc_normas_publicacion') {
+        value = {
+          'version': 'test-v1',
+          'huella': 'test',
+          'texto': 'Normas sintéticas',
+          'aceptadas': true,
+        };
+      } else if (path == '/auth/v1/token') {
         final body = jsonDecode(await utf8.decoder.bind(request).join()) as Map;
         value = {
           ...sessionJson(id: body['email'] == 'admin@local.test' ? 'a' : 'u'),

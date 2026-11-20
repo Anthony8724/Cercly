@@ -1,3 +1,5 @@
+import '../../ugc/ugc_screen.dart';
+
 import 'package:flutter/material.dart';
 
 import '../../../sky/sky_backdrop.dart';
@@ -1004,6 +1006,21 @@ class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
             physics: const AlwaysScrollableScrollPhysics(),
             slivers: [
               SliverToBoxAdapter(child: _cabecera(correo)),
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: FilledButton.icon(
+                    key: const Key('administrar-denuncias-ugc'),
+                    onPressed: () => Navigator.of(context).push(
+                      MaterialPageRoute<void>(
+                        builder: (_) => const UgcScreen(administracion: true),
+                      ),
+                    ),
+                    icon: const Icon(Icons.shield_outlined),
+                    label: const Text('Denuncias y moderación'),
+                  ),
+                ),
+              ),
               SliverPadding(
                 padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
                 sliver: SliverToBoxAdapter(

@@ -1,3 +1,5 @@
+import '../../ugc/ugc_widgets.dart';
+
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
@@ -176,6 +178,8 @@ class _RegistroPromocionScreenState extends State<RegistroPromocionScreen> {
     });
 
     try {
+      if (!await asegurarNormasPublicacion(context)) return;
+      if (!mounted) return;
       final existente = widget.promocion;
       final promocion = PromocionModel(
         id: existente?.id ?? '',
