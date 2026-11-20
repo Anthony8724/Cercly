@@ -403,6 +403,7 @@ void main() {
         ),
       );
       expect(find.byKey(const Key('estado-loading')), findsOneWidget);
+      expect(find.byKey(const ValueKey('destacadas-estables')), findsNothing);
 
       controller.cargandoResultados = false;
       controller.notifyListeners();

@@ -9,7 +9,6 @@ import '../../../sky/sky_theme.dart';
 import '../../establecimientos/models/establecimiento_publico_model.dart';
 import '../../establecimientos/services/establecimiento_publico_service.dart';
 import '../../promociones/models/promocion_destacada_model.dart';
-import '../../promociones/services/promociones_destacadas_publicas_service.dart';
 
 typedef CargarPromocionesExplorar =
     Future<List<PromocionDestacadaModel>> Function();
@@ -19,7 +18,7 @@ class PromocionesExplorar extends StatefulWidget {
     required this.establecimientos,
     required this.onEstablecimiento,
     required this.onVerTodas,
-    this.cargarPromociones,
+    required this.cargarPromociones,
     this.revisionRecarga = 0,
     this.resolverEstablecimiento,
     this.latitudUsuario,
@@ -31,7 +30,7 @@ class PromocionesExplorar extends StatefulWidget {
   final List<EstablecimientoPublicoModel> establecimientos;
   final ValueChanged<EstablecimientoPublicoModel> onEstablecimiento;
   final VoidCallback onVerTodas;
-  final CargarPromocionesExplorar? cargarPromociones;
+  final CargarPromocionesExplorar cargarPromociones;
 
   /// Cambia exclusivamente cuando se solicita una recarga explicita.
   final int revisionRecarga;
@@ -162,10 +161,6 @@ class _PromocionesExplorarState extends State<PromocionesExplorar> {
     _promociones = const [];
     _error = false;
 
-    // Las campañas se consultan sin depender de la paginación de
-    // establecimientos; cuando hay GPS usan el radio del usuario.
-    final cargaInyectada = widget.cargarPromociones;
-
     if (mounted) {
       setState(() => _cargando = true);
     } else {
@@ -173,17 +168,7 @@ class _PromocionesExplorarState extends State<PromocionesExplorar> {
     }
 
     try {
-      final promociones = cargaInyectada != null
-          ? await cargaInyectada()
-          : await PromocionesDestacadasPublicasService().listarVigentes(
-              latitudUsuario: widget.latitudUsuario,
-              longitudUsuario: widget.longitudUsuario,
-              radioMaximoMetros:
-                  widget.latitudUsuario != null &&
-                      widget.longitudUsuario != null
-                  ? widget.radioMaximoMetros
-                  : null,
-            );
+      final promociones = await widget.cargarPromociones();
 
       if (!mounted || version != _version) return;
       setState(() {
