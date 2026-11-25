@@ -105,6 +105,7 @@ class _EstadisticasAdministradorScreenState
                 return _ContenidoResumen(
                   palette: palette,
                   resumen: snapshot.data!,
+                  service: _service,
                 );
               },
             ),
@@ -218,10 +219,147 @@ class _EstadisticasAdministradorScreenState
 }
 
 class _ContenidoResumen extends StatelessWidget {
-  const _ContenidoResumen({required this.palette, required this.resumen});
+  const _ContenidoResumen({
+    required this.palette,
+    required this.resumen,
+    required this.service,
+  });
 
   final SkyPalette palette;
   final EstadisticasResumenModel resumen;
+  final EstadisticasAdministradorService service;
+
+  void _abrirDetalle(
+      BuildContext context, {
+        required String titulo,
+        required TipoIndicadorAdmin tipo,
+      }) {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: palette.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) {
+        return DraggableScrollableSheet(
+          expand: false,
+          initialChildSize: 0.65,
+          minChildSize: 0.4,
+          maxChildSize: 0.9,
+          builder: (_, scrollController) {
+            return Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      margin: const EdgeInsets.only(bottom: 12),
+                      decoration: BoxDecoration(
+                        color: palette.border,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                    ),
+                  ),
+                  Text(
+                    titulo,
+                    style: TextStyle(
+                      color: palette.text,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Expanded(
+                    child: StreamBuilder<List<DetalleEstadisticaItem>>(
+                      stream: service.streamDetalleIndicador(
+                        tipo,
+                        diasActivos: resumen.diasUsuarioActivo,
+                      ),
+                      builder: (context, snapshot) {
+                        if (snapshot.connectionState ==
+                            ConnectionState.waiting) {
+                          return const Center(
+                            child: CircularProgressIndicator(),
+                          );
+                        }
+                        if (snapshot.hasError) {
+                          return Center(
+                            child: Text(
+                              EstadisticasAdministradorService.mensajeError(
+                                snapshot.error!,
+                              ),
+                              textAlign: TextAlign.center,
+                              style: TextStyle(color: palette.error),
+                            ),
+                          );
+                        }
+                        final items = snapshot.data ?? const [];
+                        if (items.isEmpty) {
+                          return Center(
+                            child: Text(
+                              'No hay registros para mostrar.',
+                              style: TextStyle(color: palette.muted),
+                            ),
+                          );
+                        }
+                        return ListView.separated(
+                          controller: scrollController,
+                          itemCount: items.length,
+                          separatorBuilder: (_, __) =>
+                              Divider(height: 1, color: palette.border),
+                          itemBuilder: (context, index) {
+                            final item = items[index];
+                            return ListTile(
+                              contentPadding: EdgeInsets.zero,
+                              leading: CircleAvatar(
+                                backgroundColor: palette.soft,
+                                child: Icon(
+                                  Icons.person_outline,
+                                  color: palette.interactive,
+                                ),
+                              ),
+                              title: Text(
+                                item.titulo,
+                                style: TextStyle(
+                                  color: palette.text,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              subtitle: item.subtitulo != null &&
+                                  item.subtitulo!.isNotEmpty
+                                  ? Text(
+                                item.subtitulo!,
+                                style: TextStyle(color: palette.muted),
+                              )
+                                  : null,
+                              trailing: item.estado != null
+                                  ? Text(
+                                item.estado!,
+                                style: TextStyle(
+                                  color: palette.success,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              )
+                                  : null,
+                            );
+                          },
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -231,6 +369,11 @@ class _ContenidoResumen extends StatelessWidget {
         icono: Icons.people_outline,
         titulo: 'Usuarios registrados',
         valor: '${resumen.usuariosTotal}',
+        onTap: () => _abrirDetalle(
+          context,
+          titulo: 'Usuarios registrados (${resumen.usuariosTotal})',
+          tipo: TipoIndicadorAdmin.usuariosRegistrados,
+        ),
       ),
       _KpiCard(
         palette: palette,
@@ -238,6 +381,11 @@ class _ContenidoResumen extends StatelessWidget {
         titulo: 'Propietarios',
         valor: '${resumen.propietariosTotal}',
         detalle: '${resumen.usuariosNormalesTotal} usuarios normales',
+        onTap: () => _abrirDetalle(
+          context,
+          titulo: 'Propietarios (${resumen.propietariosTotal})',
+          tipo: TipoIndicadorAdmin.propietarios,
+        ),
       ),
       _KpiCard(
         palette: palette,
@@ -245,18 +393,33 @@ class _ContenidoResumen extends StatelessWidget {
         titulo: 'Usuarios activos',
         valor: '${resumen.usuariosActivos}',
         detalle: 'Con inicio de sesión en ${resumen.diasUsuarioActivo} días',
+        onTap: () => _abrirDetalle(
+          context,
+          titulo: 'Usuarios activos (${resumen.usuariosActivos})',
+          tipo: TipoIndicadorAdmin.usuariosActivos,
+        ),
       ),
       _KpiCard(
         palette: palette,
         icono: Icons.pending_actions_outlined,
         titulo: 'Solicitudes pendientes',
         valor: '${resumen.solicitudes.pendientes}',
+        onTap: () => _abrirDetalle(
+          context,
+          titulo: 'Solicitudes pendientes (${resumen.solicitudes.pendientes})',
+          tipo: TipoIndicadorAdmin.solicitudesPendientes,
+        ),
       ),
       _KpiCard(
         palette: palette,
         icono: Icons.store_mall_directory_outlined,
         titulo: 'Establecimientos',
         valor: '${resumen.establecimientos.total}',
+        onTap: () => _abrirDetalle(
+          context,
+          titulo: 'Establecimientos (${resumen.establecimientos.total})',
+          tipo: TipoIndicadorAdmin.establecimientos,
+        ),
       ),
       _KpiCard(
         palette: palette,
@@ -264,6 +427,11 @@ class _ContenidoResumen extends StatelessWidget {
         titulo: 'Promociones activas',
         valor: '${resumen.promocionesActivas}',
         detalle: '${resumen.promocionesTotal} creadas en total',
+        onTap: () => _abrirDetalle(
+          context,
+          titulo: 'Promociones activas (${resumen.promocionesActivas})',
+          tipo: TipoIndicadorAdmin.promocionesActivas,
+        ),
       ),
     ];
 
@@ -278,7 +446,7 @@ class _ContenidoResumen extends StatelessWidget {
             const separacion = 12.0;
             final ancho =
                 (constraints.maxWidth - separacion * (columnas - 1)) /
-                columnas;
+                    columnas;
             return Wrap(
               spacing: separacion,
               runSpacing: separacion,
@@ -387,7 +555,7 @@ class _ListaRegistros extends StatelessWidget {
       if (tipoUsuario != 'todos' && fila.tipoUsuario != tipoUsuario) continue;
       totales.update(
         fila.periodo,
-        (actual) => actual + fila.total,
+            (actual) => actual + fila.total,
         ifAbsent: () => fila.total,
       );
     }
@@ -432,6 +600,7 @@ class _KpiCard extends StatelessWidget {
     required this.titulo,
     required this.valor,
     this.detalle,
+    this.onTap,
   });
 
   final SkyPalette palette;
@@ -439,34 +608,49 @@ class _KpiCard extends StatelessWidget {
   final String titulo;
   final String valor;
   final String? detalle;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    return _Tarjeta(
-      palette: palette,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(icono, color: palette.interactive),
-          const SizedBox(height: 8),
-          Text(
-            valor,
-            style: TextStyle(
-              color: palette.text,
-              fontSize: 26,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          Text(titulo, style: TextStyle(color: palette.text)),
-          if (detalle != null)
-            Padding(
-              padding: const EdgeInsets.only(top: 2),
-              child: Text(
-                detalle!,
-                style: TextStyle(color: palette.muted, fontSize: 12),
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: _Tarjeta(
+          palette: palette,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Icon(icono, color: palette.interactive),
+                  if (onTap != null)
+                    Icon(Icons.chevron_right, size: 18, color: palette.muted),
+                ],
               ),
-            ),
-        ],
+              const SizedBox(height: 8),
+              Text(
+                valor,
+                style: TextStyle(
+                  color: palette.text,
+                  fontSize: 26,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              Text(titulo, style: TextStyle(color: palette.text)),
+              if (detalle != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 2),
+                  child: Text(
+                    detalle!,
+                    style: TextStyle(color: palette.muted, fontSize: 12),
+                  ),
+                ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -577,9 +761,9 @@ class _NotaSinDatos extends StatelessWidget {
           Expanded(
             child: Text(
               'Sesiones, búsquedas, visualizaciones de establecimientos e '
-              'interacciones con promociones todavía no se registran, por '
-              'eso no aparecen aquí. Se agregarán cuando se apruebe el '
-              'registro de eventos.',
+                  'interacciones con promociones todavía no se registran, por '
+                  'eso no aparecen aquí. Se agregarán cuando se apruebe el '
+                  'registro de eventos.',
               style: TextStyle(color: palette.muted, fontSize: 13),
             ),
           ),
@@ -637,15 +821,15 @@ String _dosDigitos(int valor) => valor.toString().padLeft(2, '0');
 
 String _fechaHora(DateTime fecha) =>
     '${_dosDigitos(fecha.day)}/${_dosDigitos(fecha.month)}/${fecha.year} '
-    '${_dosDigitos(fecha.hour)}:${_dosDigitos(fecha.minute)}';
+        '${_dosDigitos(fecha.hour)}:${_dosDigitos(fecha.minute)}';
 
 String _etiquetaPeriodo(DateTime periodo, GranularidadRegistros granularidad) {
   return switch (granularidad) {
     GranularidadRegistros.dia =>
-      '${_dosDigitos(periodo.day)}/${_dosDigitos(periodo.month)}/'
-          '${periodo.year}',
+    '${_dosDigitos(periodo.day)}/${_dosDigitos(periodo.month)}/'
+        '${periodo.year}',
     GranularidadRegistros.semana =>
-      'Semana del ${_dosDigitos(periodo.day)}/${_dosDigitos(periodo.month)}',
+    'Semana del ${_dosDigitos(periodo.day)}/${_dosDigitos(periodo.month)}',
     GranularidadRegistros.mes => '${_dosDigitos(periodo.month)}/${periodo.year}',
   };
 }
