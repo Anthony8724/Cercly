@@ -38,10 +38,10 @@ class ConteoPorEstado {
   /// Los establecimientos usan "aprobados/rechazados" y las solicitudes
   /// "aprobadas/rechazadas"; por eso las claves son configurables.
   factory ConteoPorEstado.fromJson(
-    Map<String, dynamic> json, {
-    String claveAprobados = 'aprobados',
-    String claveRechazados = 'rechazados',
-  }) {
+      Map<String, dynamic> json, {
+        String claveAprobados = 'aprobados',
+        String claveRechazados = 'rechazados',
+      }) {
     return ConteoPorEstado(
       total: _entero(json, 'total'),
       pendientes: _entero(json, 'pendientes'),
@@ -138,4 +138,25 @@ class RegistroPeriodoModel {
       total: _entero(json, 'total'),
     );
   }
+}
+
+enum TipoIndicadorAdmin {
+  usuariosRegistrados,
+  propietarios,
+  usuariosActivos,
+  solicitudesPendientes,
+  establecimientos,
+  promocionesActivas,
+}
+
+class DetalleEstadisticaItem {
+  const DetalleEstadisticaItem({
+    required this.titulo,
+    this.subtitulo,
+    this.estado,
+  });
+
+  final String titulo;
+  final String? subtitulo;
+  final String? estado;
 }
