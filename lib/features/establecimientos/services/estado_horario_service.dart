@@ -44,8 +44,7 @@ class EstadoHorarioService {
     final turnosAyer = horario[diaAnterior] ?? const <TurnoHorario>[];
 
     for (final turno in turnosAyer) {
-      if (turno.cierraAlDiaSiguiente &&
-          minutosActuales < turno.cierreMinutos) {
+      if (turno.cierraAlDiaSiguiente && minutosActuales < turno.cierreMinutos) {
         return EstadoHorario.abierto;
       }
     }

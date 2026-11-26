@@ -38,10 +38,10 @@ class ConteoPorEstado {
   /// Los establecimientos usan "aprobados/rechazados" y las solicitudes
   /// "aprobadas/rechazadas"; por eso las claves son configurables.
   factory ConteoPorEstado.fromJson(
-      Map<String, dynamic> json, {
-        String claveAprobados = 'aprobados',
-        String claveRechazados = 'rechazados',
-      }) {
+    Map<String, dynamic> json, {
+    String claveAprobados = 'aprobados',
+    String claveRechazados = 'rechazados',
+  }) {
     return ConteoPorEstado(
       total: _entero(json, 'total'),
       pendientes: _entero(json, 'pendientes'),
@@ -128,9 +128,7 @@ class RegistroPeriodoModel {
     final periodo = json['periodo'];
     final tipo = json['tipo_usuario'];
     if (periodo is! String || tipo is! String) {
-      throw const FormatException(
-        'Fila de registros con formato inesperado.',
-      );
+      throw const FormatException('Fila de registros con formato inesperado.');
     }
     return RegistroPeriodoModel(
       periodo: DateTime.parse(periodo),

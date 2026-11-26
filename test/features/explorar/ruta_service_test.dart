@@ -60,9 +60,8 @@ void main() {
         return _json(_cuerpoValido, 200);
       });
 
-      final ruta = await _servicio(
-        cliente,
-      ).calcularRuta(origen: _origen, destino: _destino);
+      final ruta = await _servicio(cliente)
+          .calcularRuta(origen: _origen, destino: _destino);
 
       expect(ruta.puntos, hasLength(3));
       expect(ruta.puntos.first, const LatLng(0.8116, -77.7172));

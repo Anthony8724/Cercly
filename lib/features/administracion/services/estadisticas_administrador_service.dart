@@ -5,7 +5,7 @@ import '../models/estadisticas_admin_model.dart';
 enum GranularidadRegistros { dia, semana, mes }
 
 extension GranularidadRegistrosX on GranularidadRegistros {
-  /// Valor que espera la función `admin_estadisticas_registros`.
+  /// Valor que espera la funciÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â³n `admin_estadisticas_registros`.
   String get valorRpc => switch (this) {
     GranularidadRegistros.dia => 'dia',
     GranularidadRegistros.semana => 'semana',
@@ -13,16 +13,16 @@ extension GranularidadRegistrosX on GranularidadRegistros {
   };
 
   String get etiqueta => switch (this) {
-    GranularidadRegistros.dia => 'Día',
+    GranularidadRegistros.dia => 'DÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â­a',
     GranularidadRegistros.semana => 'Semana',
     GranularidadRegistros.mes => 'Mes',
   };
 }
 
-/// Lee estadísticas agregadas del panel de administración.
+/// Lee estadÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â­sticas agregadas del panel de administraciÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â³n.
 ///
-/// La autorización se verifica en el backend (las funciones RPC llaman a
-/// `es_administrador()`); este servicio no decide quién puede ver los datos.
+/// La autorizaciÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â³n se verifica en el backend (las funciones RPC llaman a
+/// `es_administrador()`); este servicio no decide quiÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â©n puede ver los datos.
 class EstadisticasAdministradorService {
   EstadisticasAdministradorService({SupabaseClient? supabase})
     : _supabase = supabase ?? Supabase.instance.client;
@@ -146,8 +146,11 @@ class EstadisticasAdministradorService {
               (rows) => rows
                   .map(
                     (r) => DetalleEstadisticaItem(
-                      titulo: (r['titulo'] ?? r['nombre'] ?? 'Promoción')
-                          .toString(),
+                      titulo:
+                          (r['titulo'] ??
+                                  r['nombre'] ??
+                                  'PromociÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â³n')
+                              .toString(),
                       subtitulo: 'Activa',
                     ),
                   )
@@ -159,42 +162,89 @@ class EstadisticasAdministradorService {
   Future<List<DetalleEstadisticaItem>> _obtenerDetalleSolicitudesPendientes(
     List<dynamic> rows,
   ) async {
-    final items = <DetalleEstadisticaItem>[];
+    if (rows.isEmpty) {
+      return const <DetalleEstadisticaItem>[];
+    }
 
-    for (final r in rows) {
-      String titulo = (r['mensaje'] ?? '').toString().trim();
-      String subtitulo = (r['tipo'] ?? 'Pendiente de revisión')
-          .toString()
-          .trim();
+    final normalizadas = rows
+        .map((r) => Map<String, dynamic>.from(r as Map))
+        .toList();
 
-      final estId = r['establecimiento_id']?.toString();
+    final estIds = <String>{};
+    final solIds = <String>{};
+
+    for (final r in normalizadas) {
+      final estId = r['establecimiento_id']?.toString().trim();
       if (estId != null && estId.isNotEmpty) {
-        try {
-          final est = await _supabase
-              .from('establecimientos')
-              .select('nombre')
-              .eq('id', estId)
-              .maybeSingle();
-          final nombreEst = est?['nombre']?.toString().trim();
-          if (nombreEst != null && nombreEst.isNotEmpty) {
-            titulo = nombreEst;
-          }
-        } catch (_) {}
+        estIds.add(estId);
+      }
+      final solId = r['solicitante_id']?.toString().trim();
+      if (solId != null && solId.isNotEmpty) {
+        solIds.add(solId);
+      }
+    }
+
+    final nombresEstablecimientos = <String, String>{};
+    if (estIds.isNotEmpty) {
+      final estRows = await _supabase
+          .from('establecimientos')
+          .select('id, nombre')
+          .inFilter('id', estIds.toList());
+      for (final fila in estRows as List) {
+        final map = Map<String, dynamic>.from(fila as Map);
+        final id = map['id']?.toString().trim();
+        final nombre = map['nombre']?.toString().trim();
+        if (id != null &&
+            id.isNotEmpty &&
+            nombre != null &&
+            nombre.isNotEmpty) {
+          nombresEstablecimientos[id] = nombre;
+        }
+      }
+    }
+
+    final nombresSolicitantes = <String, String>{};
+    if (solIds.isNotEmpty) {
+      final usrRows = await _supabase
+          .from('usuarios')
+          .select('id, nombre')
+          .inFilter('id', solIds.toList());
+      for (final fila in usrRows as List) {
+        final map = Map<String, dynamic>.from(fila as Map);
+        final id = map['id']?.toString().trim();
+        final nombre = map['nombre']?.toString().trim();
+        if (id != null &&
+            id.isNotEmpty &&
+            nombre != null &&
+            nombre.isNotEmpty) {
+          nombresSolicitantes[id] = nombre;
+        }
+      }
+    }
+
+    final items = <DetalleEstadisticaItem>[];
+    for (final r in normalizadas) {
+      String titulo = (r['mensaje'] ?? '').toString().trim();
+      String subtitulo =
+          (r['tipo'] ??
+                  'Pendiente de revisiÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â³n')
+              .toString()
+              .trim();
+
+      final estId = r['establecimiento_id']?.toString().trim();
+      if (estId != null && estId.isNotEmpty) {
+        final nombreEst = nombresEstablecimientos[estId];
+        if (nombreEst != null && nombreEst.isNotEmpty) {
+          titulo = nombreEst;
+        }
       }
 
-      final solId = r['solicitante_id']?.toString();
+      final solId = r['solicitante_id']?.toString().trim();
       if (solId != null && solId.isNotEmpty) {
-        try {
-          final usr = await _supabase
-              .from('usuarios')
-              .select('nombre')
-              .eq('id', solId)
-              .maybeSingle();
-          final nombreUsr = usr?['nombre']?.toString().trim();
-          if (nombreUsr != null && nombreUsr.isNotEmpty) {
-            subtitulo = 'Solicitante: $nombreUsr';
-          }
-        } catch (_) {}
+        final nombreUsr = nombresSolicitantes[solId];
+        if (nombreUsr != null && nombreUsr.isNotEmpty) {
+          subtitulo = 'Solicitante: $nombreUsr';
+        }
       }
 
       if (titulo.isEmpty) {
@@ -210,44 +260,40 @@ class EstadisticasAdministradorService {
   Future<List<DetalleEstadisticaItem>> _obtenerUsuariosActivos30Dias(
     int diasActivos,
   ) async {
-    try {
+    final res = <DetalleEstadisticaItem>[];
+    var offset = 0;
+    const limite = 200;
+    while (true) {
       final rpc = await _supabase.rpc(
         'admin_usuarios_activos_detalle',
-        params: {'p_dias_activos': diasActivos},
+        params: {
+          'p_dias_activos': diasActivos,
+          'p_limite': limite,
+          'p_offset': offset,
+        },
       );
-      if (rpc is List) {
-        return rpc.map((fila) {
-          final map = Map<String, dynamic>.from(fila as Map);
-          return DetalleEstadisticaItem(
+      if (rpc is! List)
+        throw const FormatException(
+          'Respuesta de usuarios activos inesperada.',
+        );
+      final pagina = rpc
+          .map((f) => Map<String, dynamic>.from(f as Map))
+          .toList();
+      for (final map in pagina) {
+        res.add(
+          DetalleEstadisticaItem(
             titulo: (map['nombre'] ?? 'Sin nombre').toString(),
             subtitulo: _etiquetaRol(map['rol']?.toString()),
             estado: 'Activo',
-          );
-        }).toList();
-      }
-    } on PostgrestException catch (e) {
-      if (e.code != 'PGRST202') rethrow;
-    }
-
-    final corte = DateTime.now()
-        .subtract(Duration(days: diasActivos))
-        .toUtc()
-        .toIso8601String();
-    final rows = await _supabase
-        .from('usuarios')
-        .select('id, nombre, rol')
-        .gte('creado_en', corte)
-        .order('nombre', ascending: true);
-
-    return (rows as List)
-        .map(
-          (r) => DetalleEstadisticaItem(
-            titulo: (r['nombre'] ?? 'Sin nombre').toString(),
-            subtitulo: _etiquetaRol(r['rol']?.toString()),
-            estado: 'Activo',
           ),
-        )
-        .toList();
+        );
+      }
+      if (pagina.length < limite) {
+        break;
+      }
+      offset += limite;
+    }
+    return res;
   }
 
   String _etiquetaRol(String? rol) => switch (rol) {
@@ -256,28 +302,27 @@ class EstadisticasAdministradorService {
     _ => 'Usuario',
   };
 
-  static String _fechaIso(DateTime fecha) {
-    final mes = fecha.month.toString().padLeft(2, '0');
-    final dia = fecha.day.toString().padLeft(2, '0');
-    return '${fecha.year.toString().padLeft(4, '0')}-$mes-$dia';
-  }
-
-  /// Mensaje legible para mostrar en pantalla.
   static String mensajeError(Object error) {
     if (error is PostgrestException) {
       if (error.code == '42501') {
-        return 'No tienes permisos de administrador para ver estas '
-            'estadísticas.';
+        return 'No tienes permisos de administrador para ver estas estad\u00edsticas.';
       }
       if (error.code == 'PGRST202') {
-        return 'Las estadísticas todavía no están disponibles en este '
-            'entorno (falta aplicar la migración).';
+        return 'Falta aplicar la migraci\u00f3n de estad\u00edsticas en la base de datos.';
       }
-      return 'No se pudieron cargar las estadísticas.';
+      return error.message.isNotEmpty
+          ? error.message
+          : 'Error de base de datos.';
     }
     if (error is FormatException) {
-      return 'La respuesta de estadísticas no tiene el formato esperado.';
+      return 'Formato de respuesta inesperado: ' + error.message;
     }
-    return 'No se pudieron cargar las estadísticas. Revisa tu conexión.';
+    return 'Error de conexi\u00f3n o inesperado: ' + error.toString();
+  }
+
+  static String _fechaIso(DateTime fecha) {
+    final mes = fecha.month.toString().padLeft(2, '0');
+    final dia = fecha.day.toString().padLeft(2, '0');
+    return '${fecha.year}-$mes-$dia';
   }
 }

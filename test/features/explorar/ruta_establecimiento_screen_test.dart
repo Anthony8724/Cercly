@@ -83,7 +83,10 @@ void main() {
       await _montar(tester, servicio);
 
       expect(find.byKey(const Key('ruta-error')), findsOneWidget);
-      expect(find.text('No hay conexión para calcular la ruta.'), findsOneWidget);
+      expect(
+        find.text('No hay conexión para calcular la ruta.'),
+        findsOneWidget,
+      );
 
       await tester.tap(find.byKey(const Key('ruta-reintentar')));
       await tester.pumpAndSettle();
@@ -164,7 +167,10 @@ void main() {
     testWidgets('avisa cuando la ruta es de prueba en línea recta', (
       tester,
     ) async {
-      await _montar(tester, const RutaServiceLineaRecta(retardo: Duration.zero));
+      await _montar(
+        tester,
+        const RutaServiceLineaRecta(retardo: Duration.zero),
+      );
 
       expect(find.byKey(const Key('ruta-aviso-simulada')), findsOneWidget);
     });

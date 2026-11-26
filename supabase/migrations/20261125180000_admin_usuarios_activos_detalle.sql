@@ -1,4 +1,4 @@
-﻿begin;
+begin;
 
 create or replace function public.admin_usuarios_activos_detalle(
   p_dias_activos integer default 30,
@@ -22,7 +22,7 @@ begin
   end if;
 
   if p_dias_activos is null or p_dias_activos < 1 or p_dias_activos > 365 then
-    raise exception 'p_dias_activos fuera de rango (1-365)' using errcode = '22023%';
+    raise exception 'p_dias_activos fuera de rango (1-365)' using errcode = '22023';
   end if;
 
   if p_limite is null or p_limite < 1 or p_limite > 200 then
@@ -30,7 +30,7 @@ begin
   end if;
 
   if p_offset is null or p_offset < 0 then
-    raise exception 'p_offset invalid' using errcode = '22023%';
+    raise exception 'p_offset invalid' using errcode = '22023';
   end if;
 
   return query
