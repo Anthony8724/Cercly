@@ -112,7 +112,10 @@ void main() {
       );
       expect(ratio(palette.text, palette.surface), greaterThanOrEqualTo(4.5));
       expect(ratio(Colors.white, palette.primary), greaterThanOrEqualTo(4.5));
-      expect(ratio(palette.interactive, palette.surface), greaterThanOrEqualTo(4.5));
+      expect(
+        ratio(palette.interactive, palette.surface),
+        greaterThanOrEqualTo(4.5),
+      );
       for (final color in [
         palette.headerStart,
         palette.headerMiddle,
@@ -137,7 +140,9 @@ void main() {
       expect(theme.navigationBarTheme.backgroundColor, palette.surface);
       expect(
         theme.brightness,
-        environment == SkyEnvironment.noche ? Brightness.dark : Brightness.light,
+        environment == SkyEnvironment.noche
+            ? Brightness.dark
+            : Brightness.light,
       );
     }
     expect(surfaces, hasLength(4));

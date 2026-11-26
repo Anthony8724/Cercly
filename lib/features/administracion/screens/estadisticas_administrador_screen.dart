@@ -230,10 +230,10 @@ class _ContenidoResumen extends StatelessWidget {
   final EstadisticasAdministradorService service;
 
   void _abrirDetalle(
-      BuildContext context, {
-        required String titulo,
-        required TipoIndicadorAdmin tipo,
-      }) {
+    BuildContext context, {
+    required String titulo,
+    required TipoIndicadorAdmin tipo,
+  }) {
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
@@ -329,22 +329,23 @@ class _ContenidoResumen extends StatelessWidget {
                                   fontWeight: FontWeight.w600,
                                 ),
                               ),
-                              subtitle: item.subtitulo != null &&
-                                  item.subtitulo!.isNotEmpty
+                              subtitle:
+                                  item.subtitulo != null &&
+                                      item.subtitulo!.isNotEmpty
                                   ? Text(
-                                item.subtitulo!,
-                                style: TextStyle(color: palette.muted),
-                              )
+                                      item.subtitulo!,
+                                      style: TextStyle(color: palette.muted),
+                                    )
                                   : null,
                               trailing: item.estado != null
                                   ? Text(
-                                item.estado!,
-                                style: TextStyle(
-                                  color: palette.success,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              )
+                                      item.estado!,
+                                      style: TextStyle(
+                                        color: palette.success,
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    )
                                   : null,
                             );
                           },
@@ -445,8 +446,7 @@ class _ContenidoResumen extends StatelessWidget {
             final columnas = constraints.maxWidth >= 720 ? 3 : 2;
             const separacion = 12.0;
             final ancho =
-                (constraints.maxWidth - separacion * (columnas - 1)) /
-                    columnas;
+                (constraints.maxWidth - separacion * (columnas - 1)) / columnas;
             return Wrap(
               spacing: separacion,
               runSpacing: separacion,
@@ -457,10 +457,7 @@ class _ContenidoResumen extends StatelessWidget {
           },
         ),
         const SizedBox(height: 24),
-        _SeccionTitulo(
-          palette: palette,
-          titulo: 'Establecimientos por estado',
-        ),
+        _SeccionTitulo(palette: palette, titulo: 'Establecimientos por estado'),
         const SizedBox(height: 8),
         _TarjetaEstados(
           palette: palette,
@@ -555,7 +552,7 @@ class _ListaRegistros extends StatelessWidget {
       if (tipoUsuario != 'todos' && fila.tipoUsuario != tipoUsuario) continue;
       totales.update(
         fila.periodo,
-            (actual) => actual + fila.total,
+        (actual) => actual + fila.total,
         ifAbsent: () => fila.total,
       );
     }
@@ -761,9 +758,9 @@ class _NotaSinDatos extends StatelessWidget {
           Expanded(
             child: Text(
               'Sesiones, búsquedas, visualizaciones de establecimientos e '
-                  'interacciones con promociones todavía no se registran, por '
-                  'eso no aparecen aquí. Se agregarán cuando se apruebe el '
-                  'registro de eventos.',
+              'interacciones con promociones todavía no se registran, por '
+              'eso no aparecen aquí. Se agregarán cuando se apruebe el '
+              'registro de eventos.',
               style: TextStyle(color: palette.muted, fontSize: 13),
             ),
           ),
@@ -821,15 +818,16 @@ String _dosDigitos(int valor) => valor.toString().padLeft(2, '0');
 
 String _fechaHora(DateTime fecha) =>
     '${_dosDigitos(fecha.day)}/${_dosDigitos(fecha.month)}/${fecha.year} '
-        '${_dosDigitos(fecha.hour)}:${_dosDigitos(fecha.minute)}';
+    '${_dosDigitos(fecha.hour)}:${_dosDigitos(fecha.minute)}';
 
 String _etiquetaPeriodo(DateTime periodo, GranularidadRegistros granularidad) {
   return switch (granularidad) {
     GranularidadRegistros.dia =>
-    '${_dosDigitos(periodo.day)}/${_dosDigitos(periodo.month)}/'
-        '${periodo.year}',
+      '${_dosDigitos(periodo.day)}/${_dosDigitos(periodo.month)}/'
+          '${periodo.year}',
     GranularidadRegistros.semana =>
-    'Semana del ${_dosDigitos(periodo.day)}/${_dosDigitos(periodo.month)}',
-    GranularidadRegistros.mes => '${_dosDigitos(periodo.month)}/${periodo.year}',
+      'Semana del ${_dosDigitos(periodo.day)}/${_dosDigitos(periodo.month)}',
+    GranularidadRegistros.mes =>
+      '${_dosDigitos(periodo.month)}/${periodo.year}',
   };
 }

@@ -8,8 +8,7 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'selector_establecimiento_test.dart'
-    show BusquedaFalsa, negocioA;
+import 'selector_establecimiento_test.dart' show BusquedaFalsa, negocioA;
 
 void main() {
   for (final entorno in SkyEnvironment.values) {
