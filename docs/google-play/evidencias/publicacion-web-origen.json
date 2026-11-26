@@ -1,0 +1,26 @@
+{
+  "checked_at": "2026-11-20T00:16:48.597Z",
+  "project": "cercly",
+  "domain": "cercly-web.vercel.app",
+  "deployment_id": "dpl_9Fb4tXLjcDqFK4iTDKrzcK9pDeqL",
+  "target": "production",
+  "state": "READY",
+  "source": "git",
+  "branch": "main",
+  "sha": "52556072b7e1b3572fc7ec3a712dc7727e65fed4",
+  "repository": "Anthony8724/cercly-web",
+  "aliases": [
+    "cercly-web.vercel.app",
+    "cercly-anthony8724.vercel.app",
+    "cercly-git-main-anthony8724.vercel.app"
+  ],
+  "pr15": {
+    "head": "compliance/play-privacy-routes-20261119",
+    "base": "compliance/play-readiness"
+  },
+  "pr6": {
+    "head": "compliance/play-readiness",
+    "base": "main"
+  },
+  "no_deployment_performed": true
+}

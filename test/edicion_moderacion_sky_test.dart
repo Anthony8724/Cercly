@@ -1,3 +1,5 @@
+import 'package:cercly/features/ugc/ugc_service.dart';
+
 import 'dart:io';
 import 'dart:ui' as ui;
 
@@ -27,6 +29,7 @@ void main() {
           home: EditarInformacionEstablecimientoScreen(
             establecimiento: model,
             solicitudesService: repo,
+            ugcService: UgcService(rpc: (_, _) async => {'aceptadas': true}),
           ),
         ),
       );
@@ -127,6 +130,9 @@ void main() {
               home: EditarInformacionEstablecimientoScreen(
                 establecimiento: model,
                 solicitudesService: repo,
+                ugcService: UgcService(
+                  rpc: (_, _) async => {'aceptadas': true},
+                ),
               ),
             ),
           ),

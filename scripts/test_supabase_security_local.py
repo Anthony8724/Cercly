@@ -32,11 +32,17 @@ def main():
                         help='Probar rollback por lock_timeout en las tres migraciones')
     parser.add_argument('--diagnose-auth', action='store_true',
                         help='Comparar catálogos y reproducir la falta de USAGE sin conceder permisos')
+    parser.add_argument('--evidence-dir', type=Path,
+                        help='Ubicación para datos de prueba sintéticos y logs')
     args = parser.parse_args()
+    if args.evidence_dir and args.restored_verification:
+        parser.error('--evidence-dir es solo para ensayos sintéticos')
+    if args.evidence_dir:
+        args.evidence_dir.mkdir(parents=True, exist_ok=True)
     image = ('docker.io/supabase/postgres@sha256:5a4314708484bec672de2c09653a5c01fb1c84a998564ac231b0325e2238ed5b'
              if args.postgres_17_6 else IMAGE)
     name = 'cercly-security-' + uuid.uuid4().hex[:12]
-    logs = Path(tempfile.mkdtemp(prefix='cercly-security-results-'))
+    logs = Path(tempfile.mkdtemp(prefix='cercly-security-results-', dir=args.evidence_dir))
     print(f'Evidencia local: {logs}', flush=True)
     # Evita conexiones a motores remotos configuradas en el entorno.
     env = {k: v for k, v in os.environ.items()
@@ -156,14 +162,19 @@ def main():
             '20261117044632_geofencing_sesion_activa.sql',
             '20261117050715_fcm_invalid_token_rotation_guard.sql',
             '20261117050834_fcm_session_retirement.sql',
+            '20261119001108_rutas_limite_compartido.sql',
+            '20261119231916_reconocer_cuota_rutas_eliminacion.sql',
         )
         forward = [ROOT / 'supabase/migrations' / n for n in forward_names]
+        # Las nuevas guardas cambian deliberadamente el contrato de publicación.
+        # Probar primero la base completa y después migrar/probar el contrato UGC.
+        ugc = ROOT / 'supabase/migrations/20261120034446_controles_ugc_cercly.sql'
         if any(not p.is_file() for p in pending + forward):
             raise RuntimeError('Falta una migración revisada del manifiesto')
-        if any(p.name > pending_names[-1] and p not in forward for p in migrations):
+        if any(p.name > pending_names[-1] and p not in forward + [ugc] for p in migrations):
             raise RuntimeError('Hay migraciones posteriores: revisar el alcance del arnés')
         for path in migrations:
-            if path not in pending + forward and not args.restored_verification:
+            if path not in pending + forward + [ugc] and not args.restored_verification:
                 sql(path.stem, path.read_text())
         if args.diagnose_auth:
             catalog_audit = (ROOT / 'scripts/sql/auth_catalog_audit.sql').read_text()
@@ -364,6 +375,8 @@ select jsonb_build_object(
 """
         audits_before_suites = sql('audits-before-suites', audit_integrity_query)
         for path in sorted((ROOT / 'supabase/tests').glob('*test.sql')):
+            if path.name == 'ugc_play_test.sql':
+                continue  # Se ejecuta íntegra, tras aplicar la migración UGC.
             if args.restored_verification and path.name not in (
                     'auth_access_test.sql', 'security_access_test.sql',
                     'profile_recovery_test.sql', 'auth_final_permissions_test.sql',
@@ -379,6 +392,13 @@ select jsonb_build_object(
             sql('cleanup-preview', (ROOT / 'scripts/sql/vista_previa_limpieza.sql').read_text())
             if before_suites != sql('data-after-preview', integrity_query):
                 raise RuntimeError('La vista previa de limpieza modificó datos')
+            sql(ugc.stem, ugc.read_text())
+            if before_suites != sql('data-after-ugc-migration', integrity_query):
+                raise RuntimeError('La migración UGC modificó datos previos')
+            sql('ugc_play_test', (ROOT / 'supabase/tests/ugc_play_test.sql').read_text(),
+                tap=True, user='supabase_admin')
+            if before_suites != sql('data-after-ugc-tests', integrity_query):
+                raise RuntimeError('UGC modificó datos fuera de rollback')
         print('Todas las suites SQL aprobaron.', flush=True)
     finally:
         if args.restored_verification and 'source_before' in locals() and source_before:

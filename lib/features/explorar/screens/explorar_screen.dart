@@ -57,6 +57,7 @@ class ExplorarScreen extends StatelessWidget {
     return AnimatedBuilder(
       animation: controller,
       builder: (context, _) {
+        final promocionesEvaluacion = cargarPromociones;
         // Solo compartir coordenadas mientras la ubicación está disponible.
         final ubicacion =
             controller.estadoUbicacion == EstadoUbicacion.disponible
@@ -131,23 +132,24 @@ class ExplorarScreen extends StatelessWidget {
                                 ),
                               ),
                           ],
-                          // Mantener el State del carrusel durante búsquedas de lugares.
-                          PromocionesExplorar(
-                            key: const ValueKey('destacadas-estables'),
-                            establecimientos: controller.establecimientos,
-                            cargarPromociones: cargarPromociones,
-                            revisionRecarga: controller.revisionDestacadas,
-                            resolverEstablecimiento: resolverEstablecimiento,
-                            latitudUsuario: ubicacion?.latitud,
-                            longitudUsuario: ubicacion?.longitud,
-                            radioMaximoMetros: controller.radioMetros
-                                .toDouble(),
-                            onEstablecimiento: (establecimiento) =>
-                                _abrirDetalle(context, establecimiento),
-                            onVerTodas:
-                                onVerPromociones ??
-                                () => controller.cambiarSoloPromociones(true),
-                          ),
+                          // El carrusel queda reservado para contenido inyectado en evaluación.
+                          if (promocionesEvaluacion != null)
+                            PromocionesExplorar(
+                              key: const ValueKey('destacadas-estables'),
+                              establecimientos: controller.establecimientos,
+                              cargarPromociones: promocionesEvaluacion,
+                              revisionRecarga: controller.revisionDestacadas,
+                              resolverEstablecimiento: resolverEstablecimiento,
+                              latitudUsuario: ubicacion?.latitud,
+                              longitudUsuario: ubicacion?.longitud,
+                              radioMaximoMetros: controller.radioMetros
+                                  .toDouble(),
+                              onEstablecimiento: (establecimiento) =>
+                                  _abrirDetalle(context, establecimiento),
+                              onVerTodas:
+                                  onVerPromociones ??
+                                  () => controller.cambiarSoloPromociones(true),
+                            ),
                           const SizedBox(height: 14),
                           _EncabezadoResultados(controller: controller),
                         ],

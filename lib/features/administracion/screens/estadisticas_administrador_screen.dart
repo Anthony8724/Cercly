@@ -234,6 +234,11 @@ class _ContenidoResumen extends StatelessWidget {
     required String titulo,
     required TipoIndicadorAdmin tipo,
   }) {
+    final detalle = service.streamDetalleIndicador(
+      tipo,
+      diasActivos: resumen.diasUsuarioActivo,
+    );
+
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
@@ -275,10 +280,7 @@ class _ContenidoResumen extends StatelessWidget {
                   const SizedBox(height: 12),
                   Expanded(
                     child: StreamBuilder<List<DetalleEstadisticaItem>>(
-                      stream: service.streamDetalleIndicador(
-                        tipo,
-                        diasActivos: resumen.diasUsuarioActivo,
-                      ),
+                      stream: detalle,
                       builder: (context, snapshot) {
                         if (snapshot.connectionState ==
                             ConnectionState.waiting) {
@@ -309,7 +311,7 @@ class _ContenidoResumen extends StatelessWidget {
                         return ListView.separated(
                           controller: scrollController,
                           itemCount: items.length,
-                          separatorBuilder: (_, __) =>
+                          separatorBuilder: (_, _) =>
                               Divider(height: 1, color: palette.border),
                           itemBuilder: (context, index) {
                             final item = items[index];

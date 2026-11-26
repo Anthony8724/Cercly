@@ -73,6 +73,18 @@ void main() {
           ),
         );
         await tester.pumpAndSettle();
+        expect(
+          find.byKey(const Key('administrar-denuncias-ugc')),
+          findsOneWidget,
+        );
+        expect(
+          find.byKey(const Key('administrar-campanas-destacadas')),
+          findsNothing,
+        );
+        expect(
+          requests.where((r) => r.url.path.contains('destacadas')),
+          isEmpty,
+        );
         if (inicial != 'pendiente') {
           final filter = find
               .text(inicial == 'rechazado' ? 'Rechazados' : 'Aprobados')

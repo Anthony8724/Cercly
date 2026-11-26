@@ -1,3 +1,5 @@
+import '../../ugc/ugc_widgets.dart';
+
 import 'package:flutter/material.dart';
 
 import '../../../sky/sky_backdrop.dart';
@@ -99,6 +101,8 @@ class _PromocionesEstablecimientoScreenState
     });
 
     try {
+      if (activa && !await asegurarNormasPublicacion(context)) return;
+      if (!mounted) return;
       await _service.cambiarEstado(
         promocionId: promocion.id,
         establecimientoId: promocion.establecimientoId,

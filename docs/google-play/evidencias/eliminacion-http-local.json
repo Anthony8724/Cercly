@@ -1,0 +1,207 @@
+{
+  "scope": "LOCAL_ONLY_REAL_HTTP",
+  "cases": [
+    {
+      "case": "migración sin DML, ALTER ni GRANT",
+      "status": "PASS"
+    },
+    {
+      "case": "sin excepción la cuota reproduce el bloqueo global",
+      "status": "PASS"
+    },
+    {
+      "case": "propietario ACL SECURITY DEFINER y search_path conservados",
+      "status": "PASS"
+    },
+    {
+      "case": "migración conserva datos preexistentes public Auth cuota y Storage",
+      "status": "PASS"
+    },
+    {
+      "case": "cuota corregida no bloquea identidad vacía",
+      "status": "PASS"
+    },
+    {
+      "case": "cuota HTTP propia simple",
+      "status": "PASS"
+    },
+    {
+      "case": "cuota HTTP propia vecino",
+      "status": "PASS"
+    },
+    {
+      "case": "cuota HTTP propia foto",
+      "status": "PASS"
+    },
+    {
+      "case": "subida Storage HTTP vecino",
+      "status": "PASS"
+    },
+    {
+      "case": "bytes Storage verificables vecino",
+      "status": "PASS"
+    },
+    {
+      "case": "subida Storage HTTP propia",
+      "status": "PASS"
+    },
+    {
+      "case": "bytes Storage verificables propia",
+      "status": "PASS"
+    },
+    {
+      "case": "caso simple contiene relaciones y sesión reales",
+      "status": "PASS"
+    },
+    {
+      "case": "handler rechaza elegir sujeto ajeno",
+      "status": "PASS"
+    },
+    {
+      "case": "handler eliminada",
+      "status": "PASS",
+      "detail": {
+        "http": 200
+      }
+    },
+    {
+      "case": "simple elimina auth",
+      "status": "PASS"
+    },
+    {
+      "case": "simple elimina push",
+      "status": "PASS"
+    },
+    {
+      "case": "simple elimina cuota",
+      "status": "PASS"
+    },
+    {
+      "case": "simple elimina perfil",
+      "status": "PASS"
+    },
+    {
+      "case": "simple elimina refresh",
+      "status": "PASS"
+    },
+    {
+      "case": "simple elimina sesiones",
+      "status": "PASS"
+    },
+    {
+      "case": "simple elimina solicitud",
+      "status": "PASS"
+    },
+    {
+      "case": "simple elimina categorias",
+      "status": "PASS"
+    },
+    {
+      "case": "simple elimina preferencias",
+      "status": "PASS"
+    },
+    {
+      "case": "simple elimina instalaciones",
+      "status": "PASS"
+    },
+    {
+      "case": "JWT viejo rechazado por Auth",
+      "status": "PASS",
+      "detail": {
+        "http": 403,
+        "error_code": "user_not_found"
+      }
+    },
+    {
+      "case": "refresh viejo rechazado",
+      "status": "PASS"
+    },
+    {
+      "case": "JWT viejo no recrea cuota PostgreSQL",
+      "status": "PASS"
+    },
+    {
+      "case": "identidad perfil negocio promoción foto y cuota ajenos intactos",
+      "status": "PASS"
+    },
+    {
+      "case": "fotografía ajena conserva bytes y hash",
+      "status": "PASS"
+    },
+    {
+      "case": "handler revision",
+      "status": "PASS",
+      "detail": {
+        "http": 202
+      }
+    },
+    {
+      "case": "foto propia bloquea borrado Auth y conserva sesión",
+      "status": "PASS"
+    },
+    {
+      "case": "revisión conserva foto propia",
+      "status": "PASS"
+    },
+    {
+      "case": "supresión explícita Storage por titular sintético",
+      "status": "PASS"
+    },
+    {
+      "case": "foto eliminada ya no es recuperable por API Storage",
+      "status": "PASS"
+    },
+    {
+      "case": "metadato Storage propio eliminado",
+      "status": "PASS"
+    },
+    {
+      "case": "handler revision",
+      "status": "PASS",
+      "detail": {
+        "http": 202
+      }
+    },
+    {
+      "case": "aprobación explícita por administrador sintético sin dependencias",
+      "status": "PASS"
+    },
+    {
+      "case": "handler eliminada",
+      "status": "PASS",
+      "detail": {
+        "http": 200
+      }
+    },
+    {
+      "case": "cuenta con foto retirada completa Auth perfil sesiones solicitud",
+      "status": "PASS"
+    },
+    {
+      "case": "caso con foto no cambia datos ajenos",
+      "status": "PASS"
+    },
+    {
+      "case": "propietario con negocio permanece en revisión",
+      "status": "PASS"
+    },
+    {
+      "case": "revisión no borra negocio promoción ni imagen ajenos",
+      "status": "PASS"
+    }
+  ],
+  "passed": 43,
+  "failed": 0,
+  "http_services": [
+    "GoTrue",
+    "PostgREST",
+    "Storage",
+    "Deno handler + supabase-js 2.75.0"
+  ],
+  "limitations": [
+    "No gateway Edge JWT; handler verifies getUser itself",
+    "No hosted Staging or Production",
+    "Storage API proves unreadability and metadata removal, not disk forensics or backups",
+    "No external email/OTP channel or device QA"
+  ]
+}

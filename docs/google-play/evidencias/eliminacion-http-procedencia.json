@@ -1,0 +1,50 @@
+{
+  "checked_at": "2026-11-20T00:23:39.655251+00:00",
+  "cli": "2.119.0",
+  "deno": "2.9.8",
+  "sdk": "2.75.0",
+  "network_internal": true,
+  "fresh_stack": true,
+  "real_data_restored": false,
+  "stack_stopped": "Stopped supabase local development setup.",
+  "images": {
+    "auth": {
+      "tag": "public.ecr.aws/supabase/gotrue:v2.197.0",
+      "id": "1181bff5ba4ce440013a63cef9f4cf13024c432d705c9b1fbc9e5b949e852f48"
+    },
+    "storage": {
+      "tag": "public.ecr.aws/supabase/storage-api:v1.79.28",
+      "id": "06c8d494e04723d162b27f3312390034ced191f319269c11654f37194c6910ef"
+    },
+    "postgres": {
+      "tag": "public.ecr.aws/supabase/postgres:17.11.0.002",
+      "id": "e671c63f6ad3a3bc0503d26bb6641bb2b8eddaabbfe1782ba56b7d2c0243b6d8"
+    }
+  },
+  "files": [
+    {
+      "path": "supabase/migrations/20261119231916_reconocer_cuota_rutas_eliminacion.sql",
+      "sha256": "e9b9c454edcbcdd06ac6fbbe59c595ec41985129af9e6e7a508b239ada4bad9f"
+    },
+    {
+      "path": "supabase/functions/_shared/account_deletion_handler.mjs",
+      "sha256": "d8b28a304ee7b01dcf1da086610e24dfa29bfbe9541fdca895df75e77e3570e0"
+    },
+    {
+      "path": "supabase/functions/_shared/account_deletion_flow.mjs",
+      "sha256": "f588f9d1695a88384a4a774133faeeb28231838a6ae02986ad73a0be16ad3980"
+    },
+    {
+      "path": "scripts/run_account_deletion_http_local.py",
+      "sha256": "dcf873c96d7473260e237eb4b4a4fd38ac10e363507399f005a33f80ddf0ec2f"
+    },
+    {
+      "path": "scripts/serve_account_deletion_http_local.ts",
+      "sha256": "eafdbc18d77290f5667bc6995baa494d812aa95e9216a891ffb511291bd35248"
+    },
+    {
+      "path": "scripts/test_account_deletion_http_local.py",
+      "sha256": "ab4c6f4dcc5137ce20aa4758186c964054b7056fc7ed3ff5053a3ef43bcdefa8"
+    }
+  ]
+}

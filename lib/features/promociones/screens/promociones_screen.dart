@@ -1,3 +1,5 @@
+import '../../ugc/ugc_service.dart';
+
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -58,6 +60,7 @@ class _PromocionesScreenState extends State<PromocionesScreen> {
   @override
   void initState() {
     super.initState();
+    UgcService.cambios.addListener(_cambioUgc);
     _cargar();
   }
 
@@ -87,8 +90,16 @@ class _PromocionesScreenState extends State<PromocionesScreen> {
     }
   }
 
+  void _cambioUgc() {
+    if (mounted) {
+      setState(() => _promociones = const []);
+      _cargar();
+    }
+  }
+
   @override
   void dispose() {
+    UgcService.cambios.removeListener(_cambioUgc);
     _recargaUbicacion?.cancel();
     ++_versionCarga;
     super.dispose();

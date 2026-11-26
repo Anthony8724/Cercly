@@ -1,3 +1,5 @@
+import 'package:cercly/features/ugc/ugc_service.dart';
+
 import 'dart:async';
 
 import 'package:cercly/features/solicitudes_establecimientos/screens/nueva_solicitud_screen.dart';
@@ -78,7 +80,11 @@ void main() {
     final repo = BusquedaFalsa()..asociados = [negocioA];
     await tester.pumpWidget(
       MaterialApp(
-        home: NuevaSolicitudScreen(service: repo, tipoInicial: 'correccion'),
+        home: NuevaSolicitudScreen(
+          ugcService: UgcService(rpc: (_, _) async => {'aceptadas': true}),
+          service: repo,
+          tipoInicial: 'correccion',
+        ),
       ),
     );
     await tester.pumpAndSettle();
@@ -110,7 +116,11 @@ void main() {
       final repo = BusquedaFalsa()..asociados = [negocioA];
       await tester.pumpWidget(
         MaterialApp(
-          home: NuevaSolicitudScreen(service: repo, tipoInicial: 'correccion'),
+          home: NuevaSolicitudScreen(
+            ugcService: UgcService(rpc: (_, _) async => {'aceptadas': true}),
+            service: repo,
+            tipoInicial: 'correccion',
+          ),
         ),
       );
       await tester.pumpAndSettle();
@@ -138,7 +148,11 @@ void main() {
       final repo = BusquedaFalsa();
       await tester.pumpWidget(
         MaterialApp(
-          home: NuevaSolicitudScreen(service: repo, tipoInicial: 'acceso'),
+          home: NuevaSolicitudScreen(
+            ugcService: UgcService(rpc: (_, _) async => {'aceptadas': true}),
+            service: repo,
+            tipoInicial: 'acceso',
+          ),
         ),
       );
       await tester.pumpAndSettle();
