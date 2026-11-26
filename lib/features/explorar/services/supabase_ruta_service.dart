@@ -5,6 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../models/ruta_model.dart';
 import 'ruta_service.dart';
+import 'politica_rutas.dart';
 
 /// Función inyectable para pruebas; jamás recibe la clave privada ORS.
 typedef InvocarRuta = Future<Map<String, dynamic>> Function(
@@ -20,6 +21,9 @@ class SupabaseRutaService implements RutaService {
   static Future<Map<String, dynamic>> _invocarReal(
     Map<String, dynamic> body,
   ) async {
+    // Antes de consultar sesión, cuota o red. El código de interpretación y el
+    // transporte inyectado permanecen verificables sin llamar al proveedor.
+    PoliticaRutas.exigirProveedorAutorizado();
     final client = Supabase.instance.client;
     if (client.auth.currentSession == null) {
       throw const RutaException(
@@ -89,6 +93,29 @@ class SupabaseRutaService implements RutaService {
       );
     } on RutaException {
       rethrow;
+    } on FunctionException catch (error) {
+      if (error.status == 401 || error.status == 403) {
+        throw const RutaException(
+          TipoErrorRuta.servicioNoConfigurado,
+          'Tu sesión no permite calcular rutas. Inicia sesión de nuevo o abre otra app de mapas.',
+        );
+      }
+      if (error.status == 429) {
+        throw const RutaException(
+          TipoErrorRuta.cuotaAgotada,
+          'Se alcanzó el límite de rutas. Espera antes de reintentar o abre otra app de mapas.',
+        );
+      }
+      if (error.status == 422) {
+        throw const RutaException(
+          TipoErrorRuta.sinRuta,
+          'No encontramos un recorrido entre estos puntos.',
+        );
+      }
+      throw const RutaException(
+        TipoErrorRuta.servicioNoDisponible,
+        'El servicio de rutas no está disponible. Puedes abrir otra app de mapas.',
+      );
     } on TimeoutException {
       throw const RutaException(
         TipoErrorRuta.tiempoAgotado,

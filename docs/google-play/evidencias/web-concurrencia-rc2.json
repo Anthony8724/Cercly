@@ -1,0 +1,47 @@
+{
+  "date": "2026-11-19T23:45:03.602Z",
+  "directory": "/tmp/cercly-web-verificacion-28Z58c",
+  "unitFiles": 8,
+  "routeFiles": 8,
+  "tests": "pass",
+  "https": [
+    {
+      "path": "/",
+      "status": 200,
+      "location": null,
+      "certificateVerified": true
+    },
+    {
+      "path": "/privacidad",
+      "status": 200,
+      "location": null,
+      "certificateVerified": true
+    },
+    {
+      "path": "/eliminar-cuenta",
+      "status": 200,
+      "location": null,
+      "certificateVerified": true
+    },
+    {
+      "path": "/soporte",
+      "status": 200,
+      "location": null,
+      "certificateVerified": true
+    },
+    {
+      "path": "/terminos",
+      "status": 200,
+      "location": null,
+      "certificateVerified": true
+    }
+  ],
+  "visual": "pass",
+  "visualPaths": [
+    "/",
+    "/soporte",
+    "/terminos",
+    "/privacidad",
+    "/eliminar-cuenta"
+  ]
+}

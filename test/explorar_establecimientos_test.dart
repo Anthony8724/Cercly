@@ -403,6 +403,7 @@ void main() {
         ),
       );
       expect(find.byKey(const Key('estado-loading')), findsOneWidget);
+      expect(find.byKey(const ValueKey('destacadas-estables')), findsNothing);
 
       controller.cargandoResultados = false;
       controller.notifyListeners();
@@ -563,6 +564,8 @@ void main() {
 
       await tester.tap(find.byKey(const Key('boton-como-llegar')));
       await tester.pump();
+      await tester.tap(find.byKey(const Key('mapas-externos-confirmar')));
+      await tester.pumpAndSettle();
       expect(uriAbierta.toString(), contains('0.8117'));
       expect(uriAbierta.toString(), contains('-77.7171'));
     });

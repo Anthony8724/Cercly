@@ -146,7 +146,7 @@ class _NavegacionPrincipalScreenState extends State<NavegacionPrincipalScreen>
                   left: 12,
                   right: 12,
                   // Respetar el espacio de atribucion de OpenStreetMap.
-                  bottom: 42,
+                  bottom: 72,
                   child: SafeArea(
                     top: false,
                     child: RadarCerclyPanel(controller: _monitor!),

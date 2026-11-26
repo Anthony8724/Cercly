@@ -1,3 +1,5 @@
+import '../../ugc/ugc_screen.dart';
+
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -157,6 +159,18 @@ class ConfiguracionCuentaScreen extends StatelessWidget {
                         ),
                       ),
                       Divider(height: 1, indent: 60, color: sky.border),
+                      ListTile(
+                        leading: const Icon(Icons.shield_outlined),
+                        title: const Text('Seguridad y contenido'),
+                        subtitle: const Text(
+                          'Normas, denuncias y responsables bloqueados',
+                        ),
+                        onTap: () => Navigator.of(context).push(
+                          MaterialPageRoute<void>(
+                            builder: (_) => const UgcScreen(),
+                          ),
+                        ),
+                      ),
                       ListTile(
                         key: const Key('abrir-politica-privacidad'),
                         leading: Icon(

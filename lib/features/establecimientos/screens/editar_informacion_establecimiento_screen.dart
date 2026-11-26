@@ -1,3 +1,6 @@
+import '../../ugc/ugc_widgets.dart';
+import '../../ugc/ugc_service.dart';
+
 import 'package:flutter/material.dart';
 
 import '../../../sky/sky_backdrop.dart';
@@ -18,12 +21,14 @@ class EditarInformacionEstablecimientoScreen extends StatefulWidget {
     required this.establecimiento,
     this.service,
     this.solicitudesService,
+    this.ugcService,
     super.key,
   });
 
   final EstablecimientoModel establecimiento;
   final EstablecimientoService? service;
   final SolicitudEstablecimientoRepository? solicitudesService;
+  final UgcService? ugcService;
 
   @override
   State<EditarInformacionEstablecimientoScreen> createState() =>
@@ -105,6 +110,13 @@ class _EditarInformacionEstablecimientoScreenState
     });
 
     try {
+      if (!await asegurarNormasPublicacion(
+        context,
+        service: widget.ugcService,
+      )) {
+        return;
+      }
+      if (!mounted) return;
       final actual = widget.establecimiento;
       final actualizado = EstablecimientoModel(
         id: actual.id,
@@ -194,6 +206,7 @@ class _EditarInformacionEstablecimientoScreenState
         establecimientoIdInicial: widget.establecimiento.id,
         bloquearTipo: true,
         service: widget.solicitudesService,
+        ugcService: widget.ugcService,
       );
     }
 

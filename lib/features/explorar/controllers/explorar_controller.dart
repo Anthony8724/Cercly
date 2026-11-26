@@ -1,3 +1,5 @@
+import '../../ugc/ugc_service.dart';
+
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
@@ -30,7 +32,9 @@ class ExplorarController extends ChangeNotifier {
        _categoriaService = categoriaService ?? CategoriaPublicaService(),
        _ubicacionService = ubicacionService ?? GeolocatorUbicacionService(),
        _preferenciasService =
-           preferenciasService ?? PreferenciasUsuarioService();
+           preferenciasService ?? PreferenciasUsuarioService() {
+    UgcService.cambios.addListener(_cambioUgc);
+  }
 
   static const radiosDisponibles = <int>[500, 1000, 2000, 5000, 10000];
 
@@ -346,8 +350,20 @@ class ExplorarController extends ChangeNotifier {
   Future<bool> abrirAjustesAplicacion() =>
       _ubicacionService.abrirAjustesAplicacion();
 
+  void _cambioUgc() {
+    if (_disposed) return;
+    _versionConsulta++;
+    establecimientos = const [];
+    recomendados = const [];
+    notifyListeners();
+    unawaited(buscar());
+    unawaited(cargarRecomendaciones());
+    solicitarRecargaDestacadas();
+  }
+
   @override
   void dispose() {
+    UgcService.cambios.removeListener(_cambioUgc);
     _disposed = true;
     _versionConsulta++;
     _temporizadorBusqueda?.cancel();

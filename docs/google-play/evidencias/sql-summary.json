@@ -1,0 +1,9 @@
+{
+  "suites": 30,
+  "passed": 802,
+  "failed": 0,
+  "network": "none",
+  "source": "new disposable container; no real data",
+  "end_to_end_auth_storage_http": false,
+  "new_route_deletion_asserts": 15
+}

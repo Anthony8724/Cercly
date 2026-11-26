@@ -1,0 +1,12 @@
+{
+  "checked_at": "2026-11-20T00:23:39.548Z",
+  "project": "aimubazregckmjchnszf",
+  "mode": "read_only_metadata_and_nonexistent_uuid",
+  "result": {
+    "sujeto_prueba_inexistente": true,
+    "bloqueo_global_actual": true,
+    "migracion_cuota_eliminacion_registrada": false,
+    "cuota_reconocida": false
+  },
+  "no_remote_changes": true
+}

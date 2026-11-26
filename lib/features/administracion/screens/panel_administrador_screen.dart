@@ -1,3 +1,5 @@
+import '../../ugc/ugc_screen.dart';
+
 import 'package:flutter/material.dart';
 
 import '../../../sky/sky_backdrop.dart';
@@ -14,7 +16,6 @@ import '../../preferencias/screens/mis_preferencias_screen.dart';
 import '../../establecimientos/models/establecimiento_model.dart';
 import '../../establecimientos/services/establecimiento_service.dart';
 import '../../solicitudes_establecimientos/screens/solicitudes_administrador_screen.dart';
-import '../../promociones/screens/administracion_destacadas_screen.dart';
 
 class PanelAdministradorScreen extends StatefulWidget {
   const PanelAdministradorScreen({super.key});
@@ -63,14 +64,6 @@ class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
         context,
       ).showSnackBar(SnackBar(content: Text(AuthService.errorMessage(error))));
     }
-  }
-
-  Future<void> _abrirCampanasDestacadas() async {
-    await Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (_) => const AdministracionDestacadasScreen(),
-      ),
-    );
   }
 
   Future<void> _abrirSolicitudes() async {
@@ -1004,14 +997,18 @@ class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
             physics: const AlwaysScrollableScrollPhysics(),
             slivers: [
               SliverToBoxAdapter(child: _cabecera(correo)),
-              SliverPadding(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-                sliver: SliverToBoxAdapter(
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
                   child: FilledButton.icon(
-                    key: const Key('administrar-campanas-destacadas'),
-                    onPressed: _abrirCampanasDestacadas,
-                    icon: const Icon(Icons.campaign_rounded),
-                    label: const Text('Administrar campañas destacadas'),
+                    key: const Key('administrar-denuncias-ugc'),
+                    onPressed: () => Navigator.of(context).push(
+                      MaterialPageRoute<void>(
+                        builder: (_) => const UgcScreen(administracion: true),
+                      ),
+                    ),
+                    icon: const Icon(Icons.shield_outlined),
+                    label: const Text('Denuncias y moderación'),
                   ),
                 ),
               ),

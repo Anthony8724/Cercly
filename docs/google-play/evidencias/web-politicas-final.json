@@ -1,0 +1,45 @@
+{
+  "date": "2026-11-20T00:07:31.421Z",
+  "directory": "/tmp/cercly-web-verificacion-ftceWA",
+  "unitFiles": 8,
+  "routeFiles": 8,
+  "tests": "pass",
+  "https": [
+    {
+      "path": "/",
+      "status": 200,
+      "location": null,
+      "certificateVerified": true
+    },
+    {
+      "path": "/privacidad",
+      "status": 200,
+      "location": null,
+      "certificateVerified": true
+    },
+    {
+      "path": "/eliminar-cuenta",
+      "status": 200,
+      "location": null,
+      "certificateVerified": true
+    },
+    {
+      "path": "/soporte",
+      "status": 200,
+      "location": null,
+      "certificateVerified": true
+    },
+    {
+      "path": "/terminos",
+      "status": 200,
+      "location": null,
+      "certificateVerified": true
+    }
+  ],
+  "visual": "pass",
+  "visualPaths": [
+    "/privacidad",
+    "/eliminar-cuenta",
+    "/terminos"
+  ]
+}

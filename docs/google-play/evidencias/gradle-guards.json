@@ -1,0 +1,17 @@
+[
+  {
+    "case": "ors-secret",
+    "exit": 1,
+    "expected_rejection": true
+  },
+  {
+    "case": "supabase-secret",
+    "exit": 1,
+    "expected_rejection": true
+  },
+  {
+    "case": "simulated-public",
+    "exit": 1,
+    "expected_rejection": true
+  }
+]

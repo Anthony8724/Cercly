@@ -1,0 +1,15 @@
+{
+  "project": "aimubazregckmjchnszf",
+  "mode": "read-only",
+  "date": "2026-11-19",
+  "zero_identity_exists": false,
+  "zero_subject_has_dependencies": true,
+  "quota_fk": "cercly_rutas_privado.rutas_limites_usuarios_usuario_id_fkey",
+  "fk_validated": true,
+  "delete_action": "CASCADE",
+  "recognized_by_deployed_fcm_helper": false,
+  "recognized_by_deployed_platform_helper": false,
+  "effect": "La existencia de esta FK satisface la guarda global de dependencias aun sin filas del sujeto; eliminación automática bloqueada.",
+  "production_changed": false,
+  "prepared_migration": "20261119231916_reconocer_cuota_rutas_eliminacion.sql"
+}

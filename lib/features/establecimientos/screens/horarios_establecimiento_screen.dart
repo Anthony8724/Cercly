@@ -1,3 +1,5 @@
+import '../../ugc/ugc_widgets.dart';
+
 import 'package:flutter/material.dart';
 
 import '../../../sky/sky_backdrop.dart';
@@ -162,6 +164,8 @@ class _HorariosEstablecimientoScreenState
     });
 
     try {
+      if (!await asegurarNormasPublicacion(context)) return;
+      if (!mounted) return;
       final horarioParaGuardar = {
         for (final dia in EstablecimientoModel.diasSemana)
           dia: _horario[dia]!.map((turno) {

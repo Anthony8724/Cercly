@@ -93,6 +93,7 @@ class EstablecimientoPublicoModel {
     this.ciudad,
     this.provincia,
     this.paisCodigo,
+    this.fotoPortadaId,
     this.rutaFotoPortada,
     this.urlFotoPortada,
     this.distanciaMetros,
@@ -115,6 +116,7 @@ class EstablecimientoPublicoModel {
   final String? ciudad;
   final String? provincia;
   final String? paisCodigo;
+  final String? fotoPortadaId;
   final String? rutaFotoPortada;
   final String? urlFotoPortada;
   final List<PromocionPublicaModel> promociones;
@@ -167,6 +169,7 @@ class EstablecimientoPublicoModel {
       ciudad: ciudad,
       provincia: provincia,
       paisCodigo: paisCodigo,
+      fotoPortadaId: fotoPortadaId,
       rutaFotoPortada: rutaFotoPortada ?? this.rutaFotoPortada,
       urlFotoPortada: urlFotoPortada ?? this.urlFotoPortada,
       promociones: promociones ?? this.promociones,
@@ -226,6 +229,9 @@ class EstablecimientoPublicoModel {
       fuente: datos['fuente'] as String?,
       estadoReclamo: datos['estado_reclamo'] as String?,
       tienePropietario: datos['propietario_id'] != null,
+      fotoPortadaId: fotosDatos.isEmpty
+          ? null
+          : fotosDatos.first['id'] as String?,
       rutaFotoPortada: rutaPortada,
       promociones: promocionesDatos
           .map(PromocionPublicaModel.fromSupabase)

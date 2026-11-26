@@ -1,3 +1,5 @@
+import '../../ugc/ugc_widgets.dart';
+
 import 'package:flutter/material.dart';
 
 import '../../../sky/sky_backdrop.dart';
@@ -315,6 +317,10 @@ class _RegistroEstablecimientoScreenState
     });
 
     try {
+      if (!widget.soloEvaluacion && !await asegurarNormasPublicacion(context)) {
+        return;
+      }
+      if (!mounted) return;
       final coincidencias = await _service.buscarCoincidenciasCercanas(
         nombre: _nombreController.text,
         latitud: latitud,
