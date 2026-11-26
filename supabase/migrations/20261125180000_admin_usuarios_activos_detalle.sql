@@ -42,7 +42,7 @@ begin
   from auth.users au
   join public.usuarios u on u.id = au.id
   where au.last_sign_in_at >= now() - make_interval(days => p_dias_activos)
-  order by au.last_sign_in_at desc, u.nombre asc
+  order by au.last_sign_in_at desc, u.nombre asc, u.id asc
   limit p_limite
   offset p_offset;
 end;

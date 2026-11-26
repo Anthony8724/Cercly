@@ -41,14 +41,43 @@ void main() {
     });
   });
 
+  group('Seguridad de mensajes de error', () {
+    const datoInterno = 'DETALLE_INTERNO_PRIVADO';
+
+    test('no expone errores internos de PostgreSQL', () {
+      const error = PostgrestException(message: datoInterno, code: 'XX000');
+
+      final mensaje = EstadisticasAdministradorService.mensajeError(error);
+
+      expect(mensaje, isNot(contains(datoInterno)));
+      expect(mensaje, 'No se pudieron cargar las estadísticas.');
+    });
+
+    test('no expone detalles internos de formato', () {
+      const error = FormatException(datoInterno);
+
+      final mensaje = EstadisticasAdministradorService.mensajeError(error);
+
+      expect(mensaje, isNot(contains(datoInterno)));
+    });
+
+    test('no expone detalles de excepciones desconocidas', () {
+      final mensaje = EstadisticasAdministradorService.mensajeError(
+        Exception(datoInterno),
+      );
+
+      expect(mensaje, isNot(contains(datoInterno)));
+    });
+  });
+
   group('GranularidadRegistrosX', () {
     test('expone valores RPC y etiquetas esperadas', () {
       expect(GranularidadRegistros.dia.valorRpc, 'dia');
       expect(GranularidadRegistros.semana.valorRpc, 'semana');
       expect(GranularidadRegistros.mes.valorRpc, 'mes');
-      expect(GranularidadRegistros.dia.etiqueta, isNotEmpty);
-      expect(GranularidadRegistros.semana.etiqueta, isNotEmpty);
-      expect(GranularidadRegistros.mes.etiqueta, isNotEmpty);
+      expect(GranularidadRegistros.dia.etiqueta, 'Día');
+      expect(GranularidadRegistros.semana.etiqueta, 'Semana');
+      expect(GranularidadRegistros.mes.etiqueta, 'Mes');
     });
   });
 

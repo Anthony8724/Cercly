@@ -5,7 +5,7 @@ import '../models/estadisticas_admin_model.dart';
 enum GranularidadRegistros { dia, semana, mes }
 
 extension GranularidadRegistrosX on GranularidadRegistros {
-  /// Valor que espera la funciÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â³n `admin_estadisticas_registros`.
+  /// Valor que espera la función `admin_estadisticas_registros`.
   String get valorRpc => switch (this) {
     GranularidadRegistros.dia => 'dia',
     GranularidadRegistros.semana => 'semana',
@@ -13,16 +13,16 @@ extension GranularidadRegistrosX on GranularidadRegistros {
   };
 
   String get etiqueta => switch (this) {
-    GranularidadRegistros.dia => 'DÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â­a',
+    GranularidadRegistros.dia => 'Día',
     GranularidadRegistros.semana => 'Semana',
     GranularidadRegistros.mes => 'Mes',
   };
 }
 
-/// Lee estadÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â­sticas agregadas del panel de administraciÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â³n.
+/// Lee estadísticas agregadas del panel de administración.
 ///
-/// La autorizaciÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â³n se verifica en el backend (las funciones RPC llaman a
-/// `es_administrador()`); este servicio no decide quiÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â©n puede ver los datos.
+/// La autorización se verifica en el backend (las funciones RPC llaman a
+/// `es_administrador()`); este servicio no decide quién puede ver los datos.
 class EstadisticasAdministradorService {
   EstadisticasAdministradorService({SupabaseClient? supabase})
     : _supabase = supabase ?? Supabase.instance.client;
@@ -73,90 +73,189 @@ class EstadisticasAdministradorService {
         .toList();
   }
 
+  static const int _tamanoPagina = 200;
+
   Stream<List<DetalleEstadisticaItem>> streamDetalleIndicador(
     TipoIndicadorAdmin tipo, {
     int diasActivos = 30,
   }) {
+    return Stream.fromFuture(
+      obtenerDetalleIndicador(tipo, diasActivos: diasActivos),
+    );
+  }
+
+  Future<List<DetalleEstadisticaItem>> obtenerDetalleIndicador(
+    TipoIndicadorAdmin tipo, {
+    int diasActivos = 30,
+  }) async {
+    final autorizado = await _supabase.rpc('es_administrador');
+
+    if (autorizado != true) {
+      throw const PostgrestException(message: 'No autorizado', code: '42501');
+    }
+
     switch (tipo) {
       case TipoIndicadorAdmin.usuariosRegistrados:
-        return _supabase
-            .from('usuarios')
-            .stream(primaryKey: ['id'])
-            .order('nombre', ascending: true)
-            .map(
-              (rows) => rows
-                  .map(
-                    (r) => DetalleEstadisticaItem(
-                      titulo: (r['nombre'] ?? 'Sin nombre').toString(),
-                      subtitulo: _etiquetaRol(r['rol']?.toString()),
-                    ),
-                  )
-                  .toList(),
-            );
+        return _paginar(
+          (inicio, fin) async => await _supabase
+              .from('usuarios')
+              .select('id,nombre,rol')
+              .order('nombre', ascending: true)
+              .order('id', ascending: true)
+              .range(inicio, fin),
+          (filas) async => filas
+              .map(
+                (r) => DetalleEstadisticaItem(
+                  titulo: (r['nombre'] ?? 'Sin nombre').toString(),
+                  subtitulo: _etiquetaRol(r['rol']?.toString()),
+                ),
+              )
+              .toList(),
+        );
 
       case TipoIndicadorAdmin.propietarios:
-        return _supabase
-            .from('usuarios')
-            .stream(primaryKey: ['id'])
-            .eq('rol', 'propietario')
-            .order('nombre', ascending: true)
-            .map(
-              (rows) => rows
-                  .map(
-                    (r) => DetalleEstadisticaItem(
-                      titulo: (r['nombre'] ?? 'Sin nombre').toString(),
-                      subtitulo: 'Propietario',
-                    ),
-                  )
-                  .toList(),
-            );
+        return _paginar(
+          (inicio, fin) async => await _supabase
+              .from('usuarios')
+              .select('id,nombre,rol')
+              .eq('rol', 'propietario')
+              .order('nombre', ascending: true)
+              .order('id', ascending: true)
+              .range(inicio, fin),
+          (filas) async => filas
+              .map(
+                (r) => DetalleEstadisticaItem(
+                  titulo: (r['nombre'] ?? 'Sin nombre').toString(),
+                  subtitulo: 'Propietario',
+                ),
+              )
+              .toList(),
+        );
 
       case TipoIndicadorAdmin.usuariosActivos:
-        return Stream.fromFuture(_obtenerUsuariosActivos30Dias(diasActivos));
+        return _obtenerUsuariosActivos30Dias(diasActivos);
 
       case TipoIndicadorAdmin.solicitudesPendientes:
-        return _supabase
-            .from('solicitudes_establecimientos')
-            .stream(primaryKey: ['id'])
-            .eq('estado', 'pendiente')
-            .asyncMap(_obtenerDetalleSolicitudesPendientes);
+        return _paginar(
+          (inicio, fin) async => await _supabase
+              .from('solicitudes_establecimientos')
+              .select('id,mensaje,tipo,establecimiento_id,solicitante_id')
+              .eq('estado', 'pendiente')
+              .order('id', ascending: true)
+              .range(inicio, fin),
+          _obtenerDetalleSolicitudesPendientes,
+        );
 
       case TipoIndicadorAdmin.establecimientos:
-        return _supabase
-            .from('establecimientos')
-            .stream(primaryKey: ['id'])
-            .order('nombre', ascending: true)
-            .map(
-              (rows) => rows
-                  .map(
-                    (r) => DetalleEstadisticaItem(
-                      titulo: (r['nombre'] ?? 'Sin nombre').toString(),
-                      subtitulo: (r['estado'] ?? '').toString(),
-                    ),
-                  )
-                  .toList(),
-            );
+        return _paginar(
+          (inicio, fin) async => await _supabase
+              .from('establecimientos')
+              .select('id,nombre,estado')
+              .order('nombre', ascending: true)
+              .order('id', ascending: true)
+              .range(inicio, fin),
+          (filas) async => filas
+              .map(
+                (r) => DetalleEstadisticaItem(
+                  titulo: (r['nombre'] ?? 'Sin nombre').toString(),
+                  subtitulo: (r['estado'] ?? '').toString(),
+                ),
+              )
+              .toList(),
+        );
 
       case TipoIndicadorAdmin.promocionesActivas:
-        return _supabase
-            .from('promociones')
-            .stream(primaryKey: ['id'])
-            .eq('activa', true)
-            .map(
-              (rows) => rows
-                  .map(
-                    (r) => DetalleEstadisticaItem(
-                      titulo:
-                          (r['titulo'] ??
-                                  r['nombre'] ??
-                                  'PromociÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â³n')
-                              .toString(),
-                      subtitulo: 'Activa',
-                    ),
-                  )
-                  .toList(),
-            );
+        return _paginar(
+          (inicio, fin) async => await _supabase
+              .from('promociones')
+              .select('id,titulo')
+              .eq('activa', true)
+              .order('titulo', ascending: true)
+              .order('id', ascending: true)
+              .range(inicio, fin),
+          (filas) async => filas
+              .map(
+                (r) => DetalleEstadisticaItem(
+                  titulo: (r['titulo'] ?? 'Promoción').toString(),
+                  subtitulo: 'Activa',
+                ),
+              )
+              .toList(),
+        );
     }
+  }
+
+  Future<List<DetalleEstadisticaItem>> _paginar(
+    Future<List<Map<String, dynamic>>> Function(int inicio, int fin)
+    obtenerPagina,
+    Future<List<DetalleEstadisticaItem>> Function(
+      List<Map<String, dynamic>> filas,
+    )
+    convertir,
+  ) async {
+    final resultado = <DetalleEstadisticaItem>[];
+    final ids = <String>{};
+    var inicio = 0;
+
+    while (true) {
+      final filas = await obtenerPagina(inicio, inicio + _tamanoPagina - 1);
+
+      if (filas.length > _tamanoPagina) {
+        throw const FormatException('Página inválida.');
+      }
+
+      for (final fila in filas) {
+        final id = fila['id'];
+
+        if (id is! String || id.isEmpty || !ids.add(id)) {
+          throw const FormatException('Identificador inválido o duplicado.');
+        }
+      }
+
+      resultado.addAll(await convertir(filas));
+
+      if (filas.length < _tamanoPagina) {
+        break;
+      }
+
+      inicio += _tamanoPagina;
+    }
+
+    return resultado;
+  }
+
+  // Limita la longitud de las URLs con filtros UUID.
+  static const int _tamanoLoteRelacion = 40;
+
+  Future<Map<String, String>> _obtenerNombresPorLotes(
+    String tabla,
+    Set<String> ids,
+  ) async {
+    final nombres = <String, String>{};
+    final lista = ids.toList();
+
+    for (var inicio = 0; inicio < lista.length; inicio += _tamanoLoteRelacion) {
+      final lote = lista.skip(inicio).take(_tamanoLoteRelacion).toList();
+
+      final filas = await _supabase
+          .from(tabla)
+          .select('id,nombre')
+          .inFilter('id', lote);
+
+      for (final fila in filas) {
+        final id = fila['id']?.toString().trim();
+        final nombre = fila['nombre']?.toString().trim();
+
+        if (id != null &&
+            id.isNotEmpty &&
+            nombre != null &&
+            nombre.isNotEmpty) {
+          nombres[id] = nombre;
+        }
+      }
+    }
+
+    return nombres;
   }
 
   Future<List<DetalleEstadisticaItem>> _obtenerDetalleSolicitudesPendientes(
@@ -184,52 +283,22 @@ class EstadisticasAdministradorService {
       }
     }
 
-    final nombresEstablecimientos = <String, String>{};
-    if (estIds.isNotEmpty) {
-      final estRows = await _supabase
-          .from('establecimientos')
-          .select('id, nombre')
-          .inFilter('id', estIds.toList());
-      for (final fila in estRows as List) {
-        final map = Map<String, dynamic>.from(fila as Map);
-        final id = map['id']?.toString().trim();
-        final nombre = map['nombre']?.toString().trim();
-        if (id != null &&
-            id.isNotEmpty &&
-            nombre != null &&
-            nombre.isNotEmpty) {
-          nombresEstablecimientos[id] = nombre;
-        }
-      }
-    }
+    final nombresEstablecimientos = await _obtenerNombresPorLotes(
+      'establecimientos',
+      estIds,
+    );
 
-    final nombresSolicitantes = <String, String>{};
-    if (solIds.isNotEmpty) {
-      final usrRows = await _supabase
-          .from('usuarios')
-          .select('id, nombre')
-          .inFilter('id', solIds.toList());
-      for (final fila in usrRows as List) {
-        final map = Map<String, dynamic>.from(fila as Map);
-        final id = map['id']?.toString().trim();
-        final nombre = map['nombre']?.toString().trim();
-        if (id != null &&
-            id.isNotEmpty &&
-            nombre != null &&
-            nombre.isNotEmpty) {
-          nombresSolicitantes[id] = nombre;
-        }
-      }
-    }
+    final nombresSolicitantes = await _obtenerNombresPorLotes(
+      'usuarios',
+      solIds,
+    );
 
     final items = <DetalleEstadisticaItem>[];
     for (final r in normalizadas) {
       String titulo = (r['mensaje'] ?? '').toString().trim();
-      String subtitulo =
-          (r['tipo'] ??
-                  'Pendiente de revisiÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â³n')
-              .toString()
-              .trim();
+      String subtitulo = (r['tipo'] ?? 'Pendiente de revisión')
+          .toString()
+          .trim();
 
       final estId = r['establecimiento_id']?.toString().trim();
       if (estId != null && estId.isNotEmpty) {
@@ -259,41 +328,38 @@ class EstadisticasAdministradorService {
 
   Future<List<DetalleEstadisticaItem>> _obtenerUsuariosActivos30Dias(
     int diasActivos,
-  ) async {
-    final res = <DetalleEstadisticaItem>[];
-    var offset = 0;
-    const limite = 200;
-    while (true) {
-      final rpc = await _supabase.rpc(
-        'admin_usuarios_activos_detalle',
-        params: {
-          'p_dias_activos': diasActivos,
-          'p_limite': limite,
-          'p_offset': offset,
-        },
-      );
-      if (rpc is! List)
-        throw const FormatException(
-          'Respuesta de usuarios activos inesperada.',
+  ) {
+    return _paginar(
+      (inicio, fin) async {
+        final rpc = await _supabase.rpc(
+          'admin_usuarios_activos_detalle',
+          params: {
+            'p_dias_activos': diasActivos,
+            'p_limite': fin - inicio + 1,
+            'p_offset': inicio,
+          },
         );
-      final pagina = rpc
-          .map((f) => Map<String, dynamic>.from(f as Map))
-          .toList();
-      for (final map in pagina) {
-        res.add(
-          DetalleEstadisticaItem(
-            titulo: (map['nombre'] ?? 'Sin nombre').toString(),
-            subtitulo: _etiquetaRol(map['rol']?.toString()),
-            estado: 'Activo',
-          ),
-        );
-      }
-      if (pagina.length < limite) {
-        break;
-      }
-      offset += limite;
-    }
-    return res;
+
+        if (rpc is! List) {
+          throw const FormatException(
+            'Respuesta de usuarios activos inesperada.',
+          );
+        }
+
+        return rpc
+            .map((fila) => Map<String, dynamic>.from(fila as Map))
+            .toList();
+      },
+      (filas) async => filas
+          .map(
+            (fila) => DetalleEstadisticaItem(
+              titulo: (fila['nombre'] ?? 'Sin nombre').toString(),
+              subtitulo: _etiquetaRol(fila['rol']?.toString()),
+              estado: 'Activo',
+            ),
+          )
+          .toList(),
+    );
   }
 
   String _etiquetaRol(String? rol) => switch (rol) {
@@ -302,22 +368,24 @@ class EstadisticasAdministradorService {
     _ => 'Usuario',
   };
 
+  /// Mensajes seguros para mostrar en la interfaz.
   static String mensajeError(Object error) {
     if (error is PostgrestException) {
       if (error.code == '42501') {
-        return 'No tienes permisos de administrador para ver estas estad\u00edsticas.';
+        return 'No tienes permisos de administrador para ver estas estadísticas.';
       }
       if (error.code == 'PGRST202') {
-        return 'Falta aplicar la migraci\u00f3n de estad\u00edsticas en la base de datos.';
+        return 'Las estadísticas no están disponibles. '
+            'Falta aplicar la migración correspondiente.';
       }
-      return error.message.isNotEmpty
-          ? error.message
-          : 'Error de base de datos.';
+      return 'No se pudieron cargar las estadísticas.';
     }
+
     if (error is FormatException) {
-      return 'Formato de respuesta inesperado: ' + error.message;
+      return 'La respuesta de estadísticas no tiene el formato esperado.';
     }
-    return 'Error de conexi\u00f3n o inesperado: ' + error.toString();
+
+    return 'No se pudieron cargar las estadísticas. Revisa tu conexión.';
   }
 
   static String _fechaIso(DateTime fecha) {
